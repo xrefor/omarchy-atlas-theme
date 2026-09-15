@@ -1,0 +1,11 @@
+[Plymouth Theme]
+Name=ATLAS
+Description=Angular ATLAS wordmark in the ATLAS palette.
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/atlas
+ScriptFile=/usr/share/plymouth/themes/atlas/atlas.script
+ConsoleLogBackgroundColor=0x100e0c
+MonospaceFont=Cantarell 11
+Font=Cantarell 11

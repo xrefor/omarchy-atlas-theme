@@ -1,0 +1,6 @@
+#!/bin/bash
+# Each new terminal owns its own session; existing terminal jobs stay intact.
+if [[ -n ${TMUX:-} || ${TERM:-dumb} == dumb ]]; then
+  exec /bin/bash
+fi
+exec tmux new-session -s "atlas-$$" -n shell -c "$PWD"

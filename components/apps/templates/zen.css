@@ -1,0 +1,100 @@
+/* ATLAS: generated palette, maintained browser UI rules. */
+:root {
+  color-scheme: {{ mode }} !important;
+  --bb-bg: {{ background }};
+  --bb-panel: {{ lighter_background }};
+  --bb-fg: {{ foreground }};
+  --bb-meta: {{ secondary }};
+  --bb-line: {{ muted }};
+  --bb-accent: {{ accent }};
+  --bb-selection: {{ selection }};
+  --zen-primary-color: var(--bb-accent) !important;
+  --zen-main-browser-background: var(--bb-bg) !important;
+  --zen-main-browser-background-toolbar: var(--bb-bg) !important;
+  --zen-navigator-toolbox-background: var(--bb-bg) !important;
+  --zen-branding-bg: var(--bb-bg) !important;
+  --zen-branding-bg-reverse: var(--bb-fg) !important;
+  --zen-colors-primary: var(--bb-selection) !important;
+  --zen-colors-secondary: var(--bb-panel) !important;
+  --zen-colors-tertiary: var(--bb-bg) !important;
+  --zen-colors-primary-foreground: var(--bb-fg) !important;
+  --zen-colors-border: var(--bb-line) !important;
+  --zen-colors-hover-bg: var(--bb-selection) !important;
+  --zen-colors-input-bg: var(--bb-panel) !important;
+  --zen-urlbar-background: var(--bb-panel) !important;
+  --zen-dialog-background: var(--bb-panel) !important;
+  --toolbar-color: var(--bb-fg) !important;
+  --toolbox-textcolor: var(--bb-fg) !important;
+  --lwt-text-color: var(--bb-fg) !important;
+  --lwt-accent-color: var(--bb-bg) !important;
+  --toolbar-field-color: var(--bb-fg) !important;
+  --toolbar-field-background-color: var(--bb-panel) !important;
+  --toolbar-field-focus-color: {{ bright_foreground }} !important;
+  --toolbar-field-focus-background-color: var(--bb-panel) !important;
+  --toolbar-field-focus-border-color: var(--bb-accent) !important;
+  --panel-background: var(--bb-panel) !important;
+  --panel-color: var(--bb-fg) !important;
+  --panel-border-color: var(--bb-line) !important;
+  --panel-separator-color: var(--bb-line) !important;
+  --arrowpanel-background: var(--bb-panel) !important;
+  --arrowpanel-color: var(--bb-fg) !important;
+  --arrowpanel-border-color: var(--bb-line) !important;
+  --arrowpanel-dimmed: var(--bb-selection) !important;
+  --tab-selected-bgcolor: var(--bb-selection) !important;
+  --tab-selected-textcolor: {{ bright_foreground }} !important;
+  --tab-loading-fill: var(--bb-accent) !important;
+  --focus-outline-color: var(--bb-accent) !important;
+  --link-color: var(--bb-accent) !important;
+  --link-color-hover: var(--bb-accent) !important;
+  --urlbarView-highlight-background: var(--bb-selection) !important;
+  --urlbarView-highlight-color: var(--bb-accent) !important;
+  --toolbarbutton-hover-background: var(--bb-selection) !important;
+  --toolbarbutton-active-background: var(--bb-selection) !important;
+  --zen-border-radius: 2px !important;
+  --tab-border-radius: 2px !important;
+  --toolbarbutton-border-radius: 2px !important;
+  --button-border-radius: 2px !important;
+  --panel-border-radius: 2px !important;
+  --arrowpanel-border-radius: 2px !important;
+}
+#navigator-toolbox, #zen-sidebar-top-buttons, #zen-sidebar-foot-buttons,
+#TabsToolbar, #PersonalToolbar, #nav-bar {
+  font-family: "IBM Plex Mono", monospace !important;
+  color: var(--bb-fg) !important;
+}
+.zen-browser-generic-background,
+.zen-browser-generic-background::before,
+.zen-browser-generic-background::after {
+  background: var(--bb-bg) !important;
+  background-image: none !important;
+}
+.tabbrowser-tab[selected] .tab-background {
+  background: var(--bb-selection) !important;
+  box-shadow: inset 2px 0 var(--bb-accent) !important;
+}
+.tabbrowser-tab:not([selected]) .tab-label { color: var(--bb-meta) !important; }
+#urlbar-background {
+  border: 1px solid var(--bb-line) !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+#urlbar[focused] #urlbar-background { border-color: var(--bb-accent) !important; }
+.urlbarView-row[selected] .urlbarView-row-inner {
+  background: var(--bb-selection) !important;
+  color: var(--bb-accent) !important;
+}
+.urlbarView-url, .urlbarView-action { color: var(--bb-meta) !important; }
+menupopup {
+  --panel-background: var(--bb-panel) !important;
+  --panel-color: var(--bb-fg) !important;
+  --panel-border-color: var(--bb-line) !important;
+}
+menuitem[_moz-menuactive], menu[_moz-menuactive] {
+  background: var(--bb-selection) !important;
+  color: var(--bb-accent) !important;
+}
+#urlbar-input::selection, .searchbar-textbox::selection {
+  background: {{ selection_background }} !important;
+  color: {{ selection_foreground }} !important;
+}
+progressmeter, progress { accent-color: var(--bb-accent) !important; }

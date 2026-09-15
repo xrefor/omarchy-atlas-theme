@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Toggle only the monitoring pane created by this command."""
+import os
+import subprocess
+import sys
+
+def tmux(*args):
+    return subprocess.check_output(["tmux", *args], text=True).strip()
+
+if not os.environ.get("TMUX"):
+    os.execvp("btop", ["btop"])
+target = sys.argv[1] if len(sys.argv) > 1 else os.environ.get("TMUX_PANE", "")
+window = tmux("display-message", "-p", "-t", target, "#{window_id}")
+session = tmux("display-message", "-p", "-t", target, "#{session_id}")
+rows = tmux("list-panes", "-t", window, "-F", "#{pane_id} #{@atlas_monitor}").splitlines()
+for row in rows:
+    if row.endswith(" atlas"):
+        subprocess.run(["tmux", "kill-pane", "-t", row.split()[0]], check=True)
+        raise SystemExit(0)
+# Find this window's separate monitor when the terminal was too narrow to split.
+for row in tmux("list-windows", "-t", session, "-F", "#{window_id} #{@atlas_monitor_for}").splitlines():
+    if row.endswith(" " + window):
+        subprocess.run(["tmux", "kill-window", "-t", row.split()[0]], check=True)
+        raise SystemExit(0)
+width = int(tmux("display-message", "-p", "-t", target, "#{window_width}"))
+if width < 150:
+    pane = tmux("new-window", "-t", session + ":", "-n", "monitor", "-P", "-F", "#{pane_id}", "btop")
+    subprocess.run(["tmux", "set-option", "-w", "-t", pane, "@atlas_monitor_for", window], check=True)
+else:
+    pane = tmux("split-window", "-t", target, "-h", "-l", "40%", "-P", "-F", "#{pane_id}", "btop")
+subprocess.run(["tmux", "set-option", "-p", "-t", pane, "@atlas_monitor", "atlas"], check=True)

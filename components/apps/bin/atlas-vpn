@@ -1,0 +1,560 @@
+#!/usr/bin/env python3
+"""Themed NymVPN panel. Uses one authenticated CLI session; no stored credentials."""
+import curses
+import json
+import os
+from pathlib import Path
+import queue
+import re
+import selectors
+import shutil
+import subprocess
+import sys
+import textwrap
+import threading
+import time
+
+
+class Session:
+    def __init__(self, binary):
+        self.process = subprocess.Popen([binary, 'start-session'], stdin=subprocess.PIPE,
+                                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        self.selector = selectors.DefaultSelector()
+        self.selector.register(self.process.stdout, selectors.EVENT_READ)
+
+    def response(self, timeout=20):
+        data = bytearray()
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if not self.selector.select(min(.25, max(0, deadline-time.monotonic()))):
+                continue
+            chunk = os.read(self.process.stdout.fileno(), 65536)
+            if not chunk:
+                raise RuntimeError(data.decode(errors='replace').strip() or 'Nym CLI session ended')
+            data.extend(chunk)
+            if data.endswith(b'$ '):
+                return data[:-2].decode(errors='replace').strip()
+            if len(data) > 262144:
+                raise RuntimeError('Unexpectedly large CLI response')
+        raise RuntimeError('Nym did not respond. Check the daemon or authentication prompt; press r to retry.')
+
+    def command(self, command):
+        self.process.stdin.write((command+'\n').encode())
+        self.process.stdin.flush()
+        return self.response()
+
+    def close(self):
+        # Terminating the client never disconnects the daemon's tunnel.
+        if self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait()
+        self.selector.close()
+        self.process.stdin.close()
+        self.process.stdout.close()
+
+
+class Backend:
+    def __init__(self, binary):
+        self.binary = binary
+        self.requests = queue.Queue()
+        self.events = queue.Queue()
+        self.stop = threading.Event()
+        self.session = None
+        self.thread = threading.Thread(target=self.run, daemon=True)
+        self.thread.start()
+
+    def run(self):
+        try:
+            self.session = Session(self.binary)
+            self.session.response(90)
+            self.events.put(('ready', True))
+            refresh = 0
+            while not self.stop.is_set():
+                try:
+                    command = self.requests.get(timeout=.1)
+                except queue.Empty:
+                    command = None
+                if command:
+                    if isinstance(command, tuple):
+                        result = apply_setting(self.session, *command)
+                        self.events.put(('message', result))
+                    else:
+                        result = switch_mode(self.session) if command == 'switch-mode' else self.session.command(command)
+                        self.events.put(command_event(command, result))
+                    refresh = 0
+                if time.monotonic() >= refresh:
+                    for name, cmd in [('status', 'status'), ('tunnel', 'tunnel get'), ('gateway', 'gateway get')]:
+                        if self.stop.is_set():
+                            return
+                        self.events.put((name, self.session.command(cmd)))
+                    self.events.put(('refreshed', True))
+                    refresh = time.monotonic()+5
+        except (OSError, RuntimeError) as error:
+            if not self.stop.is_set():
+                self.events.put(('error', str(error)))
+        finally:
+            if self.session:
+                self.session.close()
+
+    def close(self):
+        self.stop.set()
+        if self.session and self.session.process.poll() is None:
+            self.session.process.terminate()
+        self.thread.join(timeout=3)
+
+
+def command_event(command, result):
+    result = clean(result)
+    # Status snapshots belong to the live reading, never a persistent notice.
+    if command == 'status' or result.startswith('State:'):
+        return ('status', result)
+    return ('message', result or f'{command.capitalize()} requested')
+
+
+def switch_mode(session):
+    current = clean(session.command('tunnel get'))
+    if 'Two-hop: on' in current:
+        target, name = 'off', 'Mixnet'
+    elif 'Two-hop: off' in current:
+        target, name = 'on', 'dVPN'
+    else:
+        return 'Mode unchanged: Nym did not report its current mode.'
+    result = clean(session.command('tunnel set --two-hop ' + target))
+    actual = clean(session.command('tunnel get'))
+    if 'Two-hop: ' + target not in actual:
+        return 'Mode change failed: ' + (result or 'Nym did not apply the setting.')
+    return name + ' selected. Nym reconnects an active tunnel automatically.'
+
+
+# CLI-supported settings only. Values are always read back from the daemon.
+SETTING_SPECS = {
+    'two-hop': ('Mode', 'Two-hop', 'bool', 'dVPN uses two-hop WireGuard; Mixnet uses the mix network.'),
+    'ipv6': ('IPv6', 'IPv6', 'bool', 'Allow IPv6 inside the VPN tunnel.'),
+    'circumvention-transports': ('Circumvention transports', 'Circumvention transports', 'bool', 'Wrap the entry connection to help on networks that restrict VPN traffic.'),
+    'netstack': ('Netstack', 'Netstack', 'bool', 'Testing only. Nym recommends leaving this off for normal use.'),
+    'loop-cover-stream-average-delay': ('Loop cover interval', 'poisson_parameter_for_loop_cover_stream', 'delay', 'Average interval between loop cover packets. Larger values mean less frequent cover traffic.'),
+    'average-packet-delay': ('Mixnode packet delay', 'average_packet_delay', 'delay', 'Average delay at each mixnode. Changes latency and traffic timing protection.'),
+    'message-sending-delay': ('Message sending interval', 'message_sending_average_delay', 'delay', 'Average real-message send interval. Changes throughput and traffic timing.'),
+    'disable-real-traffic-poisson-rate': ('Poisson timing', 'disable_poisson_rate', 'bool', 'On randomizes real-traffic timing. Turning it off can reduce traffic-analysis resistance.'),
+}
+
+
+def setting_value(tunnel, setting):
+    _, field, kind, _ = SETTING_SPECS[setting]
+    match = re.search(r'(?<![\w])' + re.escape(field) + r':\s*([^,\n]+)', tunnel)
+    if not match:
+        return None
+    value = match[1].strip()
+    if kind == 'bool':
+        return {'on': 'on', 'off': 'off', 'true': 'on', 'false': 'off'}.get(value)
+    match = re.fullmatch(r'Some\((\d+)\)', value)
+    return match[1] if match else value
+
+
+def display_setting(tunnel, setting):
+    value = setting_value(tunnel, setting)
+    if setting == 'disable-real-traffic-poisson-rate' and value in ('on', 'off'):
+        return 'off' if value == 'on' else 'on'
+    if value == 'None':
+        return 'Auto (Nym default)'
+    if value is None:
+        return 'unavailable'
+    return value + (' ms' if SETTING_SPECS[setting][2] == 'delay' else '')
+
+
+def apply_setting(session, setting, value):
+    if setting not in SETTING_SPECS:
+        return 'Setting unavailable.'
+    name, _, kind, _ = SETTING_SPECS[setting]
+    if kind == 'bool' and value not in ('on', 'off'):
+        return 'Choose on or off.'
+    if kind == 'delay' and (not value.isascii() or not value.isdecimal() or not 0 <= int(value) <= 4294967295):
+        return 'Enter a whole number of milliseconds (0–4294967295).'
+    reply = clean(session.command(f'tunnel set --{setting} {value}'))
+    actual = clean(session.command('tunnel get'))
+    expected = str(int(value)) if kind == 'delay' else value
+    if setting_value(actual, setting) != expected:
+        return 'Change failed: ' + (reply or 'Nym did not apply the setting.')
+    return f'{name} saved. Nym reconnects when required.'
+
+
+def settings_options(tunnel, page):
+    fast = setting_value(tunnel, 'two-hop') == 'on'
+    if setting_value(tunnel, 'two-hop') not in ('on', 'off'):
+        return ['ipv6'] if page == 'settings' else []
+    if page == 'advanced':
+        if fast:
+            return ['netstack']
+        return ['loop-cover-stream-average-delay', 'average-packet-delay',
+                'message-sending-delay', 'disable-real-traffic-poisson-rate']
+    return ['ipv6'] + (['circumvention-transports'] if fast else [])
+
+
+def settings_rows(data, width, page, editor=None, entry=''):
+    rows = []
+    def row(text='', color=7):
+        for part in textwrap.wrap(text, max(1, width)) or ['']:
+            rows.append((part, color))
+    row('A T L A S  /  N Y M', 1)
+    row('TUNNEL SETTINGS', 2)
+    row('─' * width, 5)
+    if editor:
+        row(SETTING_SPECS[editor][0].upper(), 6)
+        row(SETTING_SPECS[editor][3], 2)
+        row('Current: ' + display_setting(data['tunnel'], editor))
+        row()
+        row('Milliseconds: ' + entry + '▏', 1)
+        row('Enter applies / Esc cancels', 2)
+        row()
+        row('Custom delays cannot be reset to Auto with this CLI.', 2)
+        row('Zero means 0 ms, not Auto. Changes may reconnect the VPN.', 2)
+        if data['message']:
+            row(data['message'], 2)
+        row('─' * width, 5)
+        return rows
+    if page == 'mode':
+        current = setting_value(data['tunnel'], 'two-hop')
+        row('SELECT MODE', 6)
+        row('1  dVPN     / Two-hop WireGuard' + ('  [selected]' if current == 'on' else ''))
+        row('2  Mixnet   / Mix network' + ('  [selected]' if current == 'off' else ''))
+        row()
+        row('Choose a mode to apply it and open its options.', 2)
+        row('An active VPN reconnects when its mode changes.', 2)
+    else:
+        current = setting_value(data['tunnel'], 'two-hop')
+        row(('dVPN' if current == 'on' else 'MIXNET' if current == 'off' else 'MODE UNAVAILABLE') + ' / ' + page.upper(), 6)
+        row('Values below are reported by Nym.', 2)
+        row()
+        for i, setting in enumerate(settings_options(data['tunnel'], page), 1):
+            name, _, kind, note = SETTING_SPECS[setting]
+            value = display_setting(data['tunnel'], setting)
+            row(f'{i}  {name}: {value}', 1 if editor == setting else 7)
+            row('   ' + note, 2)
+            row()
+        if page == 'advanced' and current == 'off':
+            match = re.search(r'disable_background_cover_traffic:\s*(true|false)', data['tunnel'])
+            value = ('off' if match[1] == 'true' else 'on') if match else 'unavailable'
+            row('Background cover traffic: ' + value + '  [read-only]', 2)
+            row('This Nym CLI has no command to change it.', 2)
+            row()
+            row('Custom delays cannot be reset to Auto with this CLI. Zero means 0 ms, not Auto.', 2)
+            row('Extreme delays can greatly affect latency or bandwidth use.', 2)
+        if page == 'settings':
+            row('A  Advanced settings', 1)
+        row('Changes may reconnect an active VPN.', 2)
+    if data['message']:
+        row()
+        row('COMMAND NOTICE', 2)
+        row(data['message'], 1)
+    row('─' * width, 5)
+    return rows
+
+
+def clean(value):
+    value = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', value)
+    return ''.join(c for c in value if c in '\n\t' or c.isprintable())
+
+
+def palette():
+    curses.start_color()
+    curses.use_default_colors()
+    # ATLAS palette, including indexed fallbacks for tmux without initc.
+    roles = [(1, 'ff5a12', 202, curses.COLOR_RED),
+             (2, 'a69b8c', 247, curses.COLOR_WHITE),
+             (3, 'a8b85c', 143, curses.COLOR_GREEN),
+             (4, 'e84528', 196, curses.COLOR_RED),
+             (5, '3a342c', 238, curses.COLOR_BLACK),
+             (6, 'f2ebe0', 255, curses.COLOR_WHITE),
+             (7, 'd6cfc4', 252, curses.COLOR_WHITE)]
+    try:
+        colors = json.loads((Path.home()/'.config/atlas/vpn-palette.json').read_text())
+        if not isinstance(colors, dict):
+            colors = {}
+    except (OSError, ValueError):
+        colors = {}
+    names = ['accent', 'secondary', 'green', 'red', 'muted', 'bright_foreground', 'foreground']
+    for pair, value, indexed, basic in roles:
+        custom = str(colors.get(names[pair-1], '')).lstrip('#')
+        if re.fullmatch('[0-9a-fA-F]{6}', custom):
+            value = custom
+            rgb = tuple(int(value[i:i+2], 16) for i in (0, 2, 4))
+            cube = [0, 95, 135, 175, 215, 255]
+            candidates = [(16+36*r+6*g+b, (cube[r], cube[g], cube[b]))
+                          for r in range(6) for g in range(6) for b in range(6)]
+            candidates += [(232+i, (8+10*i,)*3) for i in range(24)]
+            indexed = min(candidates, key=lambda item: sum((a-b)**2 for a,b in zip(rgb,item[1])))[0]
+        color = indexed if curses.COLORS >= 256 else basic
+        if curses.can_change_color() and curses.COLORS > 32:
+            try:
+                color = 16 + pair
+                curses.init_color(color, *[int(value[i:i+2], 16)*1000//255 for i in (0, 2, 4)])
+            except curses.error:
+                color = indexed if curses.COLORS >= 256 else basic
+        curses.init_pair(pair, color, -1)
+
+
+def state_name(status):
+    value = status.removeprefix('State: ').strip()
+    for prefix, label in [('Connected', 'CONNECTED'), ('Disconnected', 'DISCONNECTED'),
+                          ('Connecting', 'CONNECTING'), ('Disconnecting', 'DISCONNECTING'),
+                          ('Error', 'ERROR'), ('Offline', 'OFFLINE')]:
+        if value.startswith(prefix):
+            return label
+    return 'WAITING' if value.startswith('Waiting') else 'UNAVAILABLE'
+
+
+def dashboard(data, width, events, detailed=False):
+    rows = []
+    def row(value='', color=7):
+        for line in value.splitlines() or ['']:
+            rows.extend((part, color) for part in
+                        (textwrap.wrap(line, width, replace_whitespace=False) or ['']))
+    def rule():
+        row('─' * width, 5)
+    state = state_name(data['status'])
+    tunnel = data['tunnel']
+    mode = 'dVPN / TWO-HOP WIREGUARD' if 'Two-hop: on' in tunnel else 'MIXNET' if 'Two-hop: off' in tunnel else 'MODE PENDING'
+    row('A T L A S  /  N Y M', 1)
+    row('LIVE VPN CONTROL', 2)
+    rule()
+    row(state, 3 if state == 'CONNECTED' else 4 if state in ('ERROR', 'OFFLINE', 'UNAVAILABLE') else 1)
+    row(f'SELECTED MODE   {mode}   [M options]', 2)
+    row()
+    row('TUNNEL ROUTE', 2)
+    route = re.search(r'Connected wg to (\S+) \[([^]]+)\] → (\S+) \[([^]]+)\]', data['status'])
+    if route:
+        row('01  ENTRY   ' + route[1], 6)
+        row('    ' + route[2], 2)
+        row('    │', 1)
+        row('02  EXIT    ' + route[3], 6)
+        row('    ' + route[4], 2)
+    else:
+        row(data['status'], 7)
+    row()
+    values = dict(line.split(': ', 1) for line in tunnel.splitlines() if ': ' in line)
+    row('IPv6  ' + values.get('IPv6', 'pending') + '   /   CIRCUMVENTION  ' + values.get('Circumvention transports', 'pending'), 2)
+    row()
+    row('GATEWAY POLICY', 2)
+    for line in data['gateway'].splitlines():
+        if ': ' not in line:
+            row(line, 2)
+            continue
+        label, value = line.split(': ', 1)
+        if value.startswith('Auto'):
+            exclusions = []
+            if 'exclude_user_country: true' in value:
+                exclusions.append('your country')
+            if 'exclude_entry_point_country: true' in value:
+                exclusions.append('entry country')
+            value = 'Auto' + (' / excludes ' + ' + '.join(exclusions) if exclusions else '')
+        row(label.upper().replace(' POINT', '').ljust(18) + value, 7)
+    if not data['gateway']:
+        row('Waiting for gateway settings…', 2)
+    row()
+    rule()
+    row('RECENT STATE CHANGES / HISTORY', 2)
+    if events:
+        for stamp, message in events[-3:]:
+            row(f'{stamp}  {message}', 2)
+    else:
+        row('Waiting for the first Nym reading…', 2)
+    if data['message']:
+        row()
+        row('COMMAND NOTICE', 2)
+        row(data['message'], 1)
+    if detailed:
+        row()
+        row('RAW NYM OUTPUT', 1)
+        row('\n'.join(data[k] for k in ('status', 'tunnel', 'gateway')), 2)
+    rule()
+    return rows
+
+
+def panel(screen, binary):
+    curses.curs_set(0)
+    screen.timeout(150)
+    palette()
+    backend = Backend(binary)
+    data = {'status': 'Waiting for Nym authentication…', 'tunnel': '', 'gateway': '', 'message': ''}
+    ready, failed, busy = False, False, False
+    updated = None
+    scroll = 0
+    events, detailed = [], False
+    previous_status = None
+    page, editor, entry = None, None, ''
+    try:
+        while True:
+            while True:
+                try:
+                    key, value = backend.events.get_nowait()
+                except queue.Empty:
+                    break
+                if key == 'ready':
+                    ready = True
+                elif key == 'refreshed':
+                    busy = False
+                elif key == 'error':
+                    failed, ready, busy = True, False, False
+                    data['status'] = 'Unavailable — last readings may be stale'
+                    data['message'] = value
+                else:
+                    data[key] = clean(value)
+                    if key == 'status':
+                        updated = time.monotonic()
+                        current = data['status']
+                        if current != previous_status:
+                            events.append((time.strftime('%H:%M:%S'), state_name(current)))
+                            events = events[-3:]
+                            previous_status = current
+                        if state_name(current) == 'CONNECTED' and data['message'] == 'Connect requested':
+                            data['message'] = ''
+                        elif state_name(current) == 'DISCONNECTED' and data['message'] == 'Disconnect requested':
+                            data['message'] = ''
+            height, width = screen.getmaxyx()
+            screen.erase()
+            content_width = max(1, width-4)
+            left = 2
+            def put(y, text, style=0):
+                if 0 <= y < height and width > 4:
+                    try:
+                        screen.addnstr(y, left, text, min(content_width, width-left-1), style)
+                    except curses.error:
+                        pass
+            body = (settings_rows(data, content_width, page, editor, entry) if page
+                    else dashboard(data, content_width, events, detailed))
+            visible = max(0, height-5)
+            scroll = min(scroll, max(0, len(body)-visible))
+            top = 1
+            for y, (line, color) in enumerate(body[scroll:scroll+visible], top):
+                put(y, line, curses.color_pair(color))
+            footer = top + min(len(body), visible)
+            age = f'Last reading {int(time.monotonic()-updated)}s ago' if updated else 'Approve Nym authentication if prompted'
+            put(footer, 'Request pending…' if busy else age, curses.color_pair(2))
+            controls = ('Digits select  A advanced  M modes  Esc back' if page
+                        else 'C connect  D disconnect  M mode  S settings  R refresh  I details  Q close')
+            put(footer+1, controls, curses.color_pair(1))
+            put(footer+2, '↑↓ scroll   /   Closing the panel leaves VPN running', curses.color_pair(2))
+            screen.refresh()
+            key = screen.getch()
+            if ord('A') <= key <= ord('Z'):
+                key += ord('a') - ord('A')
+            if page:
+                if editor:
+                    if key == 27:
+                        editor, entry = None, ''
+                    elif key in (curses.KEY_BACKSPACE, 127, 8):
+                        entry = entry[:-1]
+                    elif ord('0') <= key <= ord('9') and len(entry) < 10:
+                        entry += chr(key)
+                    elif key in (10, 13, curses.KEY_ENTER) and ready and not busy:
+                        if entry and int(entry) <= 4294967295:
+                            backend.requests.put((editor, entry))
+                            busy = True
+                            editor, entry = None, ''
+                        else:
+                            data['message'] = 'Enter milliseconds from 0 to 4294967295.'
+                    continue
+                if key in (27, ord('q')):
+                    page = 'settings' if page == 'advanced' else None
+                    scroll = 0
+                elif key == ord('m'):
+                    page, scroll = 'mode', 0
+                elif key == ord('a') and page == 'settings':
+                    page, scroll = 'advanced', 0
+                elif key in (curses.KEY_DOWN, ord('j')):
+                    scroll += 1
+                elif key in (curses.KEY_UP, ord('k')):
+                    scroll = max(0, scroll-1)
+                elif ready and not busy and ord('1') <= key <= ord('9'):
+                    number = key - ord('1')
+                    if page == 'mode' and number in (0, 1):
+                        backend.requests.put(('two-hop', 'on' if number == 0 else 'off'))
+                        busy = True
+                        page, scroll = 'settings', 0
+                    elif page != 'mode':
+                        options = settings_options(data['tunnel'], page)
+                        if number < len(options):
+                            setting = options[number]
+                            value = setting_value(data['tunnel'], setting)
+                            if value is None:
+                                data['message'] = 'Waiting for Nym to report this setting.'
+                            elif SETTING_SPECS[setting][2] == 'bool':
+                                backend.requests.put((setting, 'off' if value == 'on' else 'on'))
+                                busy = True
+                            else:
+                                editor, entry = setting, ''
+                                scroll = 0
+                continue
+            if key in (ord('q'), 27):
+                return
+            if key in (curses.KEY_DOWN, ord('j')):
+                scroll += 1
+            elif key in (curses.KEY_UP, ord('k')):
+                scroll = max(0, scroll-1)
+            elif key == ord('i'):
+                detailed = not detailed
+                scroll = 0
+            elif key == ord('r'):
+                if failed:
+                    backend.close()
+                    backend = Backend(binary)
+                    failed = False
+                    data['status'] = 'Waiting for Nym authentication…'
+                elif ready and not busy:
+                    backend.requests.put('status')
+                    busy = True
+            elif key in (ord('m'), ord('s')):
+                page = 'mode' if key == ord('m') else 'settings'
+                scroll = 0
+            elif key in (ord('c'), ord('d')) and ready and not busy:
+                backend.requests.put('connect' if key == ord('c') else 'disconnect')
+                busy = True
+    finally:
+        backend.close()
+
+
+def toggle():
+    def tmux(*args):
+        return subprocess.check_output(['tmux', *args], text=True).strip()
+    if not os.environ.get('TMUX'):
+        return False
+    target = sys.argv[2] if len(sys.argv) > 2 else os.environ.get('TMUX_PANE', '')
+    if not shutil.which('nym-vpnc') and not (Path.home()/'.local/bin/nym-vpnc').is_file():
+        tmux('display-message', '-t', target, '-d', '7000', 'ATLAS VPN: install nym-vpnc matching your Nym daemon; see docs/VPN.md')
+        return True
+    window = tmux('display-message', '-p', '-t', target, '#{window_id}')
+    session = tmux('display-message', '-p', '-t', target, '#{session_id}')
+    for row in tmux('list-panes', '-t', window, '-F', '#{pane_id} #{@atlas_vpn}').splitlines():
+        if row.endswith(' atlas'):
+            tmux('kill-pane', '-t', row.split()[0])
+            return True
+    for row in tmux('list-windows', '-t', session, '-F', '#{window_id} #{@atlas_vpn_for}').splitlines():
+        if row.endswith(' '+window):
+            tmux('kill-window', '-t', row.split()[0])
+            return True
+    width = int(tmux('display-message', '-p', '-t', target, '#{pane_width}'))
+    command = str(Path(__file__).resolve())
+    import shlex
+    if width < 150:
+        pane = tmux('new-window', '-t', session+':', '-n', 'vpn', '-P', '-F', '#{pane_id}', shlex.quote(command))
+        tmux('set-option', '-w', '-t', pane, '@atlas_vpn_for', window)
+    else:
+        pane = tmux('split-window', '-t', target, '-h', '-l', '40%', '-P', '-F', '#{pane_id}', shlex.quote(command))
+    tmux('set-option', '-p', '-t', pane, '@atlas_vpn', 'atlas')
+    return True
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == '--toggle' and toggle():
+        sys.exit(0)
+    binary = shutil.which('nym-vpnc') or str(Path.home()/'.local/bin/nym-vpnc')
+    if not Path(binary).is_file():
+        sys.exit('nym-vpnc is missing. Install the CLI matching your Nym daemon.')
+    try:
+        curses.wrapper(panel, binary)
+    except KeyboardInterrupt:
+        pass

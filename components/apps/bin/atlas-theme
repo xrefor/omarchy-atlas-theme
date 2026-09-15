@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 "$HOME/.local/share/atlas/install.py" "$@"

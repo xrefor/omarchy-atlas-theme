@@ -1,0 +1,42 @@
+mode = "dark"
+
+# ATLAS: warm carbon, ivory type, and restrained signal orange.
+# Preserve the ATLAS terminal ANSI palette; secondary is a separate UI role.
+accent = "#ff5a12"
+selection = "#2a160c"
+muted = "#3a342c"
+secondary = "#a69b8c"
+
+background = "#100e0c"
+dark_background = "#0a0908"
+darker_background = "#050403"
+lighter_background = "#1c1814"
+
+foreground = "#d6cfc4"
+dark_foreground = "#6e675c"
+light_foreground = "#c4b8a8"
+bright_foreground = "#f2ebe0"
+
+selection_foreground = "#100e0c"
+selection_background = "#ff5a12"
+
+hyprland_active_border = "rgb(ff5a12)"
+hyprland_inactive_border = "rgb(3a342c)"
+active_border_color = "#ff5a12"
+active_tab_background = "#ff5a12"
+
+red = "#c22e16"
+yellow = "#f0a202"
+orange = "#e24a0f"
+green = "#8a9a4a"
+cyan = "#6f9a92"
+blue = "#6a8aa0"
+magenta = "#a03c2a"
+brown = "#6a3a22"
+
+bright_red = "#e84528"
+bright_yellow = "#ffb020"
+bright_green = "#a8b85c"
+bright_cyan = "#8fb8b0"
+bright_blue = "#8aa8bc"
+bright_magenta = "#c45438"

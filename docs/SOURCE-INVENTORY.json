@@ -1,0 +1,392 @@
+[
+  {
+    "file": "colors.toml",
+    "origin": ".config/omarchy/themes/atlas/colors.toml",
+    "source_sha256": "4c7c71510c077ac2bd35999494903a5fd87d8cfb7b9b73a22179f4fe23718bf6"
+  },
+  {
+    "file": "icons.theme",
+    "origin": ".config/omarchy/themes/atlas/icons.theme",
+    "source_sha256": "72adc8a0a17d587a9b588efd4c6fe669d566e72db6fe212384712f9a870a6a15"
+  },
+  {
+    "file": "keyboard.rgb",
+    "origin": ".config/omarchy/themes/atlas/keyboard.rgb",
+    "source_sha256": "5fc9b9a411fa2c04f4e7f8e6d22295a71da36db0897bcb597d8b35f2c53ddf5a"
+  },
+  {
+    "file": "chromium.theme",
+    "origin": ".config/omarchy/themes/atlas/chromium.theme",
+    "source_sha256": "ed544d1815489f503fa114024e4d0edb8e0a0380b3ea34c5d6d29d9d88deb172"
+  },
+  {
+    "file": "backgrounds/atlas-ember-seam.png",
+    "origin": "predecessor-theme/backgrounds/legacy-ember-seam.png",
+    "source_sha256": "5969620e0af3e7c0c86c23fa1f12503b749f870c6c74e775fd7261422ee837f8"
+  },
+  {
+    "file": "backgrounds/atlas-vault.png",
+    "origin": "predecessor-theme/backgrounds/legacy-atlas-vault.png",
+    "source_sha256": "e5d7baf46b635428706980769c452300c399e60ec672cb4939ed798a45100fb3"
+  },
+  {
+    "file": "backgrounds/atlas-thermal-horizon.png",
+    "origin": "predecessor-theme/backgrounds/legacy-thermal-horizon.png",
+    "source_sha256": "ef59a9f2a2b05c4d7363223e22533f35f7ac6321fff405be6012d3de826e4e3e"
+  },
+  {
+    "file": "backgrounds/atlas-cinder-array.png",
+    "origin": "predecessor-theme/backgrounds/legacy-cinder-array.png",
+    "source_sha256": "e4cb76a52bb70f4c1f441849eb55e2f9f6531308fe83e21a652be0b00cc89f0f"
+  },
+  {
+    "file": "backgrounds/atlas-boot.png",
+    "origin": "boot-source/atlas-boot.png",
+    "source_sha256": "cd819faf30805351e9650ba02c215363be0a6adedec4354f237fe7817f53cc7a"
+  },
+  {
+    "file": "preview.png",
+    "origin": "boot-source/atlas-boot.png",
+    "source_sha256": "cd819faf30805351e9650ba02c215363be0a6adedec4354f237fe7817f53cc7a"
+  },
+  {
+    "file": "assets/atlas.svg",
+    "origin": "boot-source/assets/atlas.svg",
+    "source_sha256": "ae53c8f61a5c278e985e03e5d30c37a9d379b3439e09d153c91e6811e1fbda95"
+  },
+  {
+    "file": "assets/wallpaper.svg",
+    "origin": "boot-source/assets/wallpaper.svg",
+    "source_sha256": "786eb96b50b4adfc55822c225cbbb19ad182cfa615431ca0ec5c580e508e28b5"
+  },
+  {
+    "file": "assets/lock.svg",
+    "origin": "boot-source/assets/lock.svg",
+    "source_sha256": "ad0dd27a800f354d5cd95241c11e1593f890d94a494326ce4aa98f0256bff7ee"
+  },
+  {
+    "file": "assets/entry.svg",
+    "origin": "boot-source/assets/entry.svg",
+    "source_sha256": "ec6ca025280268219bfa23744f971947817f3a105a3e72c4900c13d0d42d960d"
+  },
+  {
+    "file": "assets/progress_bar.svg",
+    "origin": "boot-source/assets/progress_bar.svg",
+    "source_sha256": "3762cd502b4db679f05f9da638791c674cf62952cd957a6e25f7ea370c01a3f8"
+  },
+  {
+    "file": "assets/progress_box.svg",
+    "origin": "boot-source/assets/progress_box.svg",
+    "source_sha256": "a580749010d24a95edc9a7616af01066359431ecccc5459bd043ec3a07d86f47"
+  },
+  {
+    "file": "components/boot/plymouth/logo.png",
+    "origin": "boot-source/plymouth/logo.png",
+    "source_sha256": "355d420b13ffc0e79cfdcd9bfa256c8113e478ef53901edde047f36a90c2f16d"
+  },
+  {
+    "file": "components/boot/plymouth/bullet.png",
+    "origin": "boot-source/plymouth/bullet.png",
+    "source_sha256": "957e7c71251e5b71f721f880e55d5a7d0a09c30ee1d0fa74170a146828d91faa"
+  },
+  {
+    "file": "components/boot/plymouth/progress_box.png",
+    "origin": "boot-source/plymouth/progress_box.png",
+    "source_sha256": "f52e0096e4aa55a431f146060ccea26681f55903157d275e867519036897dc29"
+  },
+  {
+    "file": "components/boot/plymouth/progress_bar.png",
+    "origin": "boot-source/plymouth/progress_bar.png",
+    "source_sha256": "486bb9577cc14ed574109500b6aa9df0f6b374b8eb122560b5c0f80ead7bc388"
+  },
+  {
+    "file": "components/boot/plymouth/atlas.script",
+    "origin": "boot-source/plymouth/atlas.script",
+    "source_sha256": "fe0d203986dd609df7a8bfa7ef7190baf540696d37d995b3c6f929001f22b0b0"
+  },
+  {
+    "file": "components/boot/plymouth/atlas.plymouth",
+    "origin": "boot-source/plymouth/atlas.plymouth",
+    "source_sha256": "e29715e662a3b4a8ab4ae6adfea94b0a837f3e7f519eceea440a06b873365199"
+  },
+  {
+    "file": "components/boot/plymouth/lock.png",
+    "origin": "boot-source/plymouth/lock.png",
+    "source_sha256": "2ca50f5a6f8822eef491070776acb921bccc4ce8fa52fe5b3d2942cbe0dc1cbd"
+  },
+  {
+    "file": "components/boot/plymouth/entry.png",
+    "origin": "boot-source/plymouth/entry.png",
+    "source_sha256": "da144624db2fd4ad2c030bb547fbfa286f07cc776ec859cedbb2429f5b20f997"
+  },
+  {
+    "file": "unlock.png",
+    "origin": "boot-source/plymouth/logo.png",
+    "source_sha256": "355d420b13ffc0e79cfdcd9bfa256c8113e478ef53901edde047f36a90c2f16d"
+  },
+  {
+    "file": "screensaver-mark.png",
+    "origin": "boot-source/plymouth/logo.png",
+    "source_sha256": "355d420b13ffc0e79cfdcd9bfa256c8113e478ef53901edde047f36a90c2f16d"
+  },
+  {
+    "file": "components/boot/sddm/Main.qml",
+    "origin": "login-source/sddm/Main.qml",
+    "source_sha256": "ee4d677f4f0c7edf2034c220a38e89a78c4bed6dbc49ebd192f2bf7896f7ed88"
+  },
+  {
+    "file": "components/boot/sddm/bullet.png",
+    "origin": "login-source/sddm/bullet.png",
+    "source_sha256": "957e7c71251e5b71f721f880e55d5a7d0a09c30ee1d0fa74170a146828d91faa"
+  },
+  {
+    "file": "components/boot/sddm/entry-failed.png",
+    "origin": "login-source/sddm/entry-failed.png",
+    "source_sha256": "627becabd9f6cbb948f0cd14034a6f4881952e2c36bb8c66e5a2e508460701aa"
+  },
+  {
+    "file": "components/boot/sddm/entry.png",
+    "origin": "login-source/sddm/entry.png",
+    "source_sha256": "9da272f6db81ee79a3d80ab33cc07c2ff162170daf69fd2a25d2909ef4ec6191"
+  },
+  {
+    "file": "components/boot/sddm/lock-failed.png",
+    "origin": "login-source/sddm/lock-failed.png",
+    "source_sha256": "a90ab0a6c151a17198edc95a2fc66793a04f8cf0575c7205d75208fdffca8033"
+  },
+  {
+    "file": "components/boot/sddm/lock.png",
+    "origin": "login-source/sddm/lock.png",
+    "source_sha256": "f85b51cc4f617a7d6fbc60bd6a49af415b58c60ebc29594d0b730a215b3963dc"
+  },
+  {
+    "file": "components/boot/sddm/metadata.desktop",
+    "origin": "login-source/sddm/metadata.desktop",
+    "source_sha256": "59f8981229675c23a698fe47cff599695f9dd8186bd2e9d706f01fd2b64f6fec"
+  },
+  {
+    "file": "components/boot/sddm/theme.conf",
+    "origin": "login-source/sddm/theme.conf",
+    "source_sha256": "a371ee2822ab833c1349cbe193bf4b9292d6ab6b49a22b525fc1dcd95aa933c1"
+  },
+  {
+    "file": "components/boot/sddm/logo.png",
+    "origin": "boot-source/plymouth/logo.png",
+    "source_sha256": "355d420b13ffc0e79cfdcd9bfa256c8113e478ef53901edde047f36a90c2f16d"
+  },
+  {
+    "file": "components/boot/sddm/lock.png",
+    "origin": "boot-source/plymouth/lock.png",
+    "source_sha256": "2ca50f5a6f8822eef491070776acb921bccc4ce8fa52fe5b3d2942cbe0dc1cbd"
+  },
+  {
+    "file": "components/boot/sddm/entry.png",
+    "origin": "boot-source/plymouth/entry.png",
+    "source_sha256": "da144624db2fd4ad2c030bb547fbfa286f07cc776ec859cedbb2429f5b20f997"
+  },
+  {
+    "file": "components/apps/templates/starship.toml",
+    "origin": "application-source/templates/starship.toml",
+    "source_sha256": "9905a0575b40ed3b1636c225270c89637f6b42017ea19cd385b9627fc9b71dad"
+  },
+  {
+    "file": "components/apps/templates/tmux.conf",
+    "origin": "application-source/templates/tmux.conf",
+    "source_sha256": "5e6653ff9761e597c7381eac89f245b97c780751cc3718a4c77d117457f651dd"
+  },
+  {
+    "file": "components/apps/templates/spotify.toml",
+    "origin": "application-source/templates/spotify.toml",
+    "source_sha256": "78229c4075d68a2db5590487aa19116334b3712ba0d9351ef59acdeb57661ff4"
+  },
+  {
+    "file": "components/apps/templates/yazi.toml",
+    "origin": "application-source/templates/yazi.toml",
+    "source_sha256": "07ff31f3750f2bfcd4412e29cf7bf8d83c123c0e9a5465e102fd0944948ac385"
+  },
+  {
+    "file": "components/apps/templates/lazygit.yml",
+    "origin": "application-source/templates/lazygit.yml",
+    "source_sha256": "9fe254d378c42a97f9164dd1d2f69abf8b5244376df7385f060f03ef8bcbcba0"
+  },
+  {
+    "file": "components/apps/templates/lazydocker.yml",
+    "origin": "application-source/templates/lazydocker.yml",
+    "source_sha256": "19867d16891d94cf880ec4d5b92a97d8ff4279895d0cc477faa2785488482a6f"
+  },
+  {
+    "file": "components/apps/templates/zen.css",
+    "origin": "application-source/templates/zen.css",
+    "source_sha256": "c74a10ffb300d5500b05cd3804411e6081f5a180b2ea9e3d68d3c07896168d73"
+  },
+  {
+    "file": "components/apps/templates/zen-content.css",
+    "origin": "application-source/templates/zen-content.css",
+    "source_sha256": "b5e9fdd6d540946cc995b7f62eabbc4fe746763235f8bfe3389926ecc5da1ed2"
+  },
+  {
+    "file": "components/apps/templates/listings.bash",
+    "origin": "application-source/templates/listings.bash",
+    "source_sha256": "4f74af37c550b3a1e05ef8985954740aa3c380e00d02818a0dbabb476dd51e3b"
+  },
+  {
+    "file": "components/apps/templates/shell.toml.tpl",
+    "origin": "application-source/templates/shell.toml.tpl",
+    "source_sha256": "c2c42562b05b0f39433520ba57229acf9726278bd8441648cfa1f8890a482ea5"
+  },
+  {
+    "file": "components/apps/templates/hyprland.lua.tpl",
+    "origin": "application-source/templates/hyprland.lua.tpl",
+    "source_sha256": "275b417c7a98c2b096d6b2480366b184d340cd4fe57fd0fe4cedb395ac436f05"
+  },
+  {
+    "file": "components/apps/templates/neovim.lua.tpl",
+    "origin": "application-source/templates/neovim.lua.tpl",
+    "source_sha256": "07db6ed735b5fe9712e2e314416a306f4d899ff35954d045dcac1c61d5aedb9c"
+  },
+  {
+    "file": "components/apps/templates/btop.theme",
+    "origin": "application-source/templates/btop.theme",
+    "source_sha256": "a3e5c989c534b5818ba8c6ea2b8794c7e321b5fdc062b83fa0b9c64696858815"
+  },
+  {
+    "file": "components/apps/templates/mount-main.lua",
+    "origin": "application-source/templates/mount-main.lua",
+    "source_sha256": "7d526f8b6155e3d9f4ee36765571ee837b10f0e85d8948eea3dd726c1b9f731a"
+  },
+  {
+    "file": "components/apps/bin/atlas-session",
+    "origin": "application-source/bin/atlas-session",
+    "source_sha256": "2d39cfcb66a985eea8756e376d9c37e34bd6cb45e2670a0d9bfb230d1075d8e6"
+  },
+  {
+    "file": "components/apps/bin/atlas-files",
+    "origin": "application-source/bin/atlas-files",
+    "source_sha256": "111c9ce241cc1ddbc31d703ec78183d5df2205dea8200d3bdcff6b2c985a9b8e"
+  },
+  {
+    "file": "components/apps/bin/atlas-info",
+    "origin": "application-source/bin/atlas-info",
+    "source_sha256": "8bee6a707c06ebe7c07f894db122ad3b70d53d4782636d0fcb0772c54221554f"
+  },
+  {
+    "file": "components/apps/bin/atlas-panel",
+    "origin": "application-source/bin/atlas-panel",
+    "source_sha256": "5427945d6a8db05e01ffab8e7d7658c19b3bb7890e2863169cfde7812b28827b"
+  },
+  {
+    "file": "components/apps/bin/atlas-theme",
+    "origin": "application-source/bin/legacy-theme",
+    "source_sha256": "3c7d0959385c9f6c0307036f36e83329544cb93301a467fc11334900e648a172"
+  },
+  {
+    "file": "components/apps/shell.bash",
+    "origin": "application-source/shell.bash",
+    "source_sha256": "703dbd824e2d353f53c8478b1bfa02edfec6400818b80e4d909e982132de372e"
+  },
+  {
+    "file": "components/apps/mount-cross.lua",
+    "origin": "application-source/mount-cross.lua",
+    "source_sha256": "6ca9536bb1605eec636cc54943eed837c0d1c4c6a0fc137e00c95266488f07a8"
+  },
+  {
+    "file": "LICENSES/mount.yazi-MIT.txt",
+    "origin": "application-source/vendor/mount.yazi/LICENSE",
+    "source_sha256": "06a2b04a7ed4f030a87d10b884fc1a2215c5e91b371f69dfe173448e834f3752"
+  },
+  {
+    "file": "tests/mount_cross_test.lua",
+    "origin": "application-source/tests/mount_cross_test.lua",
+    "source_sha256": "87d316fd6863055295177a23871d3abb99c06e6bbb07109a5aff3d41fbbbede4"
+  },
+  {
+    "file": "components/desktop/themed/gtk-3.0.css.tpl",
+    "origin": ".config/omarchy/themed/gtk-3.0.css.tpl",
+    "source_sha256": "8c2dfbf1f3326b76f9943ee873563b0ce20351936f7953f793372915f22b8c3d"
+  },
+  {
+    "file": "components/desktop/themed/gtk-4.0.css.tpl",
+    "origin": ".config/omarchy/themed/gtk-4.0.css.tpl",
+    "source_sha256": "4d08418629efd7aee12207e49360b0368e95d0642bc9fa447590ed6506838931"
+  },
+  {
+    "file": "components/desktop/themed/shell.toml.tpl",
+    "origin": ".config/omarchy/themed/shell.toml.tpl",
+    "source_sha256": "7ecf497c1a116c73908bbfff84a737ebf6569c33c01ad091320ef2322c5856f8"
+  },
+  {
+    "file": "components/desktop/themed/hyprland.lua.tpl",
+    "origin": ".config/omarchy/themed/hyprland.lua.tpl",
+    "source_sha256": "275b417c7a98c2b096d6b2480366b184d340cd4fe57fd0fe4cedb395ac436f05"
+  },
+  {
+    "file": "components/desktop/themed/neovim.lua.tpl",
+    "origin": ".config/omarchy/themed/neovim.lua.tpl",
+    "source_sha256": "b37171fb69c18d22a10aed52de7c7862cac1c699d146fd94d03ce09d13928a4c"
+  },
+  {
+    "file": "components/desktop/terminals/foot/foot.ini",
+    "origin": ".config/foot/foot.ini",
+    "source_sha256": "248e6189ca23646573452089f57d465fa11847dc942252bb6affff8abe116f04"
+  },
+  {
+    "file": "components/desktop/terminals/ghostty/config",
+    "origin": ".config/ghostty/config",
+    "source_sha256": "dd923565de93ba4e38437416b8649d9f21fc3618b1494c487cfe56291bce41ab"
+  },
+  {
+    "file": "components/desktop/terminals/kitty/kitty.conf",
+    "origin": ".config/kitty/kitty.conf",
+    "source_sha256": "c4ce4f62737321ef39f876277be3e7d0aee36028239e3bc7605dcabafd478719"
+  },
+  {
+    "file": "components/desktop/terminals/alacritty/alacritty.toml",
+    "origin": ".config/alacritty/alacritty.toml",
+    "source_sha256": "e526aac967757b54fb0ba0aa87ce61f981f3ffbdb4c14f351fbea7738f9464fe"
+  },
+  {
+    "file": "components/desktop/fontconfig/atlas.conf",
+    "origin": ".config/fontconfig/atlas.conf",
+    "source_sha256": "c518c4b541f950d6c719a9cfe2ea8c60ed72df1311bb6f85d8b01f1cfb9bac40"
+  },
+  {
+    "file": "components/desktop/branding/screensaver.txt",
+    "origin": ".config/omarchy/branding/screensaver.txt",
+    "source_sha256": "eab1483c3cf2aa9bee0e0c8170f460c2d084cb1e6c4426c14960aaa5d9167f38"
+  },
+  {
+    "file": "components/desktop/bin/omarchy-screensaver",
+    "origin": ".local/bin/omarchy-screensaver",
+    "source_sha256": "767863c86eab2a139db603e7eda874a5ae3dbca90eb5328b4ec283f5c861357e"
+  },
+  {
+    "file": "components/apps/tmux.conf",
+    "origin": ".config/tmux/tmux.conf",
+    "source_sha256": "41a610530fe53a6bca4202481c5d10cefeba278efc1d869b59ac19dba6ac0ead"
+  },
+  {
+    "file": "components/desktop/shell.toml",
+    "origin": ".config/omarchy/shell.toml",
+    "source_sha256": "ed8f93069ac4bed9abdc6c03f0126232ba1f1b64622aac1e040f83b1e70b1bbc"
+  },
+  {
+    "file": "LICENSE",
+    "origin": "predecessor-theme/LICENSE",
+    "source_sha256": "2fff6a70e9e8aa0af24463e00665b46b94703df598ea01c3ba2a374264ba1dff"
+  },
+  {
+    "file": "LICENSES/Omarchy-MIT.txt",
+    "origin": "predecessor-theme/LICENSES/Omarchy-MIT.txt",
+    "source_sha256": "8157842623a98d84f21361044e410171916bef711b91914fa6f42a27bf094372"
+  },
+  {
+    "file": "docs/WALLPAPER.md",
+    "origin": "predecessor-theme/docs/WALLPAPER.md",
+    "source_sha256": "e616f3e65425a93eac5584a647cc1e729ca76964d571e1aa3ce2a3aecd2cc3e4"
+  },
+  {
+    "file": "docs/WALLPAPER-COLLECTION.md",
+    "origin": "predecessor-theme/docs/WALLPAPER-COLLECTION.md",
+    "source_sha256": "31207c9854f9e0cf6a16cab0e6ddfe411fca63f2c00abba776c151f91551e6bd"
+  }
+]

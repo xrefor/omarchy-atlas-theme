@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "atlas.lock",
+  "name": "ATLAS Lock Screen",
+  "version": "1.0.0",
+  "author": "Omarchy",
+  "description": "ATLAS lock presentation on Omarchy's password and fingerprint PAM flows.",
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml"
+  },
+  "omarchy": {
+    "capabilities": [
+      "authentication"
+    ],
+    "clonedFrom": "omarchy.lock"
+  }
+}

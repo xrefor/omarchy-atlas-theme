@@ -1,0 +1,5 @@
+#!/bin/bash
+# The detailed directory summary remains available without repeating per prompt.
+printf '\nATLAS / DIRECTORY\n%s\n' "$PWD"
+python3 "$HOME/.config/atlas/atlas-prompt.py" counts
+printf '\n'

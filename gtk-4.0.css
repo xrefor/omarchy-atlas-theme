@@ -1,0 +1,52 @@
+/* Omarchy palette. Public libadwaita 1.9 color variables; retain
+ * widget geometry, semantic status colors, and application behavior. */
+@define-color accent_bg_color #ff5a12;
+@define-color accent_fg_color #100e0c;
+@define-color accent_color #ff5a12;
+@define-color window_bg_color #100e0c;
+@define-color window_fg_color #d6cfc4;
+@define-color view_bg_color #0a0908;
+@define-color view_fg_color #d6cfc4;
+@define-color headerbar_bg_color #1c1814;
+@define-color headerbar_fg_color #d6cfc4;
+@define-color headerbar_backdrop_color #100e0c;
+@define-color sidebar_bg_color #100e0c;
+@define-color sidebar_fg_color #d6cfc4;
+@define-color sidebar_backdrop_color #100e0c;
+@define-color secondary_sidebar_bg_color #1c1814;
+@define-color secondary_sidebar_fg_color #d6cfc4;
+@define-color secondary_sidebar_backdrop_color #100e0c;
+@define-color card_bg_color #1c1814;
+@define-color card_fg_color #d6cfc4;
+@define-color dialog_bg_color #1c1814;
+@define-color dialog_fg_color #d6cfc4;
+@define-color popover_bg_color #1c1814;
+@define-color popover_fg_color #d6cfc4;
+
+:root {
+  --accent-bg-color: #ff5a12;
+  --accent-fg-color: #100e0c;
+  --accent-color: #ff5a12;
+  --window-bg-color: #100e0c;
+  --window-fg-color: #d6cfc4;
+  --view-bg-color: #0a0908;
+  --view-fg-color: #d6cfc4;
+  --headerbar-bg-color: #1c1814;
+  --headerbar-fg-color: #d6cfc4;
+  --headerbar-border-color: #3a342c;
+  --headerbar-backdrop-color: #100e0c;
+  --sidebar-bg-color: #100e0c;
+  --sidebar-fg-color: #d6cfc4;
+  --sidebar-backdrop-color: #100e0c;
+  --sidebar-border-color: #3a342c;
+  --secondary-sidebar-bg-color: #1c1814;
+  --secondary-sidebar-fg-color: #d6cfc4;
+  --secondary-sidebar-backdrop-color: #100e0c;
+  --secondary-sidebar-border-color: #3a342c;
+  --card-bg-color: #1c1814;
+  --card-fg-color: #d6cfc4;
+  --dialog-bg-color: #1c1814;
+  --dialog-fg-color: #d6cfc4;
+  --popover-bg-color: #1c1814;
+  --popover-fg-color: #d6cfc4;
+}

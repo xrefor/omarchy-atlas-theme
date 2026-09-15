@@ -1,0 +1,43 @@
+# Generated native theme; component colors intentionally override UI defaults.
+[[themes]]
+name = "atlas"
+[themes.palette]
+background = "{{ background }}"
+foreground = "{{ foreground }}"
+black = "{{ dark_background }}"
+red = "{{ red }}"
+green = "{{ green }}"
+yellow = "{{ yellow }}"
+blue = "{{ blue }}"
+magenta = "{{ magenta }}"
+cyan = "{{ cyan }}"
+white = "{{ foreground }}"
+bright_black = "{{ secondary }}"
+bright_red = "{{ bright_red }}"
+bright_green = "{{ bright_green }}"
+bright_yellow = "{{ bright_yellow }}"
+bright_blue = "{{ bright_blue }}"
+bright_magenta = "{{ bright_magenta }}"
+bright_cyan = "{{ bright_cyan }}"
+bright_white = "{{ bright_foreground }}"
+
+[themes.component_style]
+block_title = { fg = "{{ secondary }}" }
+border = { fg = "{{ muted }}" }
+playback_status = { fg = "{{ accent }}", modifiers = ["Bold"] }
+playback_track = { fg = "{{ bright_foreground }}", modifiers = ["Bold"] }
+playback_artists = { fg = "{{ foreground }}" }
+playback_album = { fg = "{{ secondary }}" }
+playback_genres = { fg = "{{ secondary }}" }
+playback_metadata = { fg = "{{ secondary }}" }
+playback_progress_bar = { fg = "{{ accent }}", bg = "{{ muted }}" }
+playback_progress_bar_unfilled = { fg = "{{ muted }}", bg = "{{ background }}" }
+current_playing = { fg = "{{ accent }}", modifiers = ["Bold"] }
+page_desc = { fg = "{{ secondary }}" }
+playlist_desc = { fg = "{{ secondary }}" }
+table_header = { fg = "{{ secondary }}", modifiers = ["Bold"] }
+selection = { fg = "{{ accent }}", bg = "{{ selection }}", modifiers = ["Bold"] }
+secondary_row = { bg = "{{ background }}" }
+like = { fg = "{{ accent }}" }
+lyrics_played = { fg = "{{ secondary }}" }
+lyrics_playing = { fg = "{{ accent }}", modifiers = ["Bold"] }

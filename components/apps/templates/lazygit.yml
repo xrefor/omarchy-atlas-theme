@@ -1,0 +1,16 @@
+# Generated native appearance settings.
+gui:
+  border: single
+  theme:
+    activeBorderColor: ['{{ accent }}', bold]
+    inactiveBorderColor: ['{{ muted }}']
+    searchingActiveBorderColor: ['{{ accent }}', bold]
+    optionsTextColor: ['{{ secondary }}']
+    selectedLineBgColor: ['{{ selection }}']
+    inactiveViewSelectedLineBgColor: ['{{ lighter_background }}']
+    defaultFgColor: ['{{ foreground }}']
+    cherryPickedCommitFgColor: ['{{ accent }}']
+    cherryPickedCommitBgColor: ['{{ selection }}']
+    markedBaseCommitFgColor: ['{{ accent }}']
+    markedBaseCommitBgColor: ['{{ selection }}']
+    unstagedChangesColor: ['{{ bright_red }}']

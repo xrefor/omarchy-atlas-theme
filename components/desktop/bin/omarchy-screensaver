@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# User overlay of omarchy-screensaver: matrix only.
+# Warm grey rain with sparse ATLAS orange.
+#
+# OMARCHY_SCREENSAVER_EMBEDDED=1 is set when this runs under the lock
+# surface (ttyd). In that mode we must not exit on focus-loss or keypress:
+# the lock overlay owns input, and there is no org.omarchy.screensaver window.
+
+EMBEDDED=0
+[[ "${OMARCHY_SCREENSAVER_EMBEDDED:-}" == 1 ]] && EMBEDDED=1
+
+screensaver_in_focus() {
+  (( EMBEDDED )) && return 0
+  hyprctl activewindow -j | jq -e '.class == "org.omarchy.screensaver"' >/dev/null 2>&1
+}
+
+exit_screensaver() {
+  if (( EMBEDDED )); then
+    pkill -P $$ -x ttfx 2>/dev/null || true
+    exit 0
+  fi
+  hyprctl eval 'hl.config({ cursor = { invisible = false } })' &>/dev/null || hyprctl keyword cursor:invisible false &>/dev/null || true
+  pkill -x ttfx 2>/dev/null
+  pkill -f '[o]rg.omarchy.screensaver' 2>/dev/null
+  exit 0
+}
+
+trap exit_screensaver SIGINT SIGTERM SIGHUP SIGQUIT
+
+# Void background to match ATLAS, not pure studio black.
+printf '\033]11;rgb:10/0e/0c\007'
+
+if (( ! EMBEDDED )); then
+  hyprctl eval 'hl.config({ cursor = { invisible = true } })' &>/dev/null || hyprctl keyword cursor:invisible true &>/dev/null
+fi
+
+tty=$(tty 2>/dev/null)
+
+wait_for_terminal_resize() {
+  local deadline=$((SECONDS + 2))
+  while ((SECONDS < deadline)) && [[ $(stty size 2>/dev/null) == "24 80" ]]; do
+    sleep 0.02
+  done
+}
+
+wait_for_terminal_resize
+
+while true; do
+  ttfx -i ~/.config/omarchy/branding/screensaver.txt \
+    --frame-rate 60 --canvas-width 0 --canvas-height 0 --reuse-canvas --anchor-canvas c --anchor-text c \
+    --terminal-background-color "#100e0c" --no-eol --no-restore-cursor \
+    matrix \
+    --highlight-color f2ebe0 \
+    --rain-color-gradient 2a2622 3a342c 6e675c 8a847a 3a342c 6e675c 2a2622 ff5a12 \
+    --color-swap-chance 0.012 \
+    --rain-time 18 \
+    --rain-fall-delay-range 6-18 \
+    --rain-column-delay-range 5-14 \
+    --resolve-delay 5 \
+    --final-gradient-stops d6cfc4 9a948c \
+    --final-gradient-direction radial &
+
+  while pgrep -t "${tty#/dev/}" -x ttfx >/dev/null; do
+    if (( EMBEDDED )); then
+      sleep 1
+      continue
+    fi
+    if read -n1 -t 1 || ! screensaver_in_focus; then
+      exit_screensaver
+    fi
+  done
+done

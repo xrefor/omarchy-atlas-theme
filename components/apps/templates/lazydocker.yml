@@ -1,0 +1,8 @@
+# Generated native appearance settings.
+gui:
+  border: single
+  theme:
+    activeBorderColor: ['{{ accent }}', bold]
+    inactiveBorderColor: ['{{ muted }}']
+    selectedLineBgColor: ['{{ selection }}']
+    optionsTextColor: ['{{ secondary }}']

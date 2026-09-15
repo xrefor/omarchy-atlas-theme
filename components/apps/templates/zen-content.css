@@ -1,0 +1,60 @@
+/* Browser-owned pages only. Website content retains its own readable styling. */
+@-moz-document url-prefix("about:preferences"), url-prefix("about:addons"),
+url("about:newtab"), url("about:home"), url("about:blank"), url("about:downloads") {
+  :root {
+    color-scheme: {{ mode }} !important;
+    --in-content-page-background: {{ background }} !important;
+    --in-content-page-color: {{ foreground }} !important;
+    --in-content-box-background: {{ lighter_background }} !important;
+    --in-content-box-background-odd: {{ dark_background }} !important;
+    --in-content-box-border-color: {{ muted }} !important;
+    --in-content-border-color: {{ muted }} !important;
+    --in-content-primary-button-background: {{ accent }} !important;
+    --in-content-primary-button-text-color: {{ selection_foreground }} !important;
+    --in-content-link-color: {{ accent }} !important;
+    --in-content-focus-outline-color: {{ accent }} !important;
+    --newtab-background-color: {{ background }} !important;
+    --newtab-background-color-secondary: {{ lighter_background }} !important;
+    --newtab-text-primary-color: {{ foreground }} !important;
+    --newtab-text-secondary-color: {{ secondary }} !important;
+    --newtab-primary-action-background: {{ accent }} !important;
+    --color-accent-primary: {{ accent }} !important;
+    --background-color-canvas: {{ background }} !important;
+    --background-color-box: {{ lighter_background }} !important;
+    --background-color-box-info: {{ lighter_background }} !important;
+    --background-color-overlay: {{ dark_background }} !important;
+    --background-color-list-item-hover: {{ selection }} !important;
+    --card-background-color: {{ lighter_background }} !important;
+    --card-border-color: {{ muted }} !important;
+    --card-border-radius: 2px !important;
+    --border-color: {{ muted }} !important;
+    --border-radius-small: 2px !important;
+    --border-radius-medium: 2px !important;
+    --border-radius-large: 2px !important;
+    --text-color-deemphasized: {{ secondary }} !important;
+    --button-background-color: {{ lighter_background }} !important;
+    --button-background-color-hover: {{ selection }} !important;
+    --button-background-color-active: {{ muted }} !important;
+    --button-text-color: {{ foreground }} !important;
+    --button-border-color: {{ muted }} !important;
+    --button-border-radius: 2px !important;
+    --button-background-color-primary: {{ accent }} !important;
+    --button-background-color-primary-hover: {{ yellow }} !important;
+    --button-background-color-primary-active: {{ orange }} !important;
+    --button-text-color-primary: {{ selection_foreground }} !important;
+    --button-text-color-primary-hover: {{ selection_foreground }} !important;
+    --button-text-color-primary-active: {{ selection_foreground }} !important;
+    --input-background-color: {{ dark_background }} !important;
+    --input-border-color: {{ muted }} !important;
+    --input-color: {{ foreground }} !important;
+    --link-color: {{ accent }} !important;
+    --link-color-hover: {{ yellow }} !important;
+    --zen-primary-color: {{ accent }} !important;
+    --zen-colors-primary: {{ selection }} !important;
+    --zen-colors-secondary: {{ lighter_background }} !important;
+    --zen-colors-tertiary: {{ background }} !important;
+    --zen-colors-border: {{ muted }} !important;
+    --text-color: {{ foreground }} !important;
+  }
+  body { background-color: {{ background }} !important; color: {{ foreground }} !important; }
+}

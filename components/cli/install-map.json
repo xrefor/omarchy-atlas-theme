@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "source": "atlas_cli/__init__.py",
+      "target": ".local/lib/atlas-cli/atlas_cli/__init__.py",
+      "mode": "0644",
+      "group": "cli-core"
+    },
+    {
+      "source": "atlas_cli/palette.py",
+      "target": ".local/lib/atlas-cli/atlas_cli/palette.py",
+      "mode": "0644",
+      "group": "cli-core"
+    },
+    {
+      "source": "atlas_cli/runner.py",
+      "target": ".local/lib/atlas-cli/atlas_cli/runner.py",
+      "mode": "0644",
+      "group": "cli-core"
+    },
+    {
+      "source": "bin/nmap",
+      "target": ".local/bin/nmap",
+      "mode": "0755",
+      "group": "cli-core"
+    },
+    {
+      "source": "bin/ping",
+      "target": ".local/bin/ping",
+      "mode": "0755",
+      "group": "cli-core"
+    },
+    {
+      "source": "bin/ip",
+      "target": ".local/bin/ip",
+      "mode": "0755",
+      "group": "cli-core"
+    },
+    {
+      "source": "bin/ss",
+      "target": ".local/bin/ss",
+      "mode": "0755",
+      "group": "cli-core"
+    },
+    {
+      "source": "bin/dig",
+      "target": ".local/bin/dig",
+      "mode": "0755",
+      "group": "cli-core"
+    },
+    {
+      "source": "bin/shodan",
+      "target": ".local/bin/shodan",
+      "mode": "0755",
+      "group": "cli-shodan"
+    },
+    {
+      "source": "extras/codex/atlas.tmTheme",
+      "target": ".codex/themes/atlas.tmTheme",
+      "mode": "0644",
+      "group": "cli-codex"
+    },
+    {
+      "source": "integrations/tcpdump",
+      "target": ".local/bin/tcpdump",
+      "mode": "0755",
+      "group": "cli-tcpdump"
+    },
+    {
+      "source": "integrations/msfconsole",
+      "target": ".local/bin/msfconsole",
+      "mode": "0755",
+      "group": "cli-metasploit"
+    },
+    {
+      "source": "integrations/msfconsole.rc",
+      "target": ".msf4/msfconsole.rc",
+      "mode": "0644",
+      "group": "cli-metasploit"
+    }
+  ]
+}

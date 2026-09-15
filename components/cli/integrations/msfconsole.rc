@@ -1,0 +1,21 @@
+<%
+# Read the active theme's literal accent; use ATLAS orange as the fallback.
+accent = 'ff5a12'
+palette = File.expand_path('~/.local/state/omarchy/current/theme/colors.toml')
+begin
+  match = File.read(palette).match(/^accent\s*=\s*["']#([0-9a-fA-F]{6})["']/)
+  accent = match[1] if match
+rescue SystemCallError
+  # Omarchy is optional.
+end
+color = ''
+reset = ''
+if output.supports_color? && ENV.fetch('NO_COLOR', '').empty?
+  rgb = accent.scan(/../).map { |channel| channel.to_i(16) }.join(';')
+  # Readline must ignore the width of truecolor escape sequences.
+  color = "\x01\e[38;2;#{rgb}m\x02"
+  reset = "\x01\e[0m\x02"
+end
+framework.datastore['Prompt'] = "#{color}msf#{reset}"
+framework.datastore['PromptChar'] = "#{color}>#{reset}"
+%>

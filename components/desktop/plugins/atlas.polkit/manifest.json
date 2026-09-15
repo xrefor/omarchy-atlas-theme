@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "atlas.polkit",
+  "name": "ATLAS Polkit",
+  "version": "1.0.0",
+  "author": "Omarchy",
+  "description": "ATLAS authentication dialog for privileged actions using Omarchy's Polkit flow.",
+  "kinds": [
+    "service"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "PolkitAgent.qml"
+  },
+  "omarchy": {
+    "capabilities": [
+      "authentication"
+    ],
+    "clonedFrom": "omarchy.polkit"
+  }
+}

@@ -1,0 +1,120 @@
+# Generated from the active Omarchy palette. Yazi 26.9 schema.
+[app]
+overall = { fg = "{{ foreground }}", bg = "{{ background }}" }
+
+[mgr]
+cwd = { fg = "{{ accent }}", bold = true }
+find_keyword = { fg = "{{ accent }}", bold = true, underline = true }
+find_position = { fg = "{{ secondary }}" }
+symlink_target = { fg = "{{ secondary }}" }
+marker_copied = { fg = "{{ green }}", bg = "{{ green }}" }
+marker_cut = { fg = "{{ red }}", bg = "{{ red }}" }
+marker_marked = { fg = "{{ accent }}", bg = "{{ accent }}" }
+marker_selected = { fg = "{{ accent }}", bg = "{{ accent }}" }
+count_copied = { fg = "{{ background }}", bg = "{{ green }}" }
+count_cut = { fg = "{{ foreground }}", bg = "{{ red }}" }
+count_selected = { fg = "{{ selection_foreground }}", bg = "{{ accent }}" }
+border_symbol = "│"
+border_style = { fg = "{{ muted }}" }
+
+[tabs]
+active = { fg = "{{ accent }}", bg = "{{ selection }}", bold = true }
+inactive = { fg = "{{ secondary }}", bg = "{{ background }}" }
+sep_inner = { open = "", close = "" }
+sep_outer = { open = "", close = "" }
+
+[mode]
+normal_main = { fg = "{{ accent }}", bg = "{{ background }}", bold = true }
+normal_alt = { fg = "{{ secondary }}", bg = "{{ background }}" }
+select_main = { fg = "{{ background }}", bg = "{{ accent }}", bold = true }
+select_alt = { fg = "{{ accent }}", bg = "{{ selection }}" }
+unset_main = { fg = "{{ background }}", bg = "{{ red }}", bold = true }
+unset_alt = { fg = "{{ red }}", bg = "{{ background }}" }
+
+[indicator]
+parent = { fg = "{{ foreground }}", bg = "{{ lighter_background }}" }
+current = { fg = "{{ accent }}", bg = "{{ selection }}", bold = true }
+preview = { fg = "{{ foreground }}", bg = "{{ lighter_background }}", underline = true }
+padding = { open = "", close = "" }
+
+[status]
+overall = { fg = "{{ secondary }}", bg = "{{ background }}" }
+sep_left = { open = "", close = "" }
+sep_right = { open = "", close = "" }
+perm_sep = { fg = "{{ muted }}" }
+perm_type = { fg = "{{ secondary }}" }
+perm_read = { fg = "{{ secondary }}" }
+perm_write = { fg = "{{ secondary }}" }
+perm_exec = { fg = "{{ green }}" }
+progress_label = { fg = "{{ foreground }}", bold = true }
+progress_normal = { fg = "{{ accent }}", bg = "{{ selection }}" }
+progress_error = { fg = "{{ bright_red }}", bg = "{{ background }}" }
+
+[which]
+border = { fg = "{{ muted }}" }
+mask = { bg = "{{ background }}" }
+cand = { fg = "{{ accent }}" }
+rest = { fg = "{{ secondary }}" }
+desc = { fg = "{{ foreground }}" }
+separator = " → "
+separator_style = { fg = "{{ muted }}" }
+
+[confirm]
+border = { fg = "{{ muted }}" }
+title = { fg = "{{ accent }}" }
+body = { fg = "{{ foreground }}" }
+list = { fg = "{{ secondary }}" }
+btn_yes = { fg = "{{ accent }}", bg = "{{ selection }}", bold = true }
+btn_no = { fg = "{{ secondary }}" }
+
+[spot]
+border = { fg = "{{ muted }}" }
+title = { fg = "{{ accent }}" }
+tbl_col = { fg = "{{ secondary }}" }
+tbl_cell = { fg = "{{ foreground }}", bg = "{{ selection }}" }
+
+[notify]
+title_info = { fg = "{{ accent }}" }
+title_warn = { fg = "{{ yellow }}" }
+title_error = { fg = "{{ bright_red }}" }
+
+[pick]
+border = { fg = "{{ muted }}" }
+active = { fg = "{{ accent }}", bold = true }
+inactive = { fg = "{{ secondary }}" }
+
+[input]
+border = { fg = "{{ muted }}" }
+title = { fg = "{{ accent }}" }
+value = { fg = "{{ foreground }}" }
+selected = { fg = "{{ selection_foreground }}", bg = "{{ selection_background }}" }
+
+[cmp]
+border = { fg = "{{ muted }}" }
+active = { fg = "{{ accent }}", bg = "{{ selection }}" }
+inactive = { fg = "{{ secondary }}" }
+
+[tasks]
+border = { fg = "{{ muted }}" }
+title = { fg = "{{ accent }}" }
+hovered = { fg = "{{ accent }}", bg = "{{ selection }}" }
+
+[help]
+border = { fg = "{{ muted }}" }
+chord = { fg = "{{ accent }}" }
+action = { fg = "{{ secondary }}" }
+hovered = { fg = "{{ accent }}", bg = "{{ selection }}", bold = true }
+
+[filetype]
+rules = [
+  { url = "*", is = "orphan", fg = "{{ bright_red }}" },
+  { url = "*/", fg = "{{ accent }}" },
+  { url = "*", is = "exec", fg = "{{ green }}" },
+  { url = "*", fg = "{{ foreground }}" },
+]
+
+[icon]
+globs = [
+  { url = "*/", text = "▸", fg = "{{ accent }}" },
+  { url = "*", text = "·", fg = "{{ secondary }}" },
+]

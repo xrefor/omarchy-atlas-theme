@@ -1,0 +1,3 @@
+#!/bin/sh
+# Skip the upstream startup banner while preserving arguments and exit status.
+exec /usr/bin/msfconsole -q "$@"
