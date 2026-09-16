@@ -197,6 +197,16 @@ class BootInstallerTests(unittest.TestCase):
         self.assertEqual((self.root / "var/lib/atlas-bundle").stat().st_mode & 0o777, 0o700)
         self.assertEqual((self.root / "var/lib/atlas-bundle/boot.lock").stat().st_mode & 0o777, 0o600)
 
+    def test_confirm_requires_a_new_boot(self):
+        with mock.patch.object(boot, "_boot_id", return_value="first-boot"):
+            boot.run(BUNDLE, self.args(sddm=True))
+            with self.assertRaisesRegex(ValueError, "Reboot and check"):
+                boot.run(BUNDLE, self.args("boot-confirm"))
+            self.assertIsNotNone(boot._active_transaction(self.root))
+        with mock.patch.object(boot, "_boot_id", return_value="second-boot"):
+            boot.run(BUNDLE, self.args("boot-confirm"))
+        self.assertIsNone(boot._active_transaction(self.root))
+
     def test_completed_recovery_restores_pretransaction_state(self):
         original = (self.root / "boot/limine.conf").read_text()
         boot.run(BUNDLE, self.args(limine=True))

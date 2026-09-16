@@ -272,11 +272,18 @@ def merge_shell(home, shell, desktop):
         if not isinstance(items,list): raise ValueError('Bar sections must be arrays')
         active.update(plugin_id(p) for p in items)
     disabled=set(shell.get('disabledPlugins',[]))
+    conflicts=[]
     for p in (home/'.config/omarchy/plugins').glob('*/manifest.json'):
         if not p.resolve().is_relative_to(home): raise ValueError('Plugin manifest escapes user home')
         item=json.loads(p.read_text()); name=item.get('id')
         if name in active-disabled and item.get('omarchy',{}).get('clonedFrom') in sources and name not in aliases and name not in sources.values():
-            raise ValueError(f'Another enabled shell clone ({name}) owns this service; disable it before installing ATLAS shell styling')
+            conflicts.append(name)
+    if conflicts:
+        import shlex
+        commands='\n'.join('  omarchy plugin disable '+shlex.quote(name) for name in sorted(conflicts))
+        raise ValueError('Another enabled shell clone owns an ATLAS service. Conflicting plugins: '
+                         +', '.join(sorted(conflicts))+'\nDisable these plugins, then rerun the installer:\n'+commands
+                         +'\nTheir files are preserved. To keep them active, omit the shell component.')
     def remap(item):
         name=plugin_id(item)
         if name not in aliases: return item

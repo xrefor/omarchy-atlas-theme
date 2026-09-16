@@ -1,5 +1,6 @@
 """The one-command installer safely orchestrates the existing installer."""
 import os
+import pty
 from pathlib import Path
 import subprocess
 import tempfile
@@ -41,6 +42,18 @@ class EasyInstallTests(unittest.TestCase):
         self.assertEqual(len(lines),2)
         self.assertTrue(all(line.startswith('python3 ') for line in lines))
         self.assertTrue(all(line.endswith('--dry-run') for line in lines))
+
+    def test_interactive_install_offers_apps_after_doctor(self):
+        master,slave=pty.openpty()
+        try:
+            result=subprocess.run([str(ROOT/'install.sh')],stdin=slave,env=self.env,text=True,capture_output=True)
+        finally:
+            os.close(master);os.close(slave)
+        self.assertEqual(result.returncode,0,result.stderr)
+        lines=self.trace.read_text().splitlines()
+        self.assertIn(' doctor --all',lines[0])
+        self.assertTrue(lines[1].endswith('/lib/atlas/optional.py'))
+        self.assertTrue(lines[2].endswith('install.py --all'))
 
     def test_staged_home_never_activates(self):
         result=self.run_installer('--home',str(self.root/'home'),'--offline')

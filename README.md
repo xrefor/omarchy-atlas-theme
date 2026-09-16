@@ -92,9 +92,22 @@ git clone https://github.com/xrefor/omarchy-atlas-theme.git && cd omarchy-atlas-
 ```
 
 The script checks core dependencies, installs every user component, and activates
-ATLAS. It does not install applications or change boot configuration. Preview
+ATLAS. In a terminal, it first offers missing optional applications individually
+(Yazi, Spotify Player, Lazygit, Lazydocker, Zen, and NymVPN). Each defaults to No;
+AUR packages are identified before confirmation. If NymVPN is installed, a
+separate prompt offers its missing `nym-vpnc` CLI, matched to the daemon version.
+Boot configuration stays separate. Preview
 the same operation with `./install.sh --dry-run`. If you downloaded a release
 archive, extract it and run `./install.sh` inside the extracted directory.
+Dry runs, staged installs and noninteractive runs skip optional package prompts.
+To revisit the choices, run `python3 lib/atlas/optional.py`.
+
+Existing enabled clones of the lock, idle, Polkit or monitor plugins conflict
+with ATLAS shell styling. The prerequisite check lists all of them with
+`omarchy plugin disable <id>` commands. Disable those you want ATLAS to replace
+and rerun; their plugin files are preserved. To retain your clones, use
+`python3 install.py --components theme,desktop,apps,cli` instead, then activate
+with `omarchy theme set atlas`.
 
 Open a new terminal and restart Zen after activation. Log out and back in to
 propagate the font environment consistently. See the

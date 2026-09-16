@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install, maintain, and remove ATLAS for Omarchy."""
 import argparse
+import json
 import os
 from pathlib import Path
 import shutil
@@ -14,6 +15,9 @@ from atlas import palette, state, user
 
 
 def preflight(root, home, components, offline=False):
+    if 'shell' in components:
+        shell=json.loads(user.read(home,'.config/omarchy/shell.json') or '{"version":1}')
+        user.merge_shell(home,shell,root/'components/desktop')
     if offline:
         if home == Path.home().resolve():
             raise ValueError('--offline is only allowed with a separate --home staging directory')
@@ -74,7 +78,7 @@ def run(args):
         preflight(ROOT,home,components,args.offline)
         colors=palette.resolve(args.palette or ROOT/'colors.toml')
         print('ATLAS prerequisites passed for: '+', '.join(sorted(components)))
-        for app in ('spotify_player','lazygit','lazydocker','zen-browser','nmap','tcpdump','msfconsole','shodan'):
+        for app in ('yazi','spotify_player','lazygit','lazydocker','zen-browser','nym-vpnd','nym-vpnc','nmap','tcpdump','msfconsole','shodan'):
             print(f'{app}: '+('available' if shutil.which(app) else 'optional application not installed'))
         print('Zen profiles discovered: '+str(len(user.profiles(home))))
         return
@@ -108,7 +112,7 @@ def run(args):
             subprocess.run(['tmux','source-file',str(home/'.config/atlas/tmux.conf')],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         if not sync and not dry:
             print('Installed ATLAS user components. Activate: omarchy theme set atlas')
-            print('Open a new terminal and restart Zen to load their styling. Boot: python3 install.py boot --dry-run')
+            print('Open a new terminal and restart Zen to load their styling. Boot: sudo python3 install.py boot --dry-run')
     if dry: return operation()
     with state.lock(home): return operation()
 

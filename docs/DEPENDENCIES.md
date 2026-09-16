@@ -1,7 +1,13 @@
 # Dependencies
 
-The bundle installs appearance files, not application binaries or accounts.
-Existing applications continue to use their own package managers and logins.
+The bundle installs appearance files. The interactive `./install.sh` also offers
+missing optional applications through Omarchy package commands, with a separate
+default-No prompt for each. A separate prompt offers a missing `nym-vpnc` from
+the official release matching the installed daemon, with SHA-256 verification.
+Existing applications are skipped. Package failures
+are reported without stopping theme installation. Accounts remain separate.
+Dry runs, staged installs and noninteractive runs never install packages.
+Run `python3 lib/atlas/optional.py` in a terminal to revisit the choices.
 
 ## Required
 

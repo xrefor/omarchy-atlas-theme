@@ -39,6 +39,9 @@ command -v python3 >/dev/null 2>&1 || { printf '%s\n' 'ATLAS: python3 is require
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 python3 "$script_dir/install.py" doctor --all "$@"
+if ! "$dry_run" && ! "$staged" && [ -t 0 ]; then
+  python3 "$script_dir/lib/atlas/optional.py"
+fi
 python3 "$script_dir/install.py" --all "$@"
 
 if ! "$dry_run" && ! "$staged"; then

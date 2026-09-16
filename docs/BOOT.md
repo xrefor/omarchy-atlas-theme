@@ -6,7 +6,7 @@ included by the user-level `--all` option and it never invokes `sudo` or
 interactive terminal with `sudo`.
 
 ```console
-python3 install.py boot --dry-run
+sudo python3 install.py boot --dry-run
 sudo python3 install.py boot
 ```
 
@@ -49,6 +49,13 @@ recoverable. After a successful boot, acknowledge and remove the checkpoint:
 ```console
 sudo python3 install.py boot-confirm
 ```
+
+Do not confirm before rebooting: confirmation deletes the recovery backup and
+does not activate the theme. New live installations refuse confirmation in the
+same boot session. If ATLAS is missing after reboot, keep the checkpoint while
+investigating. “No ATLAS boot recovery checkpoint” means there is no pending
+backup, for example because it was already confirmed; it does not verify the
+installed appearance.
 
 If the new boot appearance fails, boot a working entry or chroot into the
 installed system with its ESP mounted at the same recorded path, and run:

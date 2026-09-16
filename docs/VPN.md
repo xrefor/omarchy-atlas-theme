@@ -6,7 +6,21 @@ ones. Repeat the shortcut to close it, or run `atlas-vpn` directly.
 
 Requires Python with curses and a working NymVPN daemon with a matching
 `nym-vpnc` CLI. This integration was tested against Nym 2026.12.2. Install Nym
-and set up its account separately. The panel uses Nym's normal authentication
+through the optional `./install.sh` prompt, or follow the
+[official Linux installation instructions](https://nym.com/download/linux).
+The prompt installs the AUR `nym-vpnd-bin` and `nym-vpn-app-bin` packages.
+When a daemon is installed but `nym-vpnc` is missing, a separate default-No
+prompt offers the CLI from the [official Nym release](https://github.com/nymtech/nym-vpn-client/releases)
+matching `nym-vpnd --version`. This also works when the daemon was installed
+before ATLAS. The installer supports Linux x86_64 and aarch64, verifies the
+archive against GitHub's published SHA-256 digest, and installs only the CLI to
+`~/.local/bin/nym-vpnc`. Existing CLI installations are left untouched.
+If the matching release or digest is unavailable, it reports the failure and
+continues installing ATLAS. Retry with `python3 lib/atlas/optional.py`.
+The downloaded CLI is separate from ATLAS theme restore and is not updated by
+pacman; after a daemon upgrade, keep your CLI version aligned with it.
+Complete daemon setup with `sudo systemctl enable --now nym-vpnd.service`
+and set up your Nym account separately. The panel uses Nym's normal authentication
 prompt and keeps one authenticated CLI session; it does not store credentials.
 
 ## Controls

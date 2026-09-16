@@ -241,6 +241,22 @@ class BundleTests(unittest.TestCase):
         shell={'plugins':[{'id':'custom.lock'}]}
         with self.assertRaisesRegex(ValueError,'Another enabled'):
             user.merge_shell(self.home,shell,ROOT/'components/desktop')
+    def test_doctor_lists_all_clone_conflicts_before_writing(self):
+        names=['custom.lock','custom.polkit','custom.monitor']
+        for name in names:
+            source='omarchy.'+name.split('.')[1]
+            self.write(f'.config/omarchy/plugins/{name}/manifest.json',json.dumps({'id':name,'omarchy':{'clonedFrom':source}}))
+        shell={'plugins':names[:2], 'bar':{'layout':{'right':[names[2]]}}}
+        self.write('.config/omarchy/shell.json',json.dumps(shell))
+        result=subprocess.run([sys.executable,str(ROOT/'install.py'),'doctor','--all','--home',str(self.home),'--offline'],capture_output=True,text=True)
+        self.assertEqual(result.returncode,1)
+        for name in names:
+            self.assertIn('omarchy plugin disable '+name,result.stderr)
+        self.assertEqual(json.loads((self.home/'.config/omarchy/shell.json').read_text()),shell)
+        self.assertFalse(state.metadata(self.home,'manifest.json').exists())
+        shell['disabledPlugins']=names
+        merged=user.merge_shell(self.home,copy.deepcopy(shell),ROOT/'components/desktop')
+        self.assertTrue(set(names).issubset(merged['disabledPlugins']))
     def test_palette_change_updates_apps_without_replacing_runtime(self):
         before=self.plan({'apps'})
         colors=dict(self.colors,accent='#123456',accent_strip='123456',accent_sgr='18;52;86')

@@ -568,6 +568,13 @@ def _required_backup_bytes(esp: Path | None, before: list[tuple[Path, dict]]) ->
     return total
 
 
+def _boot_id(root: Path) -> str | None:
+    # Staged roots have no running kernel and remain independently testable.
+    if root != Path("/"):
+        return None
+    return Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+
+
 def _prepare_transaction(root: Path, esp: Path | None, changes: list[tuple[Path, dict]],
                          state_path: Path, new_state: dict) -> tuple[Path, dict]:
     transaction_root = _transaction_root(root)
@@ -595,6 +602,7 @@ def _prepare_transaction(root: Path, esp: Path | None, changes: list[tuple[Path,
         journal = {
             "version": 1,
             "status": "prepared",
+            "boot_id": _boot_id(root),
             "esp": _logical(root, esp) if esp is not None else None,
             "esp_before": _tree_manifest(backup) if esp is not None else None,
             "kernel": _kernel_fingerprint(root) if esp is not None else None,
@@ -825,11 +833,15 @@ def _recover(root: Path, dry_run: bool) -> int:
 def _confirm(root: Path, dry_run: bool) -> int:
     transaction = _active_transaction(root)
     if transaction is None:
-        print("No ATLAS boot recovery checkpoint.")
+        print("No ATLAS boot recovery checkpoint; it may already have been confirmed. "
+              "boot-confirm only removes the recovery backup; it does not install or activate styling.")
         return 0
     journal = _load_journal(transaction)
     if journal["status"] != "completed":
         raise ValueError("Incomplete boot transaction must be recovered, not confirmed")
+    if journal.get("boot_id") is not None and journal["boot_id"] == _boot_id(root):
+        raise ValueError("Reboot and check the boot appearance before running boot-confirm. "
+                         "The recovery checkpoint has been preserved.")
     print(f"CONFIRM completed boot transaction and remove {_logical(root, transaction)}")
     if dry_run:
         return 0
