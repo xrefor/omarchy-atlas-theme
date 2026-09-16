@@ -319,7 +319,7 @@ def dashboard(data, width, events, detailed=False):
     tunnel = data['tunnel']
     mode = 'dVPN / TWO-HOP WIREGUARD' if 'Two-hop: on' in tunnel else 'MIXNET' if 'Two-hop: off' in tunnel else 'MODE PENDING'
     row('A T L A S  /  N Y M', 1)
-    row('LIVE VPN CONTROL', 2)
+    row('M I X N E T   /   D V P N   C O N T R O L', 2)
     rule()
     row(state, 3 if state == 'CONNECTED' else 4 if state in ('ERROR', 'OFFLINE', 'UNAVAILABLE') else 1)
     row(f'SELECTED MODE   {mode}   [M options]', 2)
