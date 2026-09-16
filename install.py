@@ -46,7 +46,8 @@ def preflight(root, home, components, offline=False):
 
 def parse():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',nargs='?',default='install',choices=['install','sync','check','restore','recover','doctor','boot','boot-restore','boot-recover','boot-confirm'])
+    parser.add_argument('action',nargs='?',default='install',choices=['install','sync','check','restore','recover','doctor','boot','boot-restore','boot-recover','boot-confirm','nutcracker-install','nutcracker-doctor','nutcracker-restore'])
+    parser.add_argument('--with-tools', action='store_true', help='Include verified Java/JADX when explicitly installing Nutcracker')
     parser.add_argument('--all',action='store_true',help='All user components; boot remains a separate explicit command')
     parser.add_argument('--components',default='theme',help='Comma-separated: theme,desktop,apps,shell,cli')
     parser.add_argument('--cli-groups',default='cli-core',help='Comma-separated cli-core,cli-tcpdump,cli-metasploit,cli-shodan,cli-codex, or all')
@@ -71,6 +72,15 @@ def run(args):
         raise ValueError('Home directory contains control characters')
     if os.geteuid()==0 and args.action not in ('doctor','check') and not args.dry_run and not (args.offline and home!=Path.home().resolve()):
         raise ValueError('Run user installation as your normal user. Only the separate boot command needs root.')
+    if args.action.startswith('nutcracker-'):
+        from atlas import nutcracker
+        optional_home = None if home == Path.home().resolve() else home
+        if args.action == 'nutcracker-install':
+            nutcracker.setup(ROOT, home=optional_home, with_tools=args.with_tools, dry=args.dry_run)
+            return 0
+        if args.action == 'nutcracker-doctor': return nutcracker.doctor(home=optional_home)
+        nutcracker.restore(home=optional_home, dry=args.dry_run)
+        return 0
     components=user.COMPONENTS.copy() if args.all else set(args.components.split(','))
     if components-user.COMPONENTS: raise ValueError('Unknown component: '+','.join(sorted(components-user.COMPONENTS)))
     if components & {'desktop','shell'}: components.add('theme')

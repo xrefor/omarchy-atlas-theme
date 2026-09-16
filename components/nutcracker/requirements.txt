@@ -1,0 +1,13 @@
+# Exact direct dependencies verified by lib/atlas/nutcracker.py after installation.
+# Transitive dependencies remain resolved by pip for the active Python/platform.
+androguard==4.1.4
+APScheduler==3.11.3
+click==8.5.0
+fpdf2==2.8.8
+frida-dexdump==2.0.1
+frida-tools==14.10.4
+loguru==0.7.3
+PyYAML==6.0.3
+requests==2.34.2
+rich==15.0.0
+textual==8.2.8

@@ -40,6 +40,11 @@ def menu_entries():
         'atlas': {'icon': '󰛲', 'label': 'ATLAS', 'description': 'Appearance, component status and maintenance', 'aliases': ['atlas-settings']},
         'atlas.wallpaper': {'icon': '', 'label': 'Wallpaper', 'action': 'atlas-settings wallpaper'},
         'atlas.opacity': {'icon': '󰂵', 'label': 'Window opacity', 'description': 'Fullscreen and app-specific exceptions stay opaque'},
+        'atlas.lock': {'icon': '', 'label': 'Lock screen', 'description': 'Choose the style for your next lock', 'when': 'command -v atlas-lock-style >/dev/null'},
+        'atlas.lock.terminal': {'label': 'Terminal', 'action': 'atlas-lock-style terminal', 'checked': 'atlas-lock-style is terminal'},
+        'atlas.lock.classic': {'label': 'Classic', 'action': 'atlas-lock-style classic', 'checked': 'atlas-lock-style is classic'},
+        'atlas.nutcracker': {'icon': '', 'label': 'Nutcracker', 'description': 'Android APK analysis and reports', 'action': 'omarchy launch tui --app-id=org.atlas.nutcracker atlas-nutcracker', 'when': 'command -v atlas-nutcracker >/dev/null'},
+        'atlas.nutcracker-install': {'icon': '', 'label': 'Install Nutcracker…', 'description': 'Optional Android analysis tools and ATLAS terminal interface', 'action': terminal + 'nutcracker-install --pause', 'when': '! command -v atlas-nutcracker >/dev/null'},
         'atlas.status': {'icon': '', 'label': 'Component status', 'action': terminal + 'status --pause'},
         'atlas.diagnostics': {'icon': '󰒓', 'label': 'Diagnostics', 'description': 'Check local dependencies and changed configuration', 'action': terminal + 'diagnostics --pause'},
         'atlas.help': {'icon': '󰋖', 'label': 'Shortcuts & help', 'action': terminal + 'help --pause'},
@@ -168,7 +173,7 @@ def restore(root, home):
 
 def main(root):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', nargs='?', default='menu', choices=['menu', 'wallpaper', 'opacity', 'opacity-is', 'status', 'diagnostics', 'help', 'restore'])
+    parser.add_argument('action', nargs='?', default='menu', choices=['menu', 'wallpaper', 'opacity', 'opacity-is', 'status', 'diagnostics', 'help', 'restore', 'nutcracker-install'])
     parser.add_argument('percent', nargs='?', type=int, choices=PRESETS)
     parser.add_argument('--home', type=Path, default=Path.home())
     parser.add_argument('--pause', action='store_true', help='Keep reports visible when launched from the menu')
@@ -190,6 +195,10 @@ def main(root):
         elif args.action == 'opacity':
             if args.percent is None: parser.error('opacity requires a percentage')
             set_opacity(home, args.percent, live=home == Path.home().resolve())
+        elif args.action == 'nutcracker-install':
+            if home != Path.home().resolve(): raise ValueError('Use atlas-theme nutcracker-install --home for a separate installation')
+            from . import nutcracker
+            nutcracker.setup(root, with_tools=True)
         elif args.action == 'status': status(home)
         elif args.action == 'diagnostics': code = diagnostics(home)
         elif args.action == 'restore': code = restore(root, home)

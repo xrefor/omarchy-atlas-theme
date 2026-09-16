@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import tomllib
-from . import config, palette, settings, state
+from . import config, lock_style, palette, settings, state
 
 COMPONENTS = {'theme', 'desktop', 'apps', 'shell', 'cli'}
 
@@ -195,6 +195,7 @@ o.bind("SUPER + SHIFT + ALT + M", "Music / Spotify player", { tui = "spotify_pla
                 rel=path+'/user.js'
                 put(rel,config.block(get(rel),'BROWSER CHROME','user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);','//'))
     if 'shell' in components and not syncing:
+        put(lock_style.PREFERENCE, lock_style.current(home) + '\n')
         tree(desktop/'plugins','.config/omarchy/plugins')
         tree(desktop/'branding','.config/omarchy/branding')
         tree(desktop/'bin','.local/bin')

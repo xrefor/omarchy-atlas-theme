@@ -1,0 +1,1 @@
+"""ATLAS interface for Nutcracker."""

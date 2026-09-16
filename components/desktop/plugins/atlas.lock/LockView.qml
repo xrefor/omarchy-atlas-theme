@@ -7,6 +7,7 @@ import qs.Ui
 Item {
   id: root
 
+  property bool terminalStyle: false
   property string backgroundPath: ""
   property int backgroundVersion: 0
   property bool fingerprintConfigured: false
@@ -20,18 +21,18 @@ Item {
   property bool syncingPasswordText: false
   property bool capsLockOn: false
 
-  readonly property string placeholderText: "Enter Password"
-  readonly property int fieldWidth: 381
-  readonly property int fieldHeight: 67
+  readonly property string placeholderText: terminalStyle ? "" : "Enter Password"
+  readonly property int fieldWidth: terminalStyle ? 220 : 381
+  readonly property int fieldHeight: terminalStyle ? 38 : 67
   // Keep two physical pixels at fractional scale so every edge stays visible.
   readonly property real dpr: Math.max(1, Screen.devicePixelRatio)
   readonly property real outlineThickness: Math.min(2, 2 / root.dpr)
   function snap(v) {
     return Math.round(Number(v) * root.dpr) / root.dpr
   }
-  readonly property int fieldFontSize: Math.round(Style.font.heading * 1.125)
-  readonly property int passwordDotFontSize: Math.round(Style.font.heading * 1.33)
-  readonly property int passwordDotLetterSpacing: Math.round(Style.font.heading * 0.19)
+  readonly property int fieldFontSize: terminalStyle ? terminalTypography.fontInfo.pixelSize : Math.round(Style.font.heading * 1.125)
+  readonly property int passwordDotFontSize: terminalStyle ? terminalTypography.fontInfo.pixelSize : Math.round(Style.font.heading * 1.33)
+  readonly property int passwordDotLetterSpacing: terminalStyle ? 2 : Math.round(Style.font.heading * 0.19)
   // Space to keep clear on each side of the field for the fingerprint icon
   // (icon width plus a gap) so the centered dots never run under it.
   readonly property real fingerprintReserve: fingerprintConfigured ? Math.round(fingerprintIcon.implicitWidth + 12) : 0
@@ -111,23 +112,30 @@ Item {
     onTriggered: root.refreshCapsLock()
   }
 
+  Text {
+    id: terminalTypography
+    visible: false
+    font.family: "IBM Plex Mono"
+    font.pointSize: 9
+  }
+
   TextMetrics {
     id: dotMetrics
-    font.family: Style.font.family
+    font.family: root.terminalStyle ? "IBM Plex Mono" : Style.font.family
     font.pixelSize: root.passwordDotFontSize
     font.letterSpacing: root.passwordDotLetterSpacing
-    text: "●".repeat(passwordInput.text.length)
+    text: passwordInput.passwordCharacter.repeat(passwordInput.text.length)
   }
 
   Rectangle {
     anchors.fill: parent
-    color: Color.background
+    color: root.terminalStyle ? "#100e0c" : Color.background
 
     Image {
       id: wallpaper
       anchors.fill: parent
-      visible: !root.screensaverActive
-      source: root.loadBackground ? root.fileUrl(root.backgroundPath) : ""
+      visible: !root.screensaverActive && !root.terminalStyle
+      source: root.loadBackground && !root.terminalStyle ? root.fileUrl(root.backgroundPath) : ""
       fillMode: Image.PreserveAspectCrop
       asynchronous: true
       cache: false
@@ -137,10 +145,10 @@ Item {
 
     MultiEffect {
       anchors.fill: wallpaper
-      visible: !root.screensaverActive
+      visible: !root.screensaverActive && !root.terminalStyle
       source: wallpaper
       autoPaddingEnabled: false
-      blurEnabled: root.loadBackground && wallpaper.status === Image.Ready
+      blurEnabled: !root.terminalStyle && root.loadBackground && wallpaper.status === Image.Ready
       blur: 1.0
       blurMax: 128
       blurMultiplier: 1.25
@@ -204,6 +212,18 @@ Item {
       }
     }
 
+    Image {
+      id: atlasLogo
+      visible: root.terminalStyle && !root.screensaverActive
+      source: Qt.resolvedUrl("atlas.svg")
+      width: 280
+      height: 56
+      anchors.horizontalCenter: parent.horizontalCenter
+      y: root.snap((parent.height - height - 24 - root.fieldHeight) / 2)
+      fillMode: Image.PreserveAspectFit
+      smooth: true
+    }
+
     // SDDM-style centered tile: padlock beside a framed password field.
     // Pixel-align the row. A 1px border on a half-pixel Y (odd field height
     // centered on an even screen) loses its top hairline; clip on the frame
@@ -212,13 +232,14 @@ Item {
       id: promptRow
       visible: !root.screensaverActive
       x: root.snap((parent.width - width) / 2)
-      y: root.snap((parent.height - height) / 2)
+      y: root.terminalStyle ? root.snap(atlasLogo.y + atlasLogo.height + 24) : root.snap((parent.height - height) / 2)
       spacing: 15
 
       Text {
+        visible: !root.terminalStyle
         text: "\uf023"
         color: root.errorState ? Color.lock.textError : Color.lock.text
-        font.family: Style.font.family
+        font.family: root.terminalStyle ? "IBM Plex Mono" : Style.font.family
         font.pixelSize: Math.round(root.fieldFontSize * 1.7)
         width: Math.round(root.fieldHeight * 0.7)
         height: inputField.height
@@ -230,10 +251,10 @@ Item {
         id: inputField
         width: root.snap(root.fieldWidth)
         height: root.snap(root.fieldHeight)
-        color: Color.lock.background
-        borderSpec: root.inputBorderSpec
+        color: root.terminalStyle ? "transparent" : Color.lock.background
+        borderSpec: root.terminalStyle ? Border.none() : root.inputBorderSpec
         border.pixelAligned: false
-        radius: Style.cornerRadius
+        radius: root.terminalStyle ? 0 : Style.cornerRadius
         antialiasing: false
 
       Item {
@@ -245,32 +266,54 @@ Item {
         anchors.leftMargin: inputField.borderLeft
         clip: true
 
+      Text {
+        id: terminalPrompt
+        visible: root.terminalStyle
+        text: ">"
+        anchors.left: parent.left
+        anchors.leftMargin: 13
+        anchors.verticalCenter: parent.verticalCenter
+        color: root.errorState ? Color.lock.textError : "#a69b8c"
+        font.family: "IBM Plex Mono"
+        font.pointSize: 9
+
+        SequentialAnimation on opacity {
+          running: root.terminalStyle && !root.screensaverActive && !root.authenticatingPassword && !root.errorState
+          loops: Animation.Infinite
+          onStopped: terminalPrompt.opacity = 1
+          PauseAnimation { duration: 500 }
+          NumberAnimation { to: 0; duration: 100 }
+          PauseAnimation { duration: 500 }
+          NumberAnimation { to: 1; duration: 100 }
+        }
+      }
+
       TextInput {
         id: passwordInput
         anchors.fill: parent
         // Reserve the fingerprint icon's width on both sides so the centered
         // dots stay symmetric and never slide under the icon as they grow.
         anchors.rightMargin: 18 + root.fingerprintReserve + root.capsReserve
-        anchors.leftMargin: 18 + root.fingerprintReserve + root.capsReserve
+        anchors.leftMargin: root.terminalStyle ? 29 + root.capsReserve : 18 + root.fingerprintReserve + root.capsReserve
         verticalAlignment: TextInput.AlignVCenter
-        horizontalAlignment: TextInput.AlignHCenter
+        horizontalAlignment: root.terminalStyle ? TextInput.AlignLeft : TextInput.AlignHCenter
         activeFocusOnPress: true
         clip: true
         enabled: root.inputEnabled && !root.authenticatingPassword && !root.screensaverActive
         readOnly: root.authenticatingPassword
         echoMode: TextInput.Password
-        passwordCharacter: "\u25CF"
+        passwordCharacter: root.terminalStyle ? "*" : "\u25CF"
         passwordMaskDelay: 0
         color: Color.lock.text
         selectionColor: Color.lock.selection
         selectedTextColor: Color.lock.text
-        font.family: Style.font.family
+        font.family: root.terminalStyle ? "IBM Plex Mono" : Style.font.family
         font.pixelSize: text.length > 0 ? Math.max(1, Math.floor(root.passwordDotFontSize * root.passwordDotScale)) : root.fieldFontSize
         font.letterSpacing: text.length > 0 ? root.passwordDotLetterSpacing * root.passwordDotScale : 0
-        cursorVisible: activeFocus && root.showPasswordCursor && text.length > 0
+        cursorVisible: activeFocus && root.showPasswordCursor && (root.terminalStyle || text.length > 0)
         cursorDelegate: Rectangle {
-          width: 2
-          color: Color.lock.text
+          width: root.terminalStyle ? 1 / root.dpr : 2
+          color: root.terminalStyle ? "#ff5a12" : Color.lock.text
           visible: passwordInput.cursorVisible
         }
 
@@ -303,10 +346,10 @@ Item {
         text: root.authenticatingPassword ? "Checking…" : (root.failureMessage.length > 0 ? root.failureMessage : (root.capsLockOn ? "Caps Lock" : root.placeholderText))
         visible: passwordInput.text.length === 0
         color: root.authenticatingPassword ? Color.lock.text : (root.failureMessage.length > 0 ? Color.lock.textError : (root.capsLockOn ? Color.lock.borderActive : Color.lock.placeholder))
-        font.family: Style.font.family
+        font.family: root.terminalStyle ? "IBM Plex Mono" : Style.font.family
         font.pixelSize: root.fieldFontSize
         font.italic: !root.authenticatingPassword && root.failureMessage.length > 0
-        horizontalAlignment: Text.AlignHCenter
+        horizontalAlignment: root.terminalStyle ? Text.AlignLeft : Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
       }
@@ -332,12 +375,12 @@ Item {
       Text {
         visible: root.capsLockOn && passwordInput.text.length > 0 && !root.authenticatingPassword && root.failureMessage.length === 0
         anchors.left: parent.left
-        anchors.leftMargin: 18
+        anchors.leftMargin: root.terminalStyle ? 29 : 18
         anchors.verticalCenter: parent.verticalCenter
         text: "CAPS"
         color: Color.lock.borderActive
-        font.family: Style.font.family
-        font.pixelSize: Math.round(root.fieldFontSize * 0.55)
+        font.family: root.terminalStyle ? "IBM Plex Mono" : Style.font.family
+        font.pixelSize: root.terminalStyle ? root.fieldFontSize : Math.round(root.fieldFontSize * 0.55)
         font.bold: true
       }
       }

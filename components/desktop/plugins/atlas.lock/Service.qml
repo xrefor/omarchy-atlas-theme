@@ -16,6 +16,20 @@ Item {
   readonly property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME")
   readonly property string currentBackgroundLink: stateHome + "/omarchy/current/background"
 
+  property bool preferredTerminalStyle: false
+  property bool activeTerminalStyle: false
+  // A preference change applies to the next lock, never a live password field.
+  readonly property bool terminalStyle: locked ? activeTerminalStyle : preferredTerminalStyle
+
+  FileView {
+    path: root.home + "/.config/atlas/lock-style"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.preferredTerminalStyle = text().trim() === "terminal"
+    onLoadFailed: root.preferredTerminalStyle = false
+    onFileChanged: reload()
+  }
+
   property bool lockRequested: false
   property bool pendingSessionLock: false
   property bool authenticatingPassword: false
@@ -133,7 +147,8 @@ Item {
     }
 
     resetAuthenticationState()
-    screensaverActive = true
+    activeTerminalStyle = preferredTerminalStyle
+    screensaverActive = !activeTerminalStyle
     lockRequested = true
     logEvent("lock-requested")
     queueSessionLock()
@@ -175,12 +190,12 @@ Item {
   }
 
   function armScreensaverResume() {
-    if (!lockRequested || authenticatingPassword) return
+    if (!lockRequested || authenticatingPassword || terminalStyle) return
     screensaverResumeTimer.restart()
   }
 
   function resumeScreensaver() {
-    if (!lockRequested || authenticatingPassword) return
+    if (!lockRequested || authenticatingPassword || terminalStyle) return
     if (enteredPassword.length > 0) return
     screensaverActive = true
     logEvent("screensaver-resumed")
@@ -285,6 +300,7 @@ Item {
       LockView {
         id: lockView
         anchors.fill: parent
+        terminalStyle: root.terminalStyle
         backgroundPath: root.backgroundPath
         backgroundVersion: root.backgroundVersion
         fingerprintConfigured: root.fingerprintConfigured
@@ -320,6 +336,7 @@ Item {
 
     LockView {
       anchors.fill: parent
+      terminalStyle: root.terminalStyle
       backgroundPath: root.backgroundPath
       backgroundVersion: root.backgroundVersion
       fingerprintConfigured: root.fingerprintConfigured
@@ -537,6 +554,7 @@ Item {
         authenticating: root.authenticating,
         lastEvent: root.lastEvent,
         lastEventAt: root.lastEventAt,
+        style: root.terminalStyle ? "terminal" : "classic",
         screensaver: root.screensaverActive
       })
     }

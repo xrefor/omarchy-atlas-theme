@@ -1,0 +1,2 @@
+#!/bin/sh
+exec python3 "$HOME/.local/share/atlas/lib/atlas/lock_style.py" "$@"
