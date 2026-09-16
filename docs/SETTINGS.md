@@ -8,6 +8,7 @@ entries and comments. Omarchy reloads the extension automatically.
 | --- | --- |
 | Wallpaper | Opens Omarchy's image picker for the active theme and user backgrounds. Cancelling leaves the current wallpaper alone. |
 | Window opacity | Offers 80%, 87% (ATLAS default), 95%, or 100%; the current preset gets a checkmark. Fullscreen and existing app exceptions keep their own rules. |
+| Lock screen | Selects Classic or Terminal for the next lock; shown when the shell component is installed. |
 | Component status | Shows the active theme, configured Foot font, wallpaper, opacity, and installer-managed or separately detected components. |
 | Diagnostics | Compares local files with saved snapshots and reports interrupted transactions and application availability. No uploads or privileged commands. |
 | Shortcuts & help | A compact guide to the terminal workspace and file navigation. |
@@ -54,3 +55,5 @@ fallback when another Neovim colorscheme is selected.
 
 Yazi's Enter key enters directories inside Yazi and uses the normal file opener
 for files, including the existing multi-selection behavior.
+
+Lock appearance and its command are described in [LOCK-SCREEN.md](LOCK-SCREEN.md).

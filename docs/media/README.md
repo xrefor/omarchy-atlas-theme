@@ -22,6 +22,14 @@ The remaining overview scenes use the original recording below, at source
 24–26 seconds (desktop), 6–9 (Yazi), 1–3 (Nym), and 24–26 (desktop).
 All interface elements are real captures; no UI was composited into the footage.
 
+## rc5 additions
+
+- `atlas-lock-terminal.png`: actual 1280 × 800 QEMU display capture of the
+  packaged terminal lock on the Omarchy validation VM, 2026-09-16.
+- `atlas-nutcracker.png`: headless Textual rendering of the packaged frontend
+  at 100 × 32 cells, exported as SVG and rasterized. It is a UI preview, not a
+  recording of an APK analysis or a physical terminal cursor.
+
 ## Original desktop recording
 
 Recorded on 2026-09-16 with ATLAS active on Omarchy. These are real desktop

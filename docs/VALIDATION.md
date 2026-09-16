@@ -1,8 +1,8 @@
 # Release validation
 
 This release candidate was prepared on the reference workstation and exercised
-in a clean Omarchy 4.0.4 VM. Packaging did not change the workstation's active
-desktop, application setup, authentication policy or boot configuration.
+in an isolated Omarchy 4.0.4 VM. The rc5 run upgraded an rc4 user installation.
+Authentication policy and workstation boot configuration were not changed.
 
 ## Automated and isolated checks
 
@@ -42,6 +42,24 @@ and the build is repeated to check deterministic archive output. Release files
 must be tracked by Git and explicitly selected; bytecode, private state, backups,
 logs, credentials, hardware layouts and account profiles are excluded.
 
+## rc5 validation
+
+- Both Terminal and Classic lock modes reached a secure session lock and
+  unlocked through the VM account's real password PAM flow. An incorrect
+  password left Terminal locked. Changing the preference while locked kept
+  the existing surface until the next lock.
+- The rc4-to-rc5 user upgrade, repeat installation, theme switch and original-file
+  restoration completed in the VM.
+- Nutcracker's frontend tests cover APK path validation, subprocess cancellation,
+  log control-sequence filtering, reports, CLI path handling, and TUI navigation
+  at 100 × 32 and 80 × 24 cells. Packaging checks cover archive traversal,
+  source verification, tools, launchers, and restoration.
+- The portable Nutcracker installation completed on Linux x86-64 with verified
+  Java/JADX. A harmless generated resource-only APK completed static analysis
+  and produced JSON/PDF reports. No device or third-party application was tested.
+- Java/JADX are separately checksummed downloads. Python direct dependencies
+  use exact versions, but transitive wheels are not a hash-locked supply chain.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:
@@ -60,4 +78,4 @@ The clean VM covers installation, reboot, password authentication, virtual USB
 media and recovery logic. It does not validate physical firmware rendering,
 GPU variation, fingerprint readers, encrypted Plymouth prompts, real Nym account
 connectivity or every optional application version. The archive is suitable for
-sharing as **1.0.0-rc4** with those limitations stated.
+sharing as **1.0.0-rc5** with those limitations stated.

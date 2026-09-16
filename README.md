@@ -81,7 +81,7 @@ Open with **Ctrl+Space**, then **n**. [Panel controls and dependencies](docs/VPN
 
 ## Install
 
-**Version 1.0.0-rc4.** Tested against Omarchy **4.0.4-1**, Hyprland's Lua
+**Version 1.0.0-rc5.** Tested against Omarchy **4.0.4-1**, Hyprland's Lua
 configuration, and the Quickshell-based Omarchy shell. See
 [compatibility](docs/COMPATIBILITY.md) and [release validation](docs/VALIDATION.md).
 
@@ -117,7 +117,31 @@ when those applications are installed.
 
 The extended shell uses the recipient's existing idle timeouts. Its Matrix
 screensaver runs inside the secure lock surface, so it locks at the earlier of
-screensaver and lock timeouts. See [authentication and shell](docs/AUTH.md).
+screensaver and lock timeouts. Choose Classic or Terminal under **ATLAS → Lock screen**. See [lock-screen styles](docs/LOCK-SCREEN.md) and [authentication and shell](docs/AUTH.md).
+
+[![ATLAS terminal lock screen captured in the validation VM](docs/media/atlas-lock-terminal.png)](docs/media/atlas-lock-terminal.png)
+
+Terminal lock screen, captured during Omarchy VM validation.
+
+<details>
+<summary>Nutcracker: optional APK analysis</summary>
+
+[![ATLAS Nutcracker rendered terminal interface](docs/media/atlas-nutcracker.png)](docs/media/atlas-nutcracker.png)
+
+The ATLAS terminal interface provides APK selection, streamed analysis, reports,
+and tool diagnostics. It preserves Nutcracker's CLI and uses local static
+analysis by default. Install it explicitly; it is separate from `--all`:
+
+```bash
+atlas-theme nutcracker-install --with-tools
+nutcracker
+```
+
+This downloads the pinned upstream source, Python dependencies, and verified
+Java/JADX tools. Existing configuration and reports are preserved. See
+[Nutcracker installation and removal](docs/NUTCRACKER.md).
+
+</details>
 
 <details>
 <summary>Boot menu, Plymouth, and SDDM</summary>
@@ -312,7 +336,7 @@ python3 tools/check.py
 python3 tools/build.py
 ```
 
-The build writes `dist/atlas-1.0.0-rc4.tar.gz` and a SHA-256 sidecar. The archive
+The build writes `dist/atlas-1.0.0-rc5.tar.gz` and a SHA-256 sidecar. The archive
 contains a per-file hash manifest, source, artwork, component installers, tests,
 licenses and documentation. It excludes caches, backups, account profiles,
 application logs, screenshots of personal content and hardware configuration.
