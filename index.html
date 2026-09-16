@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="canonical" href="https://xrefor.github.io/atlas-showcase/">
+<meta name="description" content="ATLAS for Omarchy: carbon surfaces, warm ivory text, and signal orange, from the boot menu to the everyday workspace.">
+<title>ATLAS for Omarchy</title>
+<style>
+:root{color-scheme:dark;--bg:#100e0c;--deep:#0a0908;--panel:#1c1814;--line:#3a342c;--text:#d6cfc4;--bright:#f2ebe0;--muted:#a69b8c;--orange:#ff5a12;--mono:'IBM Plex Mono',ui-monospace,monospace}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 'IBM Plex Sans',system-ui,sans-serif}main,.topbar,footer{max-width:1080px;margin:auto;padding-left:36px;padding-right:36px}a{color:var(--orange);text-underline-offset:4px}a:hover{color:var(--bright)}button,a,summary{-webkit-tap-highlight-color:transparent}a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--orange);outline-offset:5px}button{font:inherit}img,video{display:block;max-width:100%;height:auto}figure{margin:0}p{margin:0 0 18px}h1,h2,h3{color:var(--bright);line-height:1.2}h1{font-size:clamp(32px,5vw,48px);font-weight:500;letter-spacing:-.04em;margin:27px 0 17px}h2{font-size:28px;font-weight:500;letter-spacing:-.025em;margin:0 0 16px}h3{font-size:18px;font-weight:500;margin:0 0 12px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:76px;border-bottom:1px solid var(--line);font:11px/1.6 var(--mono);letter-spacing:.06em}.topbar .brand{color:var(--bright);text-decoration:none;letter-spacing:.22em}.topbar nav{display:flex;gap:25px}.topbar nav a{color:var(--muted);text-decoration:none}.topbar nav a:hover{color:var(--orange)}.hero{padding-top:58px}.hero-top{display:flex;align-items:center;justify-content:space-between;gap:24px}.wordmark{width:200px;height:auto}.release{font:11px/1.5 var(--mono);color:var(--muted);text-align:right}.release strong{display:block;color:var(--orange);font-weight:400}.lead{font-size:19px;color:var(--bright);margin-bottom:8px}.intro{max-width:750px;color:var(--muted)}.actions{display:flex;flex-wrap:wrap;align-items:center;gap:24px;margin:27px 0 34px;font-size:14px}.button{display:inline-block;padding:10px 19px;background:var(--orange);color:var(--deep);text-decoration:none;font-weight:600;border:1px solid var(--orange)}.button:hover{background:var(--bright);border-color:var(--bright);color:var(--deep)}.hero-art{border:1px solid var(--line)}.hero-art>a{display:block}.hero-art img{width:100%;aspect-ratio:3440/1440;object-fit:cover}.caption{display:flex;justify-content:space-between;gap:16px;padding:12px 16px;font:11px/1.5 var(--mono);color:var(--muted);border-top:1px solid var(--line);background:var(--deep)}.caption strong{color:var(--text);font-weight:400}.wall-choices{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;margin-top:14px}.wall-choice{background:none;border:1px solid transparent;padding:0;text-align:left;cursor:pointer;color:var(--muted);min-width:0}.wall-choice img{aspect-ratio:2.1;object-fit:cover;width:100%;filter:brightness(.8)}.wall-choice span{display:block;font:10px/1.4 var(--mono);padding:8px 5px}.wall-choice[aria-pressed=true]{border-color:var(--orange);color:var(--orange)}.wall-choice[aria-pressed=true] img,.wall-choice:hover img{filter:none}.collection-link{font:12px/1.5 var(--mono);margin-top:15px;color:var(--muted)}section.content{margin-top:64px;padding-top:34px;border-top:1px solid var(--line)}.eyebrow{font:11px/1.5 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--orange);margin-bottom:14px}.section-intro{max-width:720px;color:var(--muted)}.surfaces{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:30px;margin:30px 0}.surface{border-left:1px solid var(--line);padding-left:19px}.surface .number{font:11px var(--mono);color:var(--orange);display:block;margin-bottom:13px}.surface p{font-size:14px;color:var(--muted);margin:0}.palette{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line)}.swatch{min-width:0;padding:12px;display:flex;align-items:center;gap:10px;border-right:1px solid var(--line);font:10px/1.6 var(--mono);color:var(--muted)}.swatch:last-child{border:0}.swatch i{display:block;width:22px;height:28px;border:1px solid #ffffff20;flex:none}.swatch b{display:block;font-weight:400;color:var(--text)}.demo{border:1px solid var(--line);margin-top:26px;background:var(--deep)}.demo video{width:100%;aspect-ratio:16/9}.demo-links{display:flex;flex-wrap:wrap;gap:18px;font:12px/1.6 var(--mono);margin-top:12px}.screens{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:30px}.screens img{width:100%;aspect-ratio:16/9;object-fit:contain;background:var(--deep);border:1px solid var(--line)}.screens figcaption{font-size:13px;color:var(--muted);padding-top:14px}.screens figcaption strong{display:block;font-size:15px;font-weight:500;color:var(--bright);margin-bottom:5px}.screens a:hover img{border-color:var(--orange)}details.feature{margin-top:28px;border:1px solid var(--line);padding:0 20px}summary{cursor:pointer;color:var(--bright);padding:18px 0;font-size:15px}summary::marker{color:var(--orange)}summary .optional{font:10px/1.5 var(--mono);color:var(--muted);margin-left:12px;letter-spacing:.08em}.feature-body{padding:6px 0 22px}.feature-body p{font-size:14px;color:var(--muted);max-width:760px}.feature-body img{border:1px solid var(--line)}.compatibility{font-size:13px;color:var(--muted);border-left:2px solid var(--orange);padding-left:17px;margin:25px 0}.install-body p{max-width:850px;font-size:14px}.install-body>p:first-child{font-size:16px}pre{background:var(--deep);border:1px solid var(--line);padding:20px;overflow-x:auto;font-size:12px;line-height:1.8;max-width:100%}code{font-family:var(--mono);font-size:.88em}pre code{font-size:inherit}p code,td code{color:var(--bright);overflow-wrap:anywhere}.pl-c{color:var(--muted)}.pl-k,.pl-c1{color:var(--orange)}.reference{border-top:1px solid var(--line)}.reference summary{font-size:16px}.reference-body{padding:4px 0 24px;font-size:14px}.reference p{font-size:14px;max-width:850px}.reference h3{margin-top:24px}table{border-collapse:collapse;width:100%;font-size:13px;margin:0 0 20px}td,th{text-align:left;padding:12px 15px;border:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}th{background:var(--panel);color:var(--bright);font-weight:500}td:first-child{width:27%;color:var(--bright)}footer{margin-top:60px;padding-top:24px;padding-bottom:40px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:20px;color:var(--muted);font:11px/1.6 var(--mono)}.skip{position:absolute;top:-80px;left:20px;background:var(--orange);color:var(--deep);padding:10px;z-index:3}.skip:focus{top:12px}
+@media(min-width:1400px){main,.topbar,footer{max-width:1160px}}
+@media(max-width:700px){main,.topbar,footer{padding-left:20px;padding-right:20px}.topbar{min-height:65px}.topbar nav{gap:14px;font-size:10px}.topbar nav .repo{display:none}.hero{padding-top:36px}.wordmark{width:155px}.release{font-size:10px}.lead{font-size:17px}.intro{font-size:14px}.wall-choices{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.caption{font-size:10px;padding:10px}.surfaces{grid-template-columns:1fr;gap:23px}.surface .number{float:left;margin:4px 13px 0 0}.surface h3{font-size:17px}.palette{grid-template-columns:repeat(3,minmax(0,1fr))}.swatch{border:0;padding:10px;font-size:9px}.screens{grid-template-columns:1fr;gap:25px}section.content{margin-top:45px;padding-top:28px}h2{font-size:25px}.demo .caption{flex-direction:column;gap:4px}summary .optional{display:block;margin:6px 0 0 18px}footer{flex-direction:column;gap:8px}td,th{padding:8px;font-size:12px}td:first-child{width:32%}.hero-art img{aspect-ratio:2;object-fit:cover}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="topbar"><a class="brand" href="#main">ATLAS / OMARCHY</a><nav aria-label="Page navigation"><a href="#screenshots">Showcase</a><a href="#install">Install</a><a href="#reference">Reference</a><a class="repo" href="https://github.com/xrefor/atlas-showcase">GitHub ↗</a></nav></div>
+<main id="main">
+<header class="hero">
+<div class="hero-top"><img class="wordmark" src="assets/atlas.svg" alt="ATLAS" width="200"><div class="release"><strong>1.0.0-rc4</strong>Appearance bundle for Omarchy</div></div>
+<h1>One palette. From boot to desktop.</h1>
+<p class="lead">Carbon surfaces. Warm ivory text. Signal orange.</p>
+<p class="intro">ATLAS brings a shared visual language to your whole setup: boot and login, windows and lock screen, terminals and everyday applications. Square edges, fine borders, and just enough orange to show what matters.</p>
+<div class="actions"><a class="button" href="#install">Install ATLAS <span aria-hidden="true">↗</span></a><a href="#screenshots">Explore the workspace ↓</a></div>
+<figure class="hero-art" id="wallpapers"><a id="wallpaper-link" href="backgrounds/atlas-ember-seam.png" aria-label="Open Ember Seam wallpaper at full resolution"><img id="wallpaper" src="backgrounds/atlas-ember-seam.png" alt="Ember Seam: dark architectural walls with a narrow seam of orange light" width="3440" height="1440" fetchpriority="high"></a><figcaption class="caption"><strong id="wallpaper-caption" aria-live="polite">Ember Seam</strong><span>WALLPAPER COLLECTION / 08 BACKGROUNDS</span></figcaption></figure>
+<div class="wall-choices" aria-label="Choose a wallpaper"><button class="wall-choice" type="button" data-wall="atlas-ember-seam" data-name="Ember Seam" aria-pressed="true" aria-controls="wallpaper"><img src="backgrounds/atlas-ember-seam.png" alt="" width="3440" height="1440" loading="lazy"><span>Ember Seam</span></button><button class="wall-choice" type="button" data-wall="atlas-boot" data-name="ATLAS Boot" aria-pressed="false" aria-controls="wallpaper"><img src="backgrounds/atlas-boot.png" alt="" width="3440" height="1440" loading="lazy"><span>ATLAS Boot</span></button><button class="wall-choice" type="button" data-wall="atlas-vault" data-name="ATLAS Vault" aria-pressed="false" aria-controls="wallpaper"><img src="backgrounds/atlas-vault.png" alt="" width="3440" height="1440" loading="lazy"><span>ATLAS Vault</span></button><button class="wall-choice" type="button" data-wall="atlas-thermal-horizon" data-name="Thermal Horizon" aria-pressed="false" aria-controls="wallpaper"><img src="backgrounds/atlas-thermal-horizon.png" alt="" width="3440" height="1440" loading="lazy"><span>Thermal Horizon</span></button><button class="wall-choice" type="button" data-wall="atlas-cinder-array" data-name="Cinder Array" aria-pressed="false" aria-controls="wallpaper"><img src="backgrounds/atlas-cinder-array.png" alt="" width="3440" height="1440" loading="lazy"><span>Cinder Array</span></button><button class="wall-choice" type="button" data-wall="atlas-umbra-core" data-name="Umbra Core" aria-pressed="false" aria-controls="wallpaper"><img src="backgrounds/atlas-umbra-core.png" alt="" width="3440" height="1440" loading="lazy"><span>Umbra Core</span></button><button class="wall-choice" type="button" data-wall="atlas-ember-causeway" data-name="Ember Causeway" aria-pressed="false" aria-controls="wallpaper"><img src="backgrounds/atlas-ember-causeway.png" alt="" width="3440" height="1440" loading="lazy"><span>Ember Causeway</span></button><button class="wall-choice" type="button" data-wall="atlas-obsidian-fold" data-name="Obsidian Fold" aria-pressed="false" aria-controls="wallpaper"><img src="backgrounds/atlas-obsidian-fold.png" alt="" width="3440" height="1440" loading="lazy"><span>Obsidian Fold</span></button></div>
+<p class="collection-link">Select a background to preview it. <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/WALLPAPER-COLLECTION.md">Explore the collection ↗</a></p>
+</header>
+
+<section class="content" aria-labelledby="whole-title">
+<p class="eyebrow">01 / The whole environment</p><h2 id="whole-title">A consistent look, screen to screen.</h2>
+<p class="section-intro">The same materials, typography, and accent colors carry through the system, with coordinated styling for the tools you use each day.</p>
+<div class="surfaces">
+<article class="surface"><span class="number">01.1</span><h3>Boot &amp; login</h3><p>The ATLAS wordmark, carbon backgrounds, and warm controls across Limine, Plymouth, and SDDM. Installed as an optional component.</p></article>
+<article class="surface"><span class="number">01.2</span><h3>Desktop &amp; lock screen</h3><p>Square Hyprland windows, thin orange focus borders, coordinated shell panels, and a Matrix lock screen.</p></article>
+<article class="surface"><span class="number">01.3</span><h3>Terminal &amp; applications</h3><p>IBM Plex typography, tmux tabs, Starship prompts, Yazi previews, and matching colors for browsers, monitors, and development tools.</p></article>
+</div>
+<div class="palette" aria-label="ATLAS color palette">
+<div class="swatch"><i style="background:#100e0c"></i><span><b>Carbon</b>#100E0C</span></div><div class="swatch"><i style="background:#1c1814"></i><span><b>Surface</b>#1C1814</span></div><div class="swatch"><i style="background:#3a342c"></i><span><b>Outline</b>#3A342C</span></div><div class="swatch"><i style="background:#d6cfc4"></i><span><b>Ivory</b>#D6CFC4</span></div><div class="swatch"><i style="background:#ff5a12"></i><span><b>Signal</b>#FF5A12</span></div>
+</div>
+</section>
+
+<section class="content" id="screenshots" aria-labelledby="workspace-title">
+<p class="eyebrow">02 / In everyday use</p><h2 id="workspace-title">The workspace, in ATLAS.</h2>
+<p class="section-intro">A quiet desktop, Python in Neovim, and files you can browse visually. The editor shares the ATLAS palette, with warm syntax colors against carbon surfaces. These captures show the actual interface in use.</p>
+<figure class="demo"><video controls playsinline preload="none" poster="docs/media/atlas-editor.png" aria-label="20-second ATLAS desktop, Python editor, and workspace showcase" aria-describedby="demo-description"><source src="docs/media/atlas-overview.mp4" type="video/mp4">Your browser cannot play this video. <a href="docs/media/atlas-overview.mp4">Download the showcase.</a></video><figcaption class="caption" id="demo-description"><strong>Desktop → Python in Neovim → files → Nym → desktop</strong><span>20 SECONDS / REAL CAPTURE / SILENT</span></figcaption></figure>
+<div class="demo-links"><a href="docs/media/atlas-overview.mp4" download>Download 1080p video ↓</a><a href="docs/media/atlas-overview.gif" download>GIF version ↓</a></div>
+<div class="screens">
+<figure><a href="docs/media/atlas-editor.png"><img src="docs/media/atlas-editor.png" alt="Python script open in Neovim with the ATLAS Aether theme, colored syntax, line numbers, and a matching tmux header" width="1920" height="1080" loading="lazy"></a><figcaption><strong>Python, in the shared palette</strong>Neovim with the ATLAS Aether theme: ivory text, warm syntax colors, and carbon surfaces.</figcaption></figure>
+<figure><a href="docs/media/atlas-lock.png"><img src="docs/media/atlas-lock.png" alt="ATLAS Matrix lock screen with warm ivory and orange characters on a carbon background" width="1280" height="800" loading="lazy"></a><figcaption><strong>The same character, at rest</strong>Matrix rain inside the lock surface. Captured during Omarchy VM validation.</figcaption></figure>
+</div>
+<details class="feature"><summary>A closer look: the NymVPN panel <span class="optional">OPTIONAL INTEGRATION</span></summary><div class="feature-body"><p>The tmux side panel brings live tunnel status, dVPN / Mixnet mode selection, and settings into the ATLAS workspace. It requires the Nym daemon and a matching CLI.</p><a href="docs/media/atlas-terminal.png"><img src="docs/media/atlas-terminal.png" alt="ATLAS terminal workspace alongside the NymVPN status and controls panel" width="1920" height="1080" loading="lazy"></a><p style="margin:16px 0 0">Open with <code>Ctrl+Space</code>, then <code>n</code>. <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VPN.md">Panel controls and dependencies ↗</a></p></div></details>
+</section>
+
+<section class="content" id="install" aria-labelledby="install-title"><p class="eyebrow">03 / Get started</p><h2 id="install-title">Install ATLAS.</h2><p class="compatibility"><strong>Repository access required.</strong> The ATLAS source repository and linked technical guides are currently private. The installation commands below are for users who have access.</p><p class="compatibility"><strong>Version 1.0.0-rc4.</strong> Tested against Omarchy <strong>4.0.4-1</strong>, Hyprland's Lua configuration, and the Quickshell-based Omarchy shell. See <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/COMPATIBILITY.md">compatibility</a> and <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VALIDATION.md">release validation</a>.</p><div class="install-body">
+<p dir="auto">Clone the repository and run the one-command installer as your normal user:</p>
+<div class="highlight highlight-source-shell" dir="auto"><pre class="notranslate">git clone https://github.com/xrefor/omarchy-atlas-theme.git <span class="pl-k">&amp;&amp;</span> <span class="pl-c1">cd</span> omarchy-atlas-theme <span class="pl-k">&amp;&amp;</span> ./install.sh</pre></div>
+<p dir="auto">The script checks core dependencies, installs every user component, and activates
+ATLAS. It does not install applications or change boot configuration. Preview
+the same operation with <code class="notranslate">./install.sh --dry-run</code>. If you downloaded a release
+archive, extract it and run <code class="notranslate">./install.sh</code> inside the extracted directory.</p>
+<p dir="auto">Open a new terminal and restart Zen after activation. Log out and back in to
+propagate the font environment consistently. See the
+<a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/DEPENDENCIES.md">dependency list</a> if the prerequisite check reports a
+missing command. Optional application integrations, including Yazi, become active
+when those applications are installed.</p>
+<p dir="auto">The extended shell uses the recipient's existing idle timeouts. Its Matrix
+screensaver runs inside the secure lock surface, so it locks at the earlier of
+screensaver and lock timeouts. See <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/AUTH.md">authentication and shell</a>.</p>
+<details class="reference"><summary>Boot menu, Plymouth, and SDDM</summary>
+<p dir="auto">The boot component is included in the same archive and installed explicitly:</p>
+<div class="highlight highlight-source-shell" dir="auto"><pre class="notranslate">sudo python3 install.py boot --dry-run
+sudo python3 install.py boot
+<span class="pl-c"><span class="pl-c">#</span> After rebooting and checking the boot/login screens:</span>
+sudo python3 install.py boot-confirm</pre></div>
+<p dir="auto">It backs up the recipient's current EFI partition and changed system files,
+adds the ATLAS assets, updates appearance settings, and rebuilds boot images
+when required. It preserves disk identifiers, boot entries, kernel parameters,
+timeouts, default entry, and authentication policies. A private transaction
+backup is retained until <code class="notranslate">boot-confirm</code>. Interrupted transactions are handled
+with <code class="notranslate">boot-recover</code>; see the recovery conditions in the boot guide. It never
+copies a boot image from the creator's machine.</p>
+<p dir="auto">Select individual surfaces with <code class="notranslate">--limine</code>, <code class="notranslate">--plymouth</code>, or <code class="notranslate">--sddm</code>.
+See <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/BOOT.md">boot installation and recovery</a> for supported partition
+layouts, enrollment handling, and rollback.</p>
+</details><details class="reference"><summary>Choose components</summary>
+<div class="highlight highlight-source-shell" dir="auto"><pre class="notranslate"><span class="pl-c"><span class="pl-c">#</span> Standard desktop colors, artwork and windows only:</span>
+python3 install.py --components theme
+
+<span class="pl-c"><span class="pl-c">#</span> Desktop fonts/toolkits/terminals and application workspace:</span>
+python3 install.py --components theme,desktop,apps
+
+<span class="pl-c"><span class="pl-c">#</span> Lock screen, Matrix rain, Polkit dialog and display widget:</span>
+python3 install.py --components shell
+
+<span class="pl-c"><span class="pl-c">#</span> Core network-command colors:</span>
+python3 install.py --components cli
+
+<span class="pl-c"><span class="pl-c">#</span> Optional CLI skins, selected explicitly:</span>
+python3 install.py --components cli --cli-groups cli-tcpdump,cli-metasploit,cli-shodan,cli-codex</pre></div>
+<p dir="auto"><code class="notranslate">desktop</code> and <code class="notranslate">shell</code> also install the theme. Components share one installation
+record, so later installation adds to the same backup baseline. The full archive
+always contains every component regardless of the selected installation.</p>
+<p dir="auto">Omarchy's normal repository theme installer can load the root palette/artwork.
+Omarchy restricts executable
+theme files from downloaded repositories, so the complete experience uses the
+local installer above.</p>
+</details></div></section>
+
+<section class="content" id="reference" aria-labelledby="reference-title"><p class="eyebrow">04 / Reference</p><h2 id="reference-title">The details, when you need them.</h2><p class="section-intro">Component coverage, everyday controls, palette management, and recovery.</p><details class="reference" id="included"><summary>Included</summary><div class="reference-body">
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>Surface</th>
+<th>ATLAS treatment</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Limine</td>
+<td>ATLAS branding, carbon background, matching terminal colors</td>
+</tr>
+<tr>
+<td>Plymouth</td>
+<td>Original angular ATLAS wordmark, refined lock/password tile, progress line</td>
+</tr>
+<tr>
+<td>SDDM</td>
+<td>Matching logo, carbon login surface and warm password controls</td>
+</tr>
+<tr>
+<td>Hyprland</td>
+<td>Square windows, 1px focus borders, no shadows; desktop component adds 87% window opacity</td>
+</tr>
+<tr>
+<td>Omarchy shell</td>
+<td>Thin neutral outlines, orange focus, opaque panels; existing bar widgets and positions retained</td>
+</tr>
+<tr>
+<td>Lock / authentication</td>
+<td>Matrix rain, ATLAS tile and native Omarchy PAM/Polkit backend</td>
+</tr>
+<tr>
+<td>Wallpapers</td>
+<td>ATLAS Boot, ATLAS Vault, Ember Seam, Thermal Horizon, Cinder Array, Umbra Core, Ember Causeway, Obsidian Fold</td>
+</tr>
+<tr>
+<td>Fonts / GTK</td>
+<td>IBM Plex Mono and Sans, GTK3/GTK4 colors, Yaru orange icons</td>
+</tr>
+<tr>
+<td>Terminals</td>
+<td>Foot, Ghostty, Kitty and Alacritty preferences; palette generated by Omarchy</td>
+</tr>
+<tr>
+<td>NymVPN panel</td>
+<td>Live ATLAS tunnel dashboard, dVPN/Mixnet mode and settings menus; optional Nym installation</td>
+</tr>
+<tr>
+<td>tmux / Starship</td>
+<td>Persistent ATLAS header, tabs, full directory path and compact Git status</td>
+</tr>
+<tr>
+<td>Yazi</td>
+<td>Native colors, file markers, bounded image previews and removable-drive menu</td>
+</tr>
+<tr>
+<td>Zen</td>
+<td>Browser chrome and browser-owned internal pages; native profile discovery</td>
+</tr>
+<tr>
+<td>Spotify terminal player</td>
+<td>Selection, playback, lyrics, border and progress colors</td>
+</tr>
+<tr>
+<td>btop / LazyGit / Lazydocker</td>
+<td>Native palette and panel styling</td>
+</tr>
+<tr>
+<td>Bash / eza / ls / fzf / jq</td>
+<td>Coordinated listing, search and data colors</td>
+</tr>
+<tr>
+<td>Network tools / Metasploit / Shodan</td>
+<td>Optional presentation wrappers and native console prompt</td>
+</tr>
+<tr>
+<td>Codex</td>
+<td>Native ATLAS syntax theme asset; select through the client's theme controls</td>
+</tr>
+<tr>
+<td>Other Omarchy apps</td>
+<td>Standard Omarchy generation from the shared palette, including Neovim, Chromium, Obsidian and supported AI clients</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto">The proprietary graphical Spotify client, website content, and application
+binaries are not modified. Wifite's visual adapter is included as reference
+source, with its version and installation boundary documented; no machine-bound
+root launcher is distributed. See <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/CLI.md">CLI coverage</a>.</p>
+</div></details><details class="reference" id="shortcuts"><summary>Everyday terminal shortcuts</summary><div class="reference-body">
+<markdown-accessiblity-table><table role="table">
+<thead>
+<tr>
+<th>Shortcut</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Super+Shift+F</td>
+<td>Yazi</td>
+</tr>
+<tr>
+<td>Super+Shift+Alt+M</td>
+<td>Spotify terminal player</td>
+</tr>
+<tr>
+<td>Ctrl+Space, then F</td>
+<td>Files tab</td>
+</tr>
+<tr>
+<td>Ctrl+Space, then M</td>
+<td>Monitoring pane on wide terminals, tab on narrow terminals</td>
+</tr>
+<tr>
+<td>Ctrl+Space, then S</td>
+<td>Music tab</td>
+</tr>
+<tr>
+<td>Ctrl+Space, then N</td>
+<td>NymVPN panel (requires Nym daemon and matching CLI)</td>
+</tr>
+<tr>
+<td>Ctrl+Space, then I</td>
+<td>Directory summary</td>
+</tr>
+<tr>
+<td>Alt+1 / Alt+2 / …</td>
+<td>Switch terminal tabs</td>
+</tr>
+<tr>
+<td>Ctrl+B</td>
+<td>Alternative tmux prefix</td>
+</tr>
+</tbody>
+</table></markdown-accessiblity-table>
+<p dir="auto">Press the prefix, release it, then press the lowercase letter. In Yazi, <strong>M</strong> or
+<strong>g m</strong> opens Drives. The drive menu uses UDisks/Polkit for mount and eject actions.</p>
+<p dir="auto">See <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VPN.md">VPN panel controls and dependencies</a>.</p>
+</div></details><details class="reference" id="one-palette"><summary>One palette</summary><div class="reference-body">
+<p dir="auto">The palette lives in <code class="notranslate">~/.config/omarchy/themes/atlas/colors.toml</code> after installation.
+Apply changes with <code class="notranslate">omarchy theme set atlas</code>. The application hook reads the
+active resolved Omarchy palette, so it also follows other themes.</p>
+<div class="highlight highlight-source-shell" dir="auto"><pre class="notranslate">atlas-theme sync          <span class="pl-c"><span class="pl-c">#</span> regenerate managed application colors</span>
+atlas-theme check         <span class="pl-c"><span class="pl-c">#</span> report drift; exit nonzero if regeneration is needed</span>
+atlas-theme doctor --all  <span class="pl-c"><span class="pl-c">#</span> check dependencies</span></pre></div>
+<p dir="auto">Templates live in <code class="notranslate">components/apps/templates/</code> and <code class="notranslate">components/desktop/themed/</code>.
+The installed runtime is self-contained in <code class="notranslate">~/.local/share/atlas/</code>; the extracted
+archive can be removed after installation. Manual edits to managed files stop
+updates/removal until reconciled, rather than being silently overwritten.</p>
+</div></details><details class="reference" id="remove"><summary>Remove</summary><div class="reference-body">
+<p dir="auto">Select a different Omarchy theme before restoring user files:</p>
+<div class="highlight highlight-source-shell" dir="auto"><pre class="notranslate">omarchy theme <span class="pl-c1">set</span> <span class="pl-s"><span class="pl-pds">"</span>Tokyo Night<span class="pl-pds">"</span></span>
+atlas-theme restore --dry-run
+atlas-theme restore</pre></div>
+<p dir="auto">User originals and installed snapshots are recorded privately under
+<code class="notranslate">~/.local/state/atlas-bundle/</code>. Original file modes and symlinks are restored;
+files introduced by the bundle are removed. This directory is local state and
+must never be included in a shared archive. An interrupted user installation
+can be rolled back with <code class="notranslate">atlas-theme recover</code> or <code class="notranslate">python3 install.py recover</code>.</p>
+<p dir="auto">For boot removal, use the extracted bundle:</p>
+<div class="highlight highlight-source-shell" dir="auto"><pre class="notranslate">sudo python3 install.py boot-restore --dry-run
+sudo python3 install.py boot-restore</pre></div>
+<p dir="auto">Boot removal rebuilds the current installed kernel with the restored appearance.
+It does not downgrade to the boot image saved during the original installation.</p>
+</div></details><details class="reference" id="development"><summary>Development and sharing</summary><div class="reference-body">
+<div class="highlight highlight-source-shell" dir="auto"><pre class="notranslate">python3 tools/check.py
+python3 tools/build.py</pre></div>
+<p dir="auto">The build writes <code class="notranslate">dist/atlas-1.0.0-rc4.tar.gz</code> and a SHA-256 sidecar. The archive
+contains a per-file hash manifest, source, artwork, component installers, tests,
+licenses and documentation. It excludes caches, backups, account profiles,
+application logs, screenshots of personal content and hardware configuration.</p>
+<p dir="auto">See <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VALIDATION.md">release validation</a>, <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/CREDITS.md">credits</a>, and
+<a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/MIGRATION.md">renaming/migration</a>. MIT license applies to project source;
+upstream notices are retained in <code class="notranslate">LICENSES/</code>.</p>
+<p dir="auto">ATLAS is the new name for the earlier Blackburn customization.</p></div></details></section>
+</main>
+<footer><span>ATLAS / Carbon. Ivory. Signal.</span><span><a href="https://github.com/xrefor/atlas-showcase/blob/main/CREDITS.md">Credits</a> · <a href="https://github.com/xrefor/atlas-showcase/blob/main/LICENSE">License</a> · <a href="https://github.com/xrefor/atlas-showcase">GitHub</a></span></footer>
+<script>
+for (const button of document.querySelectorAll('.wall-choice')) {
+  button.addEventListener('click', () => {
+    const src = 'backgrounds/' + button.dataset.wall + '.png';
+    const name = button.dataset.name;
+    const wallpaper = document.getElementById('wallpaper');
+    wallpaper.src = src;
+    wallpaper.alt = name + ' — ATLAS wallpaper';
+    document.getElementById('wallpaper-link').href = src;
+    document.getElementById('wallpaper-link').setAttribute('aria-label', 'Open ' + name + ' wallpaper at full resolution');
+    document.getElementById('wallpaper-caption').textContent = name;
+    for (const choice of document.querySelectorAll('.wall-choice')) choice.setAttribute('aria-pressed', String(choice === button));
+  });
+}
+// Pause the showcase when it leaves the viewport or the page is hidden.
+const video = document.querySelector('video');
+if ('IntersectionObserver' in window) new IntersectionObserver(entries => {
+  if (!entries[0].isIntersecting) video.pause();
+}).observe(video);
+document.addEventListener('visibilitychange', () => { if (document.hidden) video.pause(); });
+// Open reference sections when reached through a direct fragment link.
+function revealFragment() {
+  const target = document.getElementById(location.hash.slice(1));
+  if (target && target.tagName === 'DETAILS') target.open = true;
+}
+window.addEventListener('hashchange', revealFragment);
+revealFragment();
+</script>
+</body>
+</html>
