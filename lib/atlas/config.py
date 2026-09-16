@@ -3,6 +3,36 @@ import json
 import re
 
 
+def jsonc_clean(text):
+    # Match quoted strings first so URLs and escaped quotes survive comments.
+    return re.sub(r'"(?:\\.|[^"\\])*"|//[^\n]*|/\*[\s\S]*?\*/',
+                  lambda m: m[0] if m[0].startswith('"') else ' ' * len(m[0]), text)
+
+
+def jsonc(text):
+    clean = jsonc_clean(text)
+    clean = re.sub(r'"(?:\\.|[^"\\])*"|,\s*(?=[}\]])',
+                   lambda m: m[0] if m[0].startswith('"') else '', clean)
+    return json.loads(clean or '{}')
+
+
+def menu_extension(text, entries):
+    """Own only a marked block; retain other entries and the user's comments."""
+    text = re.sub(r'// BEGIN ATLAS MENU\n.*?// END ATLAS MENU\n?', '', text, flags=re.S)
+    if not text.strip(): text = '{}\n'
+    existing = jsonc(text)
+    if not isinstance(existing, dict): raise ValueError('Omarchy menu must be an object')
+    if existing.keys() & entries.keys():
+        raise ValueError('An unmarked ATLAS menu entry already exists; reconcile it before installing')
+    clean = jsonc_clean(text)
+    end = clean.rfind('}')
+    comma = ',' if existing and not clean[:end].rstrip().endswith(',') else ''
+    body = json.dumps(entries, indent=2, ensure_ascii=False)[1:-1].strip('\n')
+    result = text[:end] + '// BEGIN ATLAS MENU\n' + comma + '\n' + body + '\n// END ATLAS MENU\n' + text[end:]
+    jsonc(result)
+    return result
+
+
 def block(text, name, body, comment='#'):
     start, end = f'{comment} BEGIN ATLAS {name}', f'{comment} END ATLAS {name}'
     pattern = re.compile(r'\n*' + re.escape(start) + r'.*?' + re.escape(end) + r'\n*', re.S)

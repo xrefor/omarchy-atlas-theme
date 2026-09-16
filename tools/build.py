@@ -10,7 +10,7 @@ import tarfile
 ROOT=Path(__file__).resolve().parents[1]
 FILES=('README.md','LICENSE','VERSION','colors.toml','icons.theme','keyboard.rgb',
        'chromium.theme','preview.png','unlock.png','screensaver-mark.png',
-       'shell.toml','hyprland.lua','neovim.lua','gtk-3.0.css','gtk-4.0.css','install.py','install.sh','.gitignore')
+       'shell.toml','hyprland.lua','neovim.lua','gtk-3.0.css','gtk-4.0.css','install.py','settings.py','install.sh','.gitignore')
 DIRS=('lib','components','backgrounds','assets','LICENSES','docs','tests','tools')
 PRIVATE_PARTS={'__pycache__','.git','.pytest_cache','.ssh','backups','preview-home','profiles'}
 PRIVATE_NAMES={'.env','credentials','credentials.json','secrets.json','id_rsa','id_ed25519'}

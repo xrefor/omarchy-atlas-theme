@@ -228,7 +228,9 @@ root launcher is distributed. See [CLI coverage](docs/CLI.md).
 | Alt+1 / Alt+2 / … | Switch terminal tabs |
 | Ctrl+B | Alternative tmux prefix |
 
-Press the prefix, release it, then press the lowercase letter. In Yazi, **M** or
+Press the prefix, release it, then press the lowercase letter. In Yazi, **Enter**
+enters directories and opens files with their normal application; **Right** / **l**
+also enters directories. **M** or
 **g m** opens Drives. The drive menu uses UDisks/Polkit for mount and eject actions.
 
 See [VPN panel controls and dependencies](docs/VPN.md).
@@ -252,6 +254,24 @@ Templates live in `components/apps/templates/` and `components/desktop/themed/`.
 The installed runtime is self-contained in `~/.local/share/atlas/`; the extracted
 archive can be removed after installation. Manual edits to managed files stop
 updates/removal until reconciled, rather than being silently overwritten.
+
+</details>
+
+<details>
+<summary>ATLAS settings</summary>
+
+Open **Omarchy → ATLAS**, or run `atlas-settings`. The menu includes the native
+wallpaper picker, window opacity (80%, **87% default**, 95%, 100%), component
+status, local diagnostics, shortcuts, and a preview before restoring saved files.
+Fullscreen and application-specific opacity exceptions retain their existing
+rules. The terminal font stays at **9 pt**.
+
+Neovim's explorer, picker, completion, command dialogs, help overlays and normal
+status line share the active palette's accent. Syntax, Git changes, diagnostics,
+and editing modes retain their semantic colors, including after theme switches.
+
+Settings use the installer's existing backup journal. Later manual edits block
+changes until reconciled. See [settings and diagnostics](docs/SETTINGS.md).
 
 </details>
 

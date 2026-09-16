@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import tomllib
-from . import config, palette, state
+from . import config, palette, settings, state
 
 COMPONENTS = {'theme', 'desktop', 'apps', 'shell', 'cli'}
 
@@ -102,9 +102,17 @@ def plan(root, home, components, colors, syncing=False, cli_groups=None):
         rel='.config/uwsm/env'
         put(rel,config.block(get(rel),'FONTS','export FONTCONFIG_FILE="$HOME/.config/fontconfig/atlas.conf"'))
         rel='.config/hypr/looknfeel.lua'
-        put(rel,config.block(get(rel),'APPEARANCE', '''hl.env("FONTCONFIG_FILE", os.getenv("HOME") .. "/.config/fontconfig/atlas.conf")
-hl.env("PATH", os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or "/usr/bin"))
-o.window(".*", { opacity = "0.87 override 0.87 override 1.0 override" })''','--'))
+        appearance='''hl.env("FONTCONFIG_FILE", os.getenv("HOME") .. "/.config/fontconfig/atlas.conf")
+hl.env("PATH", os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or "/usr/bin"))'''
+        try: opacity_path, percent = settings.opacity_info(home)
+        except ValueError: opacity_path, percent = rel, 87
+        if opacity_path == rel:
+            opacity = '1.0' if percent == 100 else f'{percent / 100:.2f}'
+            # Move an existing simple rule into the managed block without duplicating it.
+            current = settings.OPACITY_RULE.sub('', get(rel))
+            appearance += f'\no.window(".*", {{ opacity = "{opacity} override {opacity} override 1.0 override" }})'
+        else: current = get(rel)
+        put(rel,config.block(current,'APPEARANCE',appearance,'--'))
     if 'apps' in components:
         for rel, name in {
             '.config/starship.toml':'starship.toml',
@@ -141,10 +149,11 @@ o.window(".*", { opacity = "0.87 override 0.87 override 1.0 override" })''','--'
             put('.config/yazi/plugins/mount.yazi/main.lua',template('mount-main.lua'))
             source(app/'mount-cross.lua','.config/yazi/plugins/mount.yazi/cross.lua')
             source(root/'LICENSES/mount.yazi-MIT.txt','.config/yazi/plugins/mount.yazi/LICENSE')
+            source(app/'atlas-enter.lua','.config/yazi/plugins/atlas-enter.yazi/main.lua')
             merge_toml('.config/yazi/yazi.toml',{'mgr':{'ratio':[1,3,4],'sort_by':'natural','sort_dir_first':True,'show_hidden':False,'show_symlink':True,'linemode':'size'},'preview':{'max_width':400,'max_height':400,'image_filter':'triangle','image_quality':75}})
             keymap=tomllib.loads(get('.config/yazi/keymap.toml'))
             keys=keymap.setdefault('mgr',{}).setdefault('prepend_keymap',[])
-            for on, run, desc in [('M','plugin mount','ATLAS Drives'),(['g','m'],'plugin mount','ATLAS Drives'),(['g','d'],'cd ~/Downloads','Downloads')]:
+            for on, run, desc in [('<Enter>','plugin atlas-enter','Enter directory or open file'),('M','plugin mount','ATLAS Drives'),(['g','m'],'plugin mount','ATLAS Drives'),(['g','d'],'cd ~/Downloads','Downloads')]:
                 keys[:]=[key for key in keys if key.get('on') != on]
                 keys.append({'on':on,'run':run,'desc':desc})
             put('.config/yazi/keymap.toml',config.toml(keymap))
@@ -221,9 +230,11 @@ o.bind("SUPER + SHIFT + ALT + M", "Music / Spotify player", { tui = "spotify_pla
         # removal work after the downloaded archive has been deleted.
         for directory in ('lib','components','backgrounds','assets','LICENSES'):
             tree(root/directory,'.local/share/atlas/'+directory)
-        for name in ('install.py','VERSION','colors.toml','icons.theme','keyboard.rgb','chromium.theme','preview.png','unlock.png','screensaver-mark.png','shell.toml','hyprland.lua','neovim.lua','gtk-3.0.css','gtk-4.0.css','LICENSE'):
+        for name in ('install.py','settings.py','VERSION','colors.toml','icons.theme','keyboard.rgb','chromium.theme','preview.png','unlock.png','screensaver-mark.png','shell.toml','hyprland.lua','neovim.lua','gtk-3.0.css','gtk-4.0.css','LICENSE'):
             source(root/name,'.local/share/atlas/'+name)
         put('.local/bin/atlas-theme','#!/bin/sh\nexec python3 "$HOME/.local/share/atlas/install.py" "$@"\n',0o755)
+        source(app/'bin/atlas-settings', '.local/bin/atlas-settings', 0o755)
+        put(settings.MENU_PATH, config.menu_extension(get(settings.MENU_PATH), settings.menu_entries()))
         if 'apps' in components:
             put('.config/omarchy/hooks/theme-set.d/atlas-system','#!/bin/sh\nexec "$HOME/.local/bin/atlas-theme" sync\n',0o755)
     return files
@@ -250,6 +261,7 @@ def validate(files):
         if rel.endswith('.toml'): tomllib.loads(state.text_value(item))
         if rel.endswith(('.yml','.yaml')): yaml.safe_load(state.text_value(item))
         if rel.endswith('.json'): json.loads(state.text_value(item))
+        if rel.endswith('.jsonc'): config.jsonc(state.text_value(item))
 
 
 def merge_shell(home, shell, desktop):

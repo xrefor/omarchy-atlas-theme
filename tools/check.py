@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 
 sys.dont_write_bytecode=True
 ROOT=Path(__file__).resolve().parents[1]
-ENV=dict(os.environ,PYTHONDONTWRITEBYTECODE='1')
+ENV=dict(os.environ,PYTHONDONTWRITEBYTECODE='1',NVIM_LOG_FILE=os.devnull)
 
 
 def run(args,label):
@@ -38,6 +38,10 @@ def main():
     print(f'PASS: {count} authentication boundary checks')
     if not shutil.which('lua'): raise SystemExit('Install Lua to validate the drive-menu integration')
     run(['lua','tests/mount_cross_test.lua'],'7 mocked drive-menu checks')
+    run(['lua','tests/yazi_enter_test.lua'],'Yazi Enter navigation and file-opening behavior')
+    if shutil.which('nvim'):
+        result=run(['nvim','--headless','--clean','-i','NONE','-l','tests/neovim_ui_test.lua'],'Neovim UI integration')
+        if 'SKIP:' in result.stdout + result.stderr: print((result.stdout + result.stderr).strip())
     checked=0
     for path in sorted(ROOT.rglob('*')):
         if not path.is_file() or any(part in ('dist','__pycache__','.git') for part in path.relative_to(ROOT).parts): continue
