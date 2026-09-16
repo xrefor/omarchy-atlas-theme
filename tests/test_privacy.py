@@ -15,11 +15,17 @@ PATTERNS={
 
 class PrivacyTests(unittest.TestCase):
     def test_tracked_text_has_no_personal_identifiers(self):
-        output=subprocess.check_output(['git','-C',str(ROOT),'ls-files','-z'])
+        if (ROOT/'.git').is_dir():
+            output=subprocess.check_output(['git','-C',str(ROOT),'ls-files','-z'])
+            files=[Path(raw.decode()) for raw in output.split(b'\0') if raw]
+        else:
+            files=[path.relative_to(ROOT) for path in ROOT.rglob('*')
+                   if path.is_file() and not path.is_symlink()
+                   and not any(part in ('dist','__pycache__','.pytest_cache')
+                               for part in path.relative_to(ROOT).parts)]
         findings=[]
-        for raw in output.split(b'\0'):
-            if not raw: continue
-            rel=Path(raw.decode());path=ROOT/rel
+        for rel in files:
+            path=ROOT/rel
             if not path.is_file() or path.is_symlink(): continue
             try: text=path.read_text()
             except UnicodeDecodeError: continue

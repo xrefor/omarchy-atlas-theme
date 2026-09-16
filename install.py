@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 
+sys.dont_write_bytecode=True
 ROOT=Path(__file__).resolve().parent
 sys.path.insert(0,str(ROOT/'lib'))
 from atlas import palette, state, user
@@ -23,7 +24,7 @@ def preflight(root, home, components, offline=False):
             raise ValueError('An active legacy application-theme hook would conflict with ATLAS. Restore/disable it before installing; see docs/MIGRATION.md')
     needed=['omarchy','omarchy-theme-color']
     if 'apps' in components:
-        needed+=['bash','tmux','starship','foot','yazi','btop']
+        needed+=['bash','tmux','starship','foot','btop']
     if 'shell' in components:
         needed+=['bash','omarchy-shell','omarchy-system-lock','omarchy-system-wake','omarchy-monitor-state',
                  'omarchy-display-text-size','omarchy-hyprland-monitor-scaling','omarchy-brightness-display',

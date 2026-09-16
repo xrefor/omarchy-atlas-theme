@@ -53,6 +53,24 @@ class StateTests(unittest.TestCase):
         root=self.home/'.local/state';root.mkdir(parents=True)
         (root/'atlas-bundle').symlink_to(self.home/'redirect')
         with self.assertRaisesRegex(ValueError,'symlink'): state.load(self.home)
+    def test_directory_manifest_must_be_derived_from_managed_files(self):
+        path=state.metadata(self.home,'manifest.json')
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({'version':1,'files':{},'components':[],'directories':['.ssh']}))
+        with self.assertRaisesRegex(ValueError,'Unsafe ATLAS installation directory'):
+            state.load(self.home)
+        path.write_text(json.dumps({'version':1,'files':{'/tmp/victim':{}},'components':[]}))
+        with self.assertRaisesRegex(ValueError,'Unsafe relative path'):
+            state.load(self.home)
+    def test_legacy_manifest_migrates_only_atlas_owned_directories(self):
+        path=state.metadata(self.home,'manifest.json')
+        path.parent.mkdir(parents=True)
+        files={'.local/share/atlas/lib/code.py':{},'.config/yazi/theme.toml':{}}
+        path.write_text(json.dumps({'version':1,'files':files,'components':[]}))
+        directories=state.load(self.home)['directories']
+        self.assertIn('.local/share/atlas',directories)
+        self.assertIn('.local/share/atlas/lib',directories)
+        self.assertNotIn('.config/yazi',directories)
     def test_write_failure_rolls_back_files_and_manifest(self):
         self.tx({'one':state.value('before')})
         baseline=state.metadata(self.home,'manifest.json').read_bytes()
@@ -114,11 +132,31 @@ class BundleTests(unittest.TestCase):
         self.assertIn('atlas-vpn', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertTrue((self.home/'.config/atlas/atlas-prompt.py').is_file())
         self.assertTrue((self.home/'.codex/themes/atlas.tmTheme').is_file())
+        cache=self.home/'.local/lib/atlas-cli/atlas_cli/__pycache__'
+        cache.mkdir()
+        (cache/'runner.cpython-test.pyc').write_bytes(b'generated')
         records=state.load(self.home)['files']
         with state.lock(self.home): state.transact(self.home,{k:v['before'] for k,v in records.items()},restoring=True)
         self.assertEqual((self.home/'.bashrc').read_text(),'# existing shell preferences\n')
         self.assertEqual((self.home/'.local/bin/atlas-vpn').read_text(), '# prior standalone VPN panel\n')
         self.assertFalse((self.home/'.config/omarchy/themes/atlas/colors.toml').exists())
+        self.assertFalse((self.home/'.config/omarchy/themes/atlas').exists())
+        self.assertFalse((self.home/'.local/share/atlas').exists())
+        self.assertFalse((self.home/'.local/lib/atlas-cli').exists())
+        self.assertFalse((self.home/'.config/atlas').exists())
+
+    def test_restore_preserves_preexisting_and_nonempty_directories(self):
+        preexisting=self.home/'.config/yazi'
+        preexisting.mkdir(parents=True)
+        desired=self.plan({'theme','apps'})
+        self.apply(desired)
+        extra=self.home/'.local/share/atlas/recipient-note.txt'
+        extra.write_text('keep me')
+        manifest=state.load(self.home)
+        with state.lock(self.home):
+            state.transact(self.home,{k:v['before'] for k,v in manifest['files'].items()},restoring=True)
+        self.assertTrue(preexisting.is_dir())
+        self.assertEqual(extra.read_text(),'keep me')
     def test_cli_restore_returns_success(self):
         env=dict(os.environ,PYTHONDONTWRITEBYTECODE='1')
         for args in (['--components','theme','--offline'],['restore','--dry-run'],['restore']):

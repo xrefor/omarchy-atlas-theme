@@ -23,7 +23,8 @@ import tomllib
 STATE_PATH = Path("/var/lib/atlas-bundle/boot-state.json")
 LOCK_PATH = Path("/var/lib/atlas-bundle/boot.lock")
 TRANSACTIONS_PATH = Path("/var/lib/atlas-bundle/transactions")
-SDDM_SELECTOR = Path("/etc/sddm.conf.d/99-atlas-theme.conf")
+SDDM_SELECTOR = Path("/etc/sddm.conf.d/zz-atlas-theme.conf")
+LEGACY_SDDM_SELECTORS = (Path("/etc/sddm.conf.d/99-atlas-theme.conf"),)
 PLYMOUTH_CONFIG = Path("/etc/plymouth/plymouthd.conf")
 PLYMOUTH_DEST = Path("/usr/share/plymouth/themes/atlas")
 SDDM_DEST = Path("/usr/share/sddm/themes/atlas")
@@ -459,6 +460,64 @@ def _tree_manifest(path: Path) -> dict[str, str]:
     }
 
 
+def _validate_tree_manifest(manifest, label: str) -> None:
+    if not isinstance(manifest, dict):
+        raise ValueError(f"Invalid {label} ESP manifest")
+    for name, digest in manifest.items():
+        rel = Path(name) if isinstance(name, str) else Path("/")
+        if (not isinstance(name, str) or not name or rel == Path('.') or rel.is_absolute() or '..' in rel.parts
+                or str(rel) != name or not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None):
+            raise ValueError(f"Unsafe {label} ESP manifest entry")
+
+
+def _validate_snapshot_value(item, label: str) -> None:
+    if not isinstance(item, dict) or item.get("kind") not in ("absent", "file"):
+        raise ValueError(f"Invalid {label} snapshot")
+    if item["kind"] == "absent":
+        if set(item) != {"kind"}:
+            raise ValueError(f"Invalid {label} absent snapshot")
+        return
+    if set(item) != {"kind", "data", "mode"} or not isinstance(item["data"], str) \
+            or not isinstance(item["mode"], int) or not 0 <= item["mode"] <= 0o7777:
+        raise ValueError(f"Invalid {label} file snapshot")
+    try:
+        base64.b64decode(item["data"], validate=True)
+    except (ValueError, TypeError) as error:
+        raise ValueError(f"Invalid {label} snapshot data") from error
+
+
+def _validate_journal_paths(journal: dict) -> None:
+    if journal.get("state_path") != str(STATE_PATH):
+        raise ValueError("Unsafe boot transaction state path")
+    esp_text = journal.get("esp")
+    esp = None
+    if esp_text is not None:
+        if not isinstance(esp_text, str):
+            raise ValueError("Unsafe boot transaction ESP path")
+        esp = Path(esp_text)
+        if not esp.is_absolute() or '..' in esp.parts or str(esp) != esp_text:
+            raise ValueError("Unsafe boot transaction ESP path")
+    allowed_files = {PLYMOUTH_CONFIG, SDDM_SELECTOR, *LEGACY_SDDM_SELECTORS}
+    for change in journal["changes"]:
+        if not isinstance(change, dict) or set(change) != {"path", "before", "after"}:
+            raise ValueError("Invalid boot transaction change")
+        text = change["path"]
+        if not isinstance(text, str):
+            raise ValueError("Unsafe boot transaction change path")
+        path = Path(text)
+        canonical = path.is_absolute() and '..' not in path.parts and str(path) == text
+        in_payload = any(path != root and path.is_relative_to(root)
+                         for root in (PLYMOUTH_DEST, SDDM_DEST))
+        is_limine = esp is not None and path == esp / "limine.conf"
+        if not canonical or not (path in allowed_files or in_payload or is_limine):
+            raise ValueError("Unsafe boot transaction change path")
+        _validate_snapshot_value(change["before"], "pre-transaction change")
+        _validate_snapshot_value(change["after"], "completed change")
+    _validate_snapshot_value(journal.get("state_before"), "pre-transaction state")
+    _validate_snapshot_value(journal.get("state_after"), "completed state")
+
+
 def _kernel_fingerprint(root: Path) -> dict[str, str]:
     modules = _rooted(root, Path("/usr/lib/modules"))
     if not modules.exists():
@@ -594,6 +653,42 @@ def _restore_tree(root: Path, esp: Path, backup: Path) -> None:
                 tmp.unlink(missing_ok=True)
 
 
+def _restore_completed_tree(root: Path, esp: Path, backup: Path,
+                            before: dict[str, str], after: dict[str, str]) -> None:
+    """Restore ATLAS-touched ESP files while preserving unrelated boot-time drift."""
+    current = _tree_manifest(esp)
+    touched = {name for name in set(before) | set(after) if before.get(name) != after.get(name)}
+    for name in sorted(touched):
+        if current.get(name) not in (before.get(name), after.get(name)):
+            raise ValueError(f"ESP file changed after the completed transaction: {name}")
+    for name in sorted(touched):
+        logical = Path(_logical(root, esp)) / name
+        target = _rooted(root, logical)
+        old_hash = before.get(name)
+        if old_hash is None:
+            if target.exists():
+                target.unlink()
+                _fsync_directory(target.parent)
+            continue
+        source = backup / name
+        if not source.is_file() or _hash_file(source) != old_hash:
+            raise ValueError(f"Recovery ESP backup is missing or changed: {name}")
+        if current.get(name) == old_hash:
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_name = tempfile.mkstemp(prefix="." + target.name + ".", dir=target.parent)
+        os.close(fd)
+        tmp = Path(tmp_name)
+        try:
+            shutil.copy2(source, tmp)
+            with tmp.open("rb") as stream:
+                os.fsync(stream.fileno())
+            os.replace(tmp, target)
+            _fsync_directory(target.parent)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+
 def _command(path: str) -> None:
     subprocess.run([path], check=True)
 
@@ -664,6 +759,11 @@ def _load_journal(transaction: Path) -> dict:
         raise ValueError("Unsupported ATLAS boot transaction journal")
     if not isinstance(journal.get("changes"), list):
         raise ValueError("Invalid ATLAS boot transaction changes")
+    _validate_journal_paths(journal)
+    if journal.get("esp_before") is not None:
+        _validate_tree_manifest(journal["esp_before"], "pre-transaction")
+    if journal.get("esp_after") is not None:
+        _validate_tree_manifest(journal["esp_after"], "completed")
     return journal
 
 
@@ -678,11 +778,19 @@ def _recover(root: Path, dry_run: bool) -> int:
     esp = _rooted(root, Path(journal["esp"])) if journal.get("esp") else None
     if esp is not None:
         _preflight_tree(esp)
+        if root == Path("/"):
+            _validate_real_esp(esp)
         backup = transaction / "esp"
         if _tree_manifest(backup) != journal["esp_before"]:
             raise ValueError("Recovery ESP backup does not match its journal")
-        if journal["status"] == "completed" and _tree_manifest(esp) != journal.get("esp_after"):
-            raise ValueError("ESP changed after the completed transaction; refusing an obsolete image restore")
+        completed_generation = journal.get("esp_after") is not None
+        if completed_generation:
+            current = _tree_manifest(esp)
+            touched = {name for name in set(journal["esp_before"]) | set(journal["esp_after"])
+                       if journal["esp_before"].get(name) != journal["esp_after"].get(name)}
+            for name in touched:
+                if current.get(name) not in (journal["esp_before"].get(name), journal["esp_after"].get(name)):
+                    raise ValueError(f"ESP file changed after the completed transaction: {name}")
     state_path = _rooted(root, Path(journal["state_path"]))
     current_state = _snapshot(state_path)
     if current_state not in (journal["state_before"], journal["state_after"]):
@@ -703,7 +811,11 @@ def _recover(root: Path, dry_run: bool) -> int:
         _safe_write(root, _rooted(root, Path(change["path"])), change["before"])
     _safe_write(root, state_path, journal["state_before"])
     if esp is not None:
-        _restore_tree(root, esp, transaction / "esp")
+        if journal.get("esp_after") is not None:
+            _restore_completed_tree(root, esp, transaction / "esp",
+                                    journal["esp_before"], journal["esp_after"])
+        else:
+            _restore_tree(root, esp, transaction / "esp")
     shutil.rmtree(transaction)
     _fsync_directory(_transaction_root(root))
     print("ATLAS boot transaction recovered.")
@@ -794,6 +906,12 @@ def _operate(bundle_root: Path, args) -> int:
             _copy_payload(bundle_root / "components/boot/sddm", SDDM_DEST, root, "sddm", desired)
             selector = _rooted(root, SDDM_SELECTOR)
             desired[_logical(root, selector)] = (_file_value("[Theme]\nCurrent=atlas\n"), "sddm")
+            for legacy_selector in LEGACY_SDDM_SELECTORS:
+                legacy = _rooted(root, legacy_selector)
+                logical = _logical(root, legacy)
+                record = new_state["files"].get(logical)
+                if record is not None:
+                    desired[logical] = (record["before"], "sddm")
             for conflict in _selector_conflicts(root):
                 print(f"WARNING: SDDM theme selector {conflict} may override {SDDM_SELECTOR}")
         if "limine" in active:

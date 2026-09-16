@@ -26,7 +26,7 @@ The local `~/.local/bin/omarchy-brightness-display` hardware fallback is also ex
 
 Before enabling these plugins, the installer should verify all of the following and stop without changing `shell.json` if any required check fails:
 
-1. Omarchy is version 4.0.3 or a tested compatible release, and Quickshell is at least 0.3.1.
+1. Omarchy is version 4.0.4 or a tested compatible release, and Quickshell is at least 0.3.1.
 2. `omarchy plugin validate` accepts every `atlas.*` plugin directory.
 3. `/etc/pam.d/omarchy-lock-password` is readable and non-empty. The fingerprint PAM file and `fprintd-list` are optional.
 4. The commands `bash`, `hyprctl`, `omarchy-shell`, `omarchy-system-lock`, `omarchy-system-wake`, `omarchy-hyprland-session-locked`, `omarchy-hw-laptop-closed`, `omarchy-launch-screensaver`, `omarchy-monitor-state`, `omarchy-display-text-size`, `omarchy-hyprland-monitor-scaling`, and `omarchy-brightness-display` resolve.

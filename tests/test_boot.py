@@ -62,7 +62,7 @@ class BootInstallerTests(unittest.TestCase):
         self.assertNotIn("UUID=", result[:result.index("/Omarchy")])
 
     def test_staged_install_and_restore_preserve_later_entries_and_ini_keys(self):
-        higher = self.root / "etc/sddm.conf.d/99-zz-local.conf"
+        higher = self.root / "etc/sddm.conf.d/zzz-local.conf"
         higher.write_text("[Theme]\nCurrent=local-choice\n")
         output = io.StringIO()
         with mock.patch("atlas.boot.subprocess.run", side_effect=AssertionError("subprocess called")):
@@ -73,7 +73,7 @@ class BootInstallerTests(unittest.TestCase):
         self.assertTrue((self.root / "usr/share/sddm/themes/atlas/Main.qml").is_file())
         self.assertFalse((self.root / "usr/share/omarchy").exists())
         self.assertIn("Theme=atlas", (self.root / "etc/plymouth/plymouthd.conf").read_text())
-        self.assertEqual((self.root / "etc/sddm.conf.d/99-atlas-theme.conf").read_text(),
+        self.assertEqual((self.root / "etc/sddm.conf.d/zz-atlas-theme.conf").read_text(),
                          "[Theme]\nCurrent=atlas\n")
         installed = (self.root / "boot/limine.conf").read_text()
         self.assertIn("root=UUID=keep-me", installed)
@@ -103,6 +103,16 @@ class BootInstallerTests(unittest.TestCase):
         self.assertFalse((self.root / "usr/share/plymouth/themes/atlas/atlas.plymouth").exists())
         self.assertFalse((self.root / "usr/share/sddm/themes/atlas/Main.qml").exists())
         self.assertFalse((self.root / "var/lib/atlas-bundle/boot-state.json").exists())
+
+    def test_rc3_sddm_selector_is_migrated_to_winning_name(self):
+        old = Path("/etc/sddm.conf.d/99-atlas-theme.conf")
+        with mock.patch.object(boot, "SDDM_SELECTOR", old):
+            boot.run(BUNDLE, self.args(sddm=True))
+            boot.run(BUNDLE, self.args("boot-confirm"))
+        self.assertTrue((self.root / old.relative_to('/')).is_file())
+        boot.run(BUNDLE, self.args(sddm=True))
+        self.assertFalse((self.root / old.relative_to('/')).exists())
+        self.assertTrue((self.root / "etc/sddm.conf.d/zz-atlas-theme.conf").is_file())
 
     def test_dry_run_does_not_write_or_call_subprocess(self):
         original = (self.root / "boot/limine.conf").read_bytes()
@@ -195,15 +205,54 @@ class BootInstallerTests(unittest.TestCase):
         self.assertEqual((self.root / "boot/limine.conf").read_text(), original)
         self.assertFalse((self.root / "var/lib/atlas-bundle/boot-state.json").exists())
 
-    def test_completed_recovery_refuses_a_later_esp_generation(self):
+    def test_completed_recovery_preserves_unrelated_esp_drift(self):
         boot.run(BUNDLE, self.args(limine=True))
         later = self.root / "boot/EFI/Linux/later.efi"
         later.parent.mkdir(parents=True)
         later.write_bytes(b"later rebuild")
-        with self.assertRaisesRegex(ValueError, "ESP changed"):
-            boot.run(BUNDLE, self.args("boot-recover"))
+        empty = self.root / "boot/keep-empty"
+        empty.mkdir()
+        boot.run(BUNDLE, self.args("boot-recover"))
         self.assertEqual(later.read_bytes(), b"later rebuild")
-        boot.run(BUNDLE, self.args("boot-confirm"))
+        self.assertTrue(empty.is_dir())
+        self.assertEqual((self.root / "boot/limine.conf").read_text(), BASE_LIMINE)
+
+    def test_completed_recovery_refuses_drift_in_an_atlas_touched_esp_file(self):
+        boot.run(BUNDLE, self.args(limine=True))
+        (self.root / "boot/limine.conf").write_text("recipient edit\n")
+        with self.assertRaisesRegex(ValueError, "ESP file changed"):
+            boot.run(BUNDLE, self.args("boot-recover"))
+
+    def test_completed_recovery_rejects_unsafe_journal_esp_path(self):
+        boot.run(BUNDLE, self.args(limine=True))
+        transaction = boot._active_transaction(self.root)
+        journal_path = transaction / "journal.json"
+        journal = json.loads(journal_path.read_text())
+        journal["esp_after"]["/victim"] = "0" * 64
+        journal_path.write_text(json.dumps(journal))
+        with self.assertRaisesRegex(ValueError, "Unsafe completed ESP manifest"):
+            boot.run(BUNDLE, self.args("boot-recover"))
+        journal["esp_after"].pop("/victim")
+        journal["esp_after"]["."] = "0" * 64
+        journal_path.write_text(json.dumps(journal))
+        with self.assertRaisesRegex(ValueError, "Unsafe completed ESP manifest"):
+            boot.run(BUNDLE, self.args("boot-recover"))
+
+    def test_completed_recovery_rejects_unsafe_change_and_state_paths(self):
+        boot.run(BUNDLE, self.args(limine=True))
+        transaction = boot._active_transaction(self.root)
+        journal_path = transaction / "journal.json"
+        journal = json.loads(journal_path.read_text())
+        journal["changes"].append({"path":"/victim","before":{"kind":"absent"},
+                                   "after":{"kind":"absent"}})
+        journal_path.write_text(json.dumps(journal))
+        with self.assertRaisesRegex(ValueError, "Unsafe boot transaction change path"):
+            boot.run(BUNDLE, self.args("boot-recover"))
+        journal["changes"].pop()
+        journal["state_path"] = "/victim"
+        journal_path.write_text(json.dumps(journal))
+        with self.assertRaisesRegex(ValueError, "Unsafe boot transaction state path"):
+            boot.run(BUNDLE, self.args("boot-recover"))
 
     def test_prepared_checkpoint_recovers_interrupted_rebuild(self):
         esp = self.root / "boot"

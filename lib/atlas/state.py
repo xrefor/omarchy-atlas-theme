@@ -90,10 +90,81 @@ def metadata(home, name):
 
 def load(home):
     path = metadata(home, 'manifest.json')
-    result = json.loads(path.read_text()) if path.exists() else {'version': 1, 'files': {}, 'components': []}
+    result = json.loads(path.read_text()) if path.exists() else {'version': 1, 'files': {}, 'components': [], 'directories': []}
     if result.get('version') != 1 or not isinstance(result.get('files'), dict):
         raise ValueError('Unsupported ATLAS installation manifest')
+    legacy_without_directories = 'directories' not in result
+    result.setdefault('directories', [])
+    if not isinstance(result['directories'], list):
+        raise ValueError('Unsupported ATLAS installation directory manifest')
+    managed_parents = set()
+    for rel in result['files']:
+        if not isinstance(rel, str):
+            raise ValueError('Unsafe ATLAS managed file manifest')
+        target(home, rel)
+        parent = Path(rel).parent
+        while parent != Path('.'):
+            managed_parents.add(str(parent))
+            parent = parent.parent
+    if legacy_without_directories:
+        owned_roots = ('.config/atlas', '.local/share/atlas', '.local/lib/atlas-cli',
+                       '.config/omarchy/themes/atlas', '.config/omarchy/plugins/atlas.')
+        result['directories'] = sorted(
+            rel for rel in managed_parents
+            if any(rel == root or rel.startswith(root + '/') for root in owned_roots[:-1])
+            or rel.startswith(owned_roots[-1])
+        )
+    for rel in result['directories']:
+        if not isinstance(rel, str) or rel not in managed_parents or target(home, rel) == Path(home).resolve():
+            raise ValueError('Unsafe ATLAS installation directory manifest')
     return result
+
+
+def _missing_directories(home, paths):
+    home = Path(home).resolve()
+    result = set()
+    for rel in paths:
+        parent = target(home, rel).parent
+        while parent != home:
+            if not parent.exists() and not parent.is_symlink():
+                result.add(str(parent.relative_to(home)))
+            parent = parent.parent
+    return result
+
+
+def prune_directories(home, directories):
+    removed = 0
+    for rel in sorted(set(directories), key=lambda item: len(Path(item).parts), reverse=True):
+        path = target(home, rel)
+        if path.is_symlink() or not path.is_dir():
+            continue
+        try:
+            path.rmdir()
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def prune_bytecode(home):
+    removed = 0
+    for rel in ('.local/share/atlas', '.local/lib/atlas-cli'):
+        root = target(home, rel)
+        if root.is_symlink() or not root.is_dir():
+            continue
+        caches = sorted(root.rglob('__pycache__'), key=lambda item: len(item.parts), reverse=True)
+        for cache in caches:
+            if cache.is_symlink() or not cache.is_dir():
+                continue
+            for item in cache.iterdir():
+                if item.is_file() and not item.is_symlink() and item.suffix == '.pyc':
+                    unlink(item)
+                    removed += 1
+            try:
+                cache.rmdir()
+            except OSError:
+                pass
+    return removed
 
 
 @contextmanager
@@ -133,6 +204,10 @@ def transact(home, desired, components=(), dry=False, restoring=False):
     manifest_path = metadata(home, 'manifest.json')
     manifest_before = snapshot(manifest_path)
     manifest = load(home)
+    if not restoring:
+        manifest['directories'] = sorted(
+            set(manifest.get('directories', [])) | _missing_directories(home, desired)
+        )
     changes = {}
     for rel, item in desired.items():
         current = snapshot(target(home, rel))
@@ -177,5 +252,10 @@ def transact(home, desired, components=(), dry=False, restoring=False):
         unlink(journal)
         raise
     unlink(journal)
+    if restoring:
+        bytecode = prune_bytecode(home)
+        removed = prune_directories(home, manifest.get('directories', []))
+        print(f'{bytecode} generated Python bytecode files removed')
+        print(f'{removed} empty ATLAS-created directories removed')
     print(f'{len(changes)} file changes applied')
     return len(changes)

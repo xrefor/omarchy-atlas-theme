@@ -21,7 +21,7 @@ The installer applies only these system paths:
 - `/usr/share/plymouth/themes/atlas` and the `Theme` key in
   `/etc/plymouth/plymouthd.conf`;
 - `/usr/share/sddm/themes/atlas` and the dedicated selector
-  `/etc/sddm.conf.d/99-atlas-theme.conf`;
+  `/etc/sddm.conf.d/zz-atlas-theme.conf`;
 - ATLAS branding and palette keys in the global section of the ESP's existing
   `limine.conf`.
 
@@ -57,11 +57,12 @@ installed system with its ESP mounted at the same recorded path, and run:
 sudo python3 install.py boot-recover
 ```
 
-Recovery verifies the journal, managed selectors/files, kernel fingerprint,
-and (for a completed transaction) the exact post-build ESP generation before
-restoring the saved generation. It refuses if a kernel update, later rebuild,
-or local managed appearance edit makes the old image snapshot obsolete. New
-boot writes remain locked out until the checkpoint is confirmed or recovered.
+Recovery verifies the journal, managed selectors/files and kernel fingerprint.
+For a completed transaction it restores only ESP files changed by ATLAS, while
+preserving unrelated boot-time changes such as a refreshed random seed or new
+unrelated files. It refuses if an ATLAS-touched ESP file, kernel set, or managed
+appearance path was changed later. New boot writes remain locked out until the
+checkpoint is confirmed or recovered.
 
 To remove the integrations, select the same components or omit flags to remove
 all installed boot components:

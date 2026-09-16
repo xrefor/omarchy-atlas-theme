@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import sys
+sys.dont_write_bytecode=True
 from pathlib import Path
 base = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(base if (base / "atlas_cli").is_dir() else base / "lib/atlas-cli"))

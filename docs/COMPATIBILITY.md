@@ -4,7 +4,7 @@ The reference workstation uses these installed Arch package versions:
 
 | Package | Version |
 | --- | --- |
-| omarchy | 4.0.3-1 |
+| omarchy | 4.0.4-1 |
 | hyprland | 0.56.2-2 |
 | quickshell | 0.3.1-1 |
 | limine | 12.8.0-1 |
@@ -15,11 +15,10 @@ The reference workstation uses these installed Arch package versions:
 | spotify-player | 0.24.1-1 |
 | python | 3.14.7-1 |
 
-The installed Omarchy source version file reports `4.0.0.alpha`; the package
-manager reports `4.0.3-1`. This bundle records both rather than treating that
-source marker as a reliable release constraint. Capability checks are used by
-the installer. Other combinations need validation, especially shell plugins
-which use Omarchy's internal Quickshell components.
+The clean-VM release test used Omarchy `4.0.4-1`. Capability checks are used by
+the installer instead of treating a source marker as a reliable release
+constraint. Other combinations need validation, especially shell plugins which
+use Omarchy's internal Quickshell components.
 
 Omarchy installations using the older Waybar/Hyprlock/config-file architecture
 are not supported by the complete bundle. The root semantic palette and artwork

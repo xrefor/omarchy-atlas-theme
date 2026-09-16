@@ -1,8 +1,8 @@
 # Release validation
 
-This release candidate was prepared and checked on the reference Omarchy 4.0.3
-workstation. Packaging did not change its active desktop, application setup,
-authentication policy or boot configuration.
+This release candidate was prepared on the reference workstation and exercised
+in a clean Omarchy 4.0.4 VM. Packaging did not change the workstation's active
+desktop, application setup, authentication policy or boot configuration.
 
 ## Automated and isolated checks
 
@@ -56,8 +56,8 @@ Use a separate supported Omarchy installation or VM with a recoverable snapshot:
 5. Exercise removable USB media (including busy files) and application workflows
    such as media playback and browser restart persistence.
 
-These physical/system integration checks have not been performed for this new
-bundle. Automated staging validates configuration generation and recovery logic,
-not firmware rendering, hardware compatibility, real authentication or every
-application version. The archive is suitable for sharing as **1.0.0-rc3** with
-that limitation stated.
+The clean VM covers installation, reboot, password authentication, virtual USB
+media and recovery logic. It does not validate physical firmware rendering,
+GPU variation, fingerprint readers, encrypted Plymouth prompts, real Nym account
+connectivity or every optional application version. The archive is suitable for
+sharing as **1.0.0-rc4** with those limitations stated.

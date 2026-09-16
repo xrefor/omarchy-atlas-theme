@@ -11,6 +11,7 @@ import sys
 import tomllib
 import xml.etree.ElementTree as ET
 
+sys.dont_write_bytecode=True
 ROOT=Path(__file__).resolve().parents[1]
 ENV=dict(os.environ,PYTHONDONTWRITEBYTECODE='1')
 

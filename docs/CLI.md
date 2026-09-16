@@ -82,7 +82,7 @@ to preview/select ATLAS, or set `tui.theme = "atlas"` in its config. If using a
 custom `CODEX_HOME`, copy the asset into that home's `themes/` directory.
 The official [syntax-theme controls](https://learn.chatgpt.com/docs/developer-commands?surface=cli#choose-a-syntax-theme-with-theme)
 persist the selection; the installed 0.154.0 client also documents custom
-`.tmTheme` loading in its built-in theme picker. Selection is left to the user. Omarchy 4.0.3 does not provide a
+`.tmTheme` loading in its built-in theme picker. Selection is left to the user. Omarchy 4.0.4 does not provide a
 Codex themed template. The former PTY adapter is omitted because it patched a
 specific mise launcher and mapped UI escape sequences observed in Codex
 0.154.0. Codex UI updates can change those sequences, and editing another

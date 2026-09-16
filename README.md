@@ -10,10 +10,9 @@ ATLAS is the new name for the earlier Blackburn customization.
 
 [Browse the palette and eight wallpapers](docs/preview.html).
 
-**Version 1.0.0-rc3.** Prepared against Omarchy **4.0.3-1**, Hyprland's Lua
-configuration, and the Quickshell-based Omarchy shell. The package is a release
-candidate: automated staging is tested; installation and reboot on a second
-machine remain release checks. See [compatibility](docs/COMPATIBILITY.md).
+**Version 1.0.0-rc4.** Tested against Omarchy **4.0.4-1**, Hyprland's Lua
+configuration, and the Quickshell-based Omarchy shell. See
+[compatibility](docs/COMPATIBILITY.md) and [release validation](docs/VALIDATION.md).
 
 ## Install
 
@@ -23,7 +22,7 @@ Clone the repository and run the one-command installer as your normal user:
 git clone https://github.com/xrefor/omarchy-atlas-theme.git && cd omarchy-atlas-theme && ./install.sh
 ```
 
-The script checks dependencies, installs every user component, and activates
+The script checks core dependencies, installs every user component, and activates
 ATLAS. It does not install applications or change boot configuration. Preview
 the same operation with `./install.sh --dry-run`. If you downloaded a release
 archive, extract it and run `./install.sh` inside the extracted directory.
@@ -31,7 +30,8 @@ archive, extract it and run `./install.sh` inside the extracted directory.
 Open a new terminal and restart Zen after activation. Log out and back in to
 propagate the font environment consistently. See the
 [dependency list](docs/DEPENDENCIES.md) if the prerequisite check reports a
-missing command.
+missing command. Optional application integrations, including Yazi, become active
+when those applications are installed.
 
 The extended shell uses the recipient's existing idle timeouts. Its Matrix
 screensaver runs inside the secure lock surface, so it locks at the earlier of
@@ -186,7 +186,7 @@ python3 tools/check.py
 python3 tools/build.py
 ```
 
-The build writes `dist/atlas-1.0.0-rc3.tar.gz` and a SHA-256 sidecar. The archive
+The build writes `dist/atlas-1.0.0-rc4.tar.gz` and a SHA-256 sidecar. The archive
 contains a per-file hash manifest, source, artwork, component installers, tests,
 licenses and documentation. It excludes caches, backups, account profiles,
 application logs, screenshots of personal content and hardware configuration.

@@ -9,8 +9,9 @@ Existing applications continue to use their own package managers and logins.
 - Omarchy with semantic `colors.toml`, `omarchy-theme-color`, Lua Hyprland config,
   Quickshell shell plugins, and the normal theme-set hooks.
 - The `shell` component requires the command and PAM checks in [AUTH.md](AUTH.md).
-- The `apps` component expects Bash, Foot, tmux, Starship, Yazi and btop. Its file
-  browser and workspace commands depend on these applications.
+- The `apps` component requires Bash, Foot, tmux, Starship and btop. Yazi is
+  optional: its theme, drive menu and shortcuts are installed but remain dormant
+  until Yazi is installed.
 
 ## Appearance and optional applications
 
