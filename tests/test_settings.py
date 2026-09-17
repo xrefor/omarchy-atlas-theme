@@ -87,6 +87,46 @@ class SettingsTests(unittest.TestCase):
         self.assertNotIn('opacity', state.text_value(plan[self.rel]))
         self.assertEqual(main.read_text(), self.original)
 
+    def test_installer_keeps_zen_opaque_after_global_rule_and_preset_changes(self):
+        opaque = 'o.window("^zen$", { opacity = "1.0 override 1.0 override 1.0 override" })'
+        global_rule = 'o.window(".*", { opacity = "0.87 override 0.87 override 1.0 override" })'
+        cases = {
+            'fresh': ('', ''),
+            'upgrade': (config.block('', 'APPEARANCE', global_rule, '--'), ''),
+            'existing_exception': (self.original, ''),
+            'main_config': ('-- other preferences\n', 'require("hypr.looknfeel")\n' + global_rule + '\n'),
+        }
+        colors = palette.resolve(ROOT / 'colors.toml')
+        for name, (looknfeel, main) in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                home = Path(tmp)
+                (home / '.config/hypr').mkdir(parents=True)
+                originals = {self.rel: looknfeel, '.config/hypr/hyprland.lua': main}
+                for rel, content in originals.items():
+                    (home / rel).write_text(content)
+                desired = user.plan(ROOT, home, {'desktop'}, colors)
+                user.validate(desired)
+                relevant = {rel: value for rel, value in desired.items()
+                            if rel in originals or rel == settings.MENU_PATH}
+                with state.lock(home):
+                    state.transact(home, relevant)
+                rel, percent = settings.opacity_info(home)
+                self.assertEqual(percent, 87)
+                text = (home / rel).read_text()
+                self.assertGreater(text.rfind(opaque), text.index(global_rule))
+                repeated = user.plan(ROOT, home, {'desktop'}, colors)
+                for path, value in relevant.items():
+                    self.assertEqual(repeated[path], value)
+                for preset in settings.PRESETS:
+                    settings.set_opacity(home, preset, live=False)
+                    text = (home / rel).read_text()
+                    self.assertGreater(text.rfind(opaque), settings.OPACITY_RULE.search(text).start())
+                records = state.load(home)['files']
+                with state.lock(home):
+                    state.transact(home, {path: record['before'] for path, record in records.items()}, restoring=True)
+                for path, content in originals.items():
+                    self.assertEqual((home / path).read_text(), content)
+
     def test_restore_active_theme_is_read_only(self):
         settings.set_opacity(self.home, 95, live=False)
         active = self.home / '.local/state/omarchy/current/theme.name'

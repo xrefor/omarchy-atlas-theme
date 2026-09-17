@@ -108,12 +108,18 @@ def plan(root, home, components, colors, syncing=False, cli_groups=None):
 hl.env("PATH", os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or "/usr/bin"))'''
         try: opacity_path, percent = settings.opacity_info(home)
         except ValueError: opacity_path, percent = rel, 87
+        zen_opacity = 'o.window("^zen$", { opacity = "1.0 override 1.0 override 1.0 override" })'
         if opacity_path == rel:
             opacity = '1.0' if percent == 100 else f'{percent / 100:.2f}'
             # Move an existing simple rule into the managed block without duplicating it.
             current = settings.OPACITY_RULE.sub('', get(rel))
             appearance += f'\no.window(".*", {{ opacity = "{opacity} override {opacity} override 1.0 override" }})'
-        else: current = get(rel)
+            appearance += '\n-- Keep Zen Browser fully opaque in every window state.\n' + zen_opacity
+        else:
+            current = get(rel)
+            # Main-config rules load after looknfeel; keep the exception after
+            # the existing catchall in that file as well.
+            put(opacity_path, config.block(get(opacity_path), 'ZEN OPACITY', zen_opacity, '--'))
         put(rel,config.block(current,'APPEARANCE',appearance,'--'))
     if 'apps' in components:
         for rel, name in {

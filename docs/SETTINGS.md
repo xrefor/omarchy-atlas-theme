@@ -7,7 +7,7 @@ entries and comments. Omarchy reloads the extension automatically.
 | Control | Behavior |
 | --- | --- |
 | Wallpaper | Opens Omarchy's image picker for the active theme and user backgrounds. Cancelling leaves the current wallpaper alone. |
-| Window opacity | Offers 80%, 87% (ATLAS default), 95%, or 100%; the current preset gets a checkmark. Fullscreen and existing app exceptions keep their own rules. |
+| Window opacity | Offers 80%, 87% (ATLAS default), 95%, or 100%; the current preset gets a checkmark. Zen Browser stays fully opaque at every preset. Fullscreen and existing app exceptions keep their own rules. |
 | Lock screen | Selects Classic or Terminal for the next lock; shown when the shell component is installed. |
 | Neovim comments | Selects Standard or Brighter comments in the ATLAS Aether integration. The choice applies when Neovim regains focus or reloads its colorscheme. |
 | Component status | Shows the active theme, configured Foot font, wallpaper, opacity, and installer-managed or separately detected components. |
