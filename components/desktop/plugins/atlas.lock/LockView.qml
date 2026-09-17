@@ -20,6 +20,9 @@ Item {
   property string passwordText: ""
   property bool syncingPasswordText: false
   property bool capsLockOn: false
+  // Window visibility is separate from Item.visible; the owner supplies it.
+  property bool surfaceActive: false
+  readonly property bool capsLockPolling: surfaceActive && visible && !screensaverActive
 
   readonly property string placeholderText: terminalStyle ? "" : "Enter Password"
   readonly property int fieldWidth: terminalStyle ? 220 : 381
@@ -87,12 +90,11 @@ Item {
     else if (inputEnabled) Qt.callLater(forcePasswordFocus)
   }
   function refreshCapsLock() {
-    if (!capsLockProc.running) capsLockProc.running = true
+    if (capsLockPolling && !capsLockProc.running) capsLockProc.running = true
   }
 
   Component.onCompleted: {
     syncPasswordText()
-    refreshCapsLock()
     if (inputEnabled && !screensaverActive) Qt.callLater(forcePasswordFocus)
   }
 
@@ -107,8 +109,9 @@ Item {
 
   Timer {
     interval: 400
-    running: true
+    running: root.capsLockPolling
     repeat: true
+    triggeredOnStart: true
     onTriggered: root.refreshCapsLock()
   }
 
@@ -344,7 +347,7 @@ Item {
       Text {
         anchors.fill: passwordInput
         text: root.authenticatingPassword ? "Checking…" : (root.failureMessage.length > 0 ? root.failureMessage : (root.capsLockOn ? "Caps Lock" : root.placeholderText))
-        visible: passwordInput.text.length === 0
+        visible: passwordInput.text.length === 0 && !(root.terminalStyle && root.errorState && !root.authenticatingPassword)
         color: root.authenticatingPassword ? Color.lock.text : (root.failureMessage.length > 0 ? Color.lock.textError : (root.capsLockOn ? Color.lock.borderActive : Color.lock.placeholder))
         font.family: root.terminalStyle ? "IBM Plex Mono" : Style.font.family
         font.pixelSize: root.fieldFontSize
@@ -385,6 +388,25 @@ Item {
       }
       }
       }
+    }
+
+    // Native PAM messages can outgrow the narrow Terminal password prompt.
+    // Keep the prompt steady and let the complete error wrap beneath it.
+    Text {
+      objectName: "terminalFailureMessage"
+      visible: root.terminalStyle && !root.screensaverActive && !root.authenticatingPassword
+        && root.passwordText.length === 0 && root.errorState
+      anchors.horizontalCenter: parent.horizontalCenter
+      y: root.snap(promptRow.y + promptRow.height + 8)
+      width: root.snap(Math.max(0, Math.min(420, parent.width - 32)))
+      text: root.failureMessage
+      textFormat: Text.PlainText
+      wrapMode: Text.Wrap
+      color: Color.lock.textError
+      font.family: "IBM Plex Mono"
+      font.pixelSize: root.fieldFontSize
+      font.italic: true
+      horizontalAlignment: Text.AlignHCenter
     }
   }
 }

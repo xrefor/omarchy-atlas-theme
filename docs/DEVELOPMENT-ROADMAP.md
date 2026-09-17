@@ -1,5 +1,13 @@
 # ATLAS development priorities
 
+Use **“One palette. From boot to desktop.”** as a release acceptance standard:
+verify visual consistency across the advertised boot/login, desktop/lock,
+terminal and supported application surfaces. Preserve semantic colors where
+they communicate errors, diagnostics or editing modes. Showcase claims and
+captures should match the shipped behavior; keep optional components and their
+requirements clear, credit the projects behind integrations, and state the
+limits of validation.
+
 The selected pass covers **1: interface consistency** and **3: accessible
 settings**. Contrast variants and project workspaces remain future proposals.
 
@@ -18,9 +26,20 @@ Aether, and returning to it. Demonstrations keep the normal 9 pt typography.
 
 ## 2. Higher-contrast variant — proposed
 
+The base theme now uses a brighter derived red for authentication error text
+and bar alerts. The Classic lock input is opaque to preserve text contrast over
+wallpapers. See the measured pairs in [VALIDATION.md](VALIDATION.md).
+
 Review muted text, comments, inactive panes, selections and disabled controls
 together before creating a variant. Improve readability without enlarging the
 demonstration font or changing the ATLAS identity.
+
+The optional **ATLAS Readable** CLI syntax preset implements the demonstrated
+comment-only adjustment: `#6e675c` → `#a69b8c`. It is selected through the native
+theme picker; see [CLI.md](CLI.md). Neovim also offers an optional brighter-comment
+setting, with palette-aware colors, focus refresh and preservation through updates
+and restoration; see [SETTINGS.md](SETTINGS.md). A broader desktop variant remains
+proposed and needs separate review of its actual text/background pairs.
 
 ## 3. Settings and diagnostics — implemented
 

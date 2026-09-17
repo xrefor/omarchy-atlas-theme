@@ -4,10 +4,17 @@ function clampBrightness(value) {
   return Math.max(1, Math.min(100, Math.round(n)))
 }
 
+function scaleNumber(scale) {
+  if ((typeof scale !== "number" && typeof scale !== "string")
+      || String(scale).trim() === "") return NaN
+  return Number(scale)
+}
+
 function normalizeScale(scale) {
-  var n = parseFloat(String(scale || ""))
-  if (!isFinite(n)) return ""
-  return String(Math.round(n * 100) / 100)
+  var n = scaleNumber(scale)
+  if (!isFinite(n) || n <= 0) return ""
+  var rounded = Math.round(n * 100) / 100
+  return isFinite(rounded) && rounded > 0 ? String(rounded) : ""
 }
 
 function gcd(a, b) {
@@ -20,26 +27,31 @@ function gcd(a, b) {
 }
 
 function cleanScale(scale, width, height) {
-  var requested = Number(scale)
+  var requested = scaleNumber(scale)
   var modeWidth = Number(width)
   var modeHeight = Number(height)
   if (!isFinite(requested) || !isFinite(modeWidth) || !isFinite(modeHeight)
       || requested <= 0 || modeWidth <= 0 || modeHeight <= 0) return ""
 
-  var divisor = gcd(Math.round(modeWidth * 120), Math.round(modeHeight * 120))
+  var widthUnits = Math.round(modeWidth * 120)
+  var heightUnits = Math.round(modeHeight * 120)
+  if (!Number.isSafeInteger(widthUnits) || !Number.isSafeInteger(heightUnits)) return ""
+  var divisor = gcd(widthUnits, heightUnits)
   var scaleUnits = Math.round(requested * 120)
+  if (divisor <= 0 || scaleUnits <= 0 || !Number.isSafeInteger(scaleUnits)) return ""
   if (scaleUnits > divisor) scaleUnits = divisor
   while (divisor % scaleUnits !== 0) scaleUnits++
   return normalizeScale(scaleUnits / 120)
 }
 
 function matchingScaleIndex(scales, currentScale, width, height) {
-  var current = Number(currentScale)
-  if (!Array.isArray(scales) || !isFinite(current)) return -1
+  var current = scaleNumber(currentScale)
+  if (!Array.isArray(scales) || !isFinite(current) || current <= 0) return -1
 
   var bestIndex = -1
   var bestDistance = Infinity
   var normalizedCurrent = normalizeScale(current)
+  if (!normalizedCurrent) return -1
   for (var i = 0; i < scales.length; i++) {
     if (cleanScale(scales[i], width, height) !== normalizedCurrent) continue
 
@@ -53,12 +65,20 @@ function matchingScaleIndex(scales, currentScale, width, height) {
 }
 
 function availableScales(scales, width, height) {
-  if (!Array.isArray(scales) || Number(width) <= 0 || Number(height) <= 0) return scales || []
+  if (!Array.isArray(scales)) return []
+  scales = scales.filter(function(scale) {
+    var value = scaleNumber(scale)
+    return isFinite(value) && value > 0
+  })
+  if (!isFinite(Number(width)) || !isFinite(Number(height))
+      || Number(width) <= 0 || Number(height) <= 0) return scales.map(String)
 
   var byEffectiveScale = {}
   for (var i = 0; i < scales.length; i++) {
     var requested = Number(scales[i])
-    var effective = Number(cleanScale(requested, width, height))
+    var cleaned = cleanScale(requested, width, height)
+    if (!cleaned) continue
+    var effective = Number(cleaned)
 
     if (!isFinite(requested) || !isFinite(effective)) continue
 
@@ -99,6 +119,17 @@ function parseDisplays(raw) {
     displays = []
   }
   if (!Array.isArray(displays)) displays = []
+  // The producer emits named objects with a boolean enabled flag. Ignore
+  // malformed rows so they cannot make the last-output guard count a phantom.
+  var seen = Object.create(null)
+  displays = displays.filter(function(display) {
+    var valid = display && typeof display === "object" && !Array.isArray(display)
+      && typeof display.name === "string" && display.name.trim().length > 0
+      && typeof display.enabled === "boolean"
+    if (!valid || seen[display.name]) return false
+    seen[display.name] = true
+    return true
+  })
 
   var count = 0
   for (var i = 0; i < displays.length; i++) {

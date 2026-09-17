@@ -70,8 +70,15 @@ Recorded at the normal 9 pt terminal font size.*
 <details>
 <summary>A closer look: the NymVPN panel · optional integration</summary>
 
-The tmux side panel brings live tunnel status, dVPN / Mixnet mode selection,
-and settings into the ATLAS workspace. It requires the Nym daemon and a matching CLI.
+[NymVPN](https://nym.com/) is an open-source, decentralized VPN developed by
+[Nym Technologies SA](https://nym.com/trust-center) in Switzerland. Its Fast mode
+uses two-hop WireGuard routing for everyday browsing. Its Mixnet mode routes
+traffic through five hops, adding cover traffic and packet mixing to obscure
+traffic patterns, with higher latency. [How the two modes work](https://support.nym.com/hc/en-us/articles/24326365096721-What-s-the-difference-between-NymVPN-Fast-Anonymous-mode).
+
+ATLAS's optional tmux side panel brings live tunnel status, dVPN / Mixnet mode
+selection, and settings into the workspace. It requires a NymVPN account,
+the Nym daemon, and a matching CLI.
 
 [![ATLAS terminal workspace alongside the NymVPN controls](docs/media/atlas-terminal.png)](docs/media/atlas-terminal.png)
 
@@ -122,26 +129,6 @@ screensaver and lock timeouts. Choose Classic or Terminal under **ATLAS → Lock
 [![ATLAS terminal lock screen captured in the validation VM](docs/media/atlas-lock-terminal.png)](docs/media/atlas-lock-terminal.png)
 
 Terminal lock screen, captured during Omarchy VM validation.
-
-<details>
-<summary>Nutcracker: optional APK analysis</summary>
-
-[![ATLAS Nutcracker rendered terminal interface](docs/media/atlas-nutcracker.png)](docs/media/atlas-nutcracker.png)
-
-The ATLAS terminal interface provides APK selection, streamed analysis, reports,
-and tool diagnostics. It preserves Nutcracker's CLI and uses local static
-analysis by default. Install it explicitly; it is separate from `--all`:
-
-```bash
-atlas-theme nutcracker-install --with-tools
-nutcracker
-```
-
-This downloads the pinned upstream source, Python dependencies, and verified
-Java/JADX tools. Existing configuration and reports are preserved. See
-[Nutcracker installation and removal](docs/NUTCRACKER.md).
-
-</details>
 
 <details>
 <summary>Boot menu, Plymouth, and SDDM</summary>
@@ -290,6 +277,10 @@ status, local diagnostics, shortcuts, and a preview before restoring saved files
 Fullscreen and application-specific opacity exceptions retain their existing
 rules. The terminal font stays at **9 pt**.
 
+Optional brighter comments are available under **ATLAS → Neovim comments**.
+The Codex CLI integration also includes **ATLAS Readable** in its native `/theme`
+picker. Both preserve the standard preset and existing syntax colors.
+
 Neovim's explorer, picker, completion, command dialogs, help overlays and normal
 status line share the active palette's accent. Syntax, Git changes, diagnostics,
 and editing modes retain their semantic colors, including after theme switches.
@@ -309,6 +300,9 @@ omarchy theme set "Tokyo Night"
 atlas-theme restore --dry-run
 atlas-theme restore
 ```
+
+Log out and back in afterward to clear ATLAS font settings retained by the
+running desktop session.
 
 User originals and installed snapshots are recorded privately under
 `~/.local/state/atlas-bundle/`. Original file modes and symlinks are restored;
@@ -333,6 +327,7 @@ It does not downgrade to the boot image saved during the original installation.
 
 ```bash
 python3 tools/check.py
+python3 tools/check_release.py
 python3 tools/build.py
 ```
 
@@ -340,6 +335,9 @@ The build writes `dist/atlas-1.0.0-rc5.tar.gz` and a SHA-256 sidecar. The archiv
 contains a per-file hash manifest, source, artwork, component installers, tests,
 licenses and documentation. It excludes caches, backups, account profiles,
 application logs, screenshots of personal content and hardware configuration.
+
+GitHub Actions runs portable tests, release verification and showcase validation
+on pushes and pull requests. See [CI coverage and local commands](docs/VALIDATION.md#portable-checks-and-ci).
 
 See [release validation](docs/VALIDATION.md), [credits](docs/CREDITS.md), and
 [renaming/migration](docs/MIGRATION.md). MIT license applies to project source;

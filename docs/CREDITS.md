@@ -14,6 +14,10 @@
   for internal devices, mounted siblings, busy unmounts and optical media.
 - [Aether](https://github.com/bjarneo/aether.nvim): editor theme dependency
   referenced by configuration; its implementation is not bundled.
+- [NymVPN](https://nym.com/): the decentralized VPN developed by
+  [Nym Technologies SA](https://nym.com/trust-center) in Switzerland. ATLAS
+  supplies the optional terminal panel; Nym's VPN software and network are
+  separate from the theme.
 - IBM Plex, Nerd Fonts, Yaru, Omarchy applications and security tools are external
   dependencies and remain under their respective licenses.
 

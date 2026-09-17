@@ -88,9 +88,21 @@ def metadata(home, name):
     return p
 
 
-def load(home):
+def _manifest_signature(path):
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return None
+    if not stat.S_ISREG(info.st_mode):
+        raise ValueError(f'Expected a regular manifest file: {path}')
+    return (info.st_dev, info.st_ino, info.st_mode, info.st_size,
+            info.st_mtime_ns, info.st_ctime_ns)
+
+
+def _load_manifest(home):
     path = metadata(home, 'manifest.json')
-    result = json.loads(path.read_text()) if path.exists() else {'version': 1, 'files': {}, 'components': [], 'directories': []}
+    signature = _manifest_signature(path)
+    result = json.loads(path.read_text()) if signature is not None else {'version': 1, 'files': {}, 'components': [], 'directories': []}
     if result.get('version') != 1 or not isinstance(result.get('files'), dict):
         raise ValueError('Unsupported ATLAS installation manifest')
     legacy_without_directories = 'directories' not in result
@@ -117,7 +129,13 @@ def load(home):
     for rel in result['directories']:
         if not isinstance(rel, str) or rel not in managed_parents or target(home, rel) == Path(home).resolve():
             raise ValueError('Unsafe ATLAS installation directory manifest')
-    return result
+    if _manifest_signature(path) != signature:
+        raise ValueError('ATLAS manifest changed while reading; retry the operation')
+    return result, legacy_without_directories, signature
+
+
+def load(home):
+    return _load_manifest(home)[0]
 
 
 def _missing_directories(home, paths):
@@ -202,13 +220,16 @@ def transact(home, desired, components=(), dry=False, restoring=False):
     if journal.exists():
         raise ValueError('Interrupted installation found. Run atlas-theme recover first.')
     manifest_path = metadata(home, 'manifest.json')
-    manifest_before = snapshot(manifest_path)
-    manifest = load(home)
+    manifest, metadata_changed, manifest_signature = _load_manifest(home)
+    metadata_changed |= manifest_signature is None or stat.S_IMODE(manifest_signature[2]) != 0o600
     if not restoring:
-        manifest['directories'] = sorted(
+        directories = sorted(
             set(manifest.get('directories', [])) | _missing_directories(home, desired)
         )
+        metadata_changed |= directories != manifest['directories']
+        manifest['directories'] = directories
     changes = {}
+    adoptions = {}
     for rel, item in desired.items():
         current = snapshot(target(home, rel))
         record = manifest['files'].get(rel)
@@ -219,14 +240,31 @@ def transact(home, desired, components=(), dry=False, restoring=False):
         if not restoring:
             if record is None:
                 manifest['files'][rel] = {'before': current, 'installed': item}
+                metadata_changed = True
+                if current == item:
+                    adoptions[rel] = current
             else:
+                metadata_changed |= record['installed'] != item
                 record['installed'] = item
     for rel, item in changes.items():
         print(('REMOVE ' if item['after']['kind'] == 'absent' else 'WRITE  ') + rel)
+    if _manifest_signature(metadata(home, 'manifest.json')) != manifest_signature:
+        raise ValueError('ATLAS manifest changed during installation; retry the operation')
     if dry:
         print(f'{len(changes)} file changes planned')
         return len(changes)
-    manifest['components'] = sorted(set(manifest.get('components', [])) | set(components))
+    registered = sorted(set(manifest.get('components', [])) | set(components))
+    metadata_changed |= registered != manifest.get('components')
+    manifest['components'] = registered
+    # A zero-file-change transaction can still register ownership, components,
+    # migrated directories or private permissions. Skip only a complete no-op,
+    # after all path and drift checks, before copying the large rollback state.
+    if not restoring and not changes and not metadata_changed:
+        print('0 file changes applied')
+        return 0
+    manifest_before = snapshot(manifest_path)
+    if _manifest_signature(metadata(home, 'manifest.json')) != manifest_signature:
+        raise ValueError('ATLAS manifest changed during installation; retry the operation')
     pending = {'changes': changes, 'manifest_before': manifest_before}
     write(journal, value(json.dumps(pending), 0o600))
     attempted = []
@@ -237,6 +275,9 @@ def transact(home, desired, components=(), dry=False, restoring=False):
                 raise ValueError(f'File changed during installation: {rel}')
             attempted.append(rel)
             write(path, item['after'])
+        for rel, expected in adoptions.items():
+            if snapshot(target(home, rel)) != expected:
+                raise ValueError(f'File changed during installation: {rel}')
         if restoring:
             write(manifest_path, {'kind': 'absent'})
         else:

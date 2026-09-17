@@ -355,13 +355,20 @@ function tick(sim) {
       sim.columnDelay -= 1
     }
 
+    // Completed fill columns still shimmer while the others fill, but belong
+    // only to full so collectDraw paints each glyph once. Tick them before
+    // active columns so a column completed below is not ticked twice.
+    for (var b = 0; b < sim.full.length; b++) tickColumn(sim.full[b], sim.rows, sim.rainColors)
+
     var stillActive = []
     for (var i = 0; i < sim.active.length; i++) {
       var col = sim.active[i]
       tickColumn(col, sim.rows, sim.rainColors)
       if (!col.pending.length) {
-        if (col.phase === "fill" && sim.full.indexOf(col) < 0) sim.full.push(col)
-        else if (!col.visible.length) {
+        if (col.phase === "fill") {
+          sim.full.push(col)
+          continue
+        } else if (!col.visible.length) {
           setupColumn(col, sim.phase)
           sim.pending.push(col)
           continue

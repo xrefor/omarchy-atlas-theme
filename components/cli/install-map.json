@@ -62,6 +62,12 @@
       "group": "cli-codex"
     },
     {
+      "source": "extras/codex/atlas-readable.tmTheme",
+      "target": ".codex/themes/atlas-readable.tmTheme",
+      "mode": "0644",
+      "group": "cli-codex"
+    },
+    {
       "source": "integrations/tcpdump",
       "target": ".local/bin/tcpdump",
       "mode": "0755",

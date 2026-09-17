@@ -76,10 +76,18 @@ executed mutable home-directory Python under `sudo`. The included README states
 the root-owned packaging and version-pinning requirements for a downstream
 integration.
 
-`cli-codex` installs the native TextMate syntax palette as
-`~/.codex/themes/atlas.tmTheme` (the standard Codex home). In Codex, use `/theme`
-to preview/select ATLAS, or set `tui.theme = "atlas"` in its config. If using a
-custom `CODEX_HOME`, copy the asset into that home's `themes/` directory.
+`cli-codex` installs two native TextMate syntax palettes in `~/.codex/themes/`
+(the standard Codex home): `atlas.tmTheme` and `atlas-readable.tmTheme`.
+In Codex, use `/theme` to preview/select **ATLAS** or **ATLAS Readable**, or set
+`tui.theme = "atlas"` / `tui.theme = "atlas-readable"` in its config. If using a
+custom `CODEX_HOME`, copy the assets into that home's `themes/` directory.
+
+**ATLAS Readable** is the optional comment-readability preset. It changes comment
+text from `#6e675c` to the palette's existing secondary color, `#a69b8c`. Against
+opaque ATLAS carbon (`#100e0c`), that raises contrast from 3.45:1 to 7.05:1. This
+preset changes only syntax comments; typography and other syntax colors retain
+the standard theme's values. Installation adds the choice without selecting it.
+
 The official [syntax-theme controls](https://learn.chatgpt.com/docs/developer-commands?surface=cli#choose-a-syntax-theme-with-theme)
 persist the selection; the installed 0.154.0 client also documents custom
 `.tmTheme` loading in its built-in theme picker. Selection is left to the user. Omarchy 4.0.4 does not provide a

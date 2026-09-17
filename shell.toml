@@ -10,7 +10,8 @@ background       = "#100e0c"
 background-alpha = 1.0
 text             = "#d6cfc4"
 # Modules calling attention to themselves (recording, voxtype, alerts, updates)
-active           = "#c22e16"
+# Derive readable UI red without changing the terminal ANSI palette.
+active           = "#e46147"
 # Cross-axis size at font base-size 12. size-horizontal is the height of
 # top/bottom bars; size-vertical is the width of left/right bars. With
 # scale-with-font enabled, these grow/shrink with [font] base-size.
@@ -204,7 +205,7 @@ selected-border-width = 1
 background       = "#100e0c"
 background-alpha = 1.0
 text             = "#d6cfc4"
-text-error       = "#c22e16"
+text-error       = "#e46147"
 border           = "hyprland.active-border"
 border-error     = "#c22e16"
 border-alpha     = 1.0
@@ -220,10 +221,11 @@ accent           = "#ff5a12"
 # border-alpha applies to all three border states (they are mutually
 # exclusive in time).
 background       = "#100e0c"
-background-alpha = 0.8
+# Keep password/error text independent of wallpaper brightness.
+background-alpha = 1.0
 text             = "#d6cfc4"
 placeholder = "#c4b8a8"
-text-error       = "#c22e16"
+text-error       = "#e46147"
 border = "#3a342c"
 border-active    = "hyprland.active-border"
 border-error     = "#c22e16"

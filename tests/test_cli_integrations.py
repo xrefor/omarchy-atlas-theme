@@ -62,6 +62,7 @@ class IntegrationTests(unittest.TestCase):
             targets.add(str(target))
         self.assertIn(".local/lib/atlas-cli/atlas_cli/runner.py", targets)
         self.assertIn(".codex/themes/atlas.tmTheme", targets)
+        self.assertIn(".codex/themes/atlas-readable.tmTheme", targets)
         self.assertNotIn(".local/bin/wifite", targets)
         self.assertNotIn(".local/bin/codex", targets)
 
@@ -72,6 +73,8 @@ class IntegrationTests(unittest.TestCase):
         compile(wifite.read_text(encoding="utf-8"), str(wifite), "exec")
         with (CLI / "extras/codex/atlas.tmTheme").open("rb") as source:
             self.assertEqual(plistlib.load(source)["name"], "ATLAS")
+        with (CLI / "extras/codex/atlas-readable.tmTheme").open("rb") as source:
+            self.assertEqual(plistlib.load(source)["name"], "ATLAS Readable")
 
     def test_sources_contain_no_legacy_or_machine_paths(self):
         checked = []

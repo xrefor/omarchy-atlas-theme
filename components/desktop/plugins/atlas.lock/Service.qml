@@ -300,6 +300,7 @@ Item {
       LockView {
         id: lockView
         anchors.fill: parent
+        surfaceActive: root.locked && lockSurface.visible
         terminalStyle: root.terminalStyle
         backgroundPath: root.backgroundPath
         backgroundVersion: root.backgroundVersion
@@ -336,6 +337,7 @@ Item {
 
     LockView {
       anchors.fill: parent
+      surfaceActive: previewWindow.visible
       terminalStyle: root.terminalStyle
       backgroundPath: root.backgroundPath
       backgroundVersion: root.backgroundVersion

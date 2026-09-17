@@ -27,4 +27,19 @@ def resolve(path):
 
 
 def render(path, colors):
-    return re.sub(r'\{\{\s*(\w+)\s*\}\}', lambda match: colors[match[1]], Path(path).read_text())
+    def mix(match):
+        # Match Omarchy's native {{ mix start end amount }} template function,
+        # including percentage inputs, clamping and half-up channel rounding.
+        start, end, amount, percent = match.groups()
+        amount = float(amount)
+        if percent or amount > 1:
+            amount /= 100
+        amount = min(1, amount)
+        return '#' + ''.join(
+            f'{int(int(colors[start][i:i+2], 16) * (1 - amount) + int(colors[end][i:i+2], 16) * amount + 0.5):02x}'
+            for i in (1, 3, 5)
+        )
+
+    text = re.sub(r'\{\{\s*mix\s+(\w+)\s+(\w+)\s+([0-9]+(?:\.[0-9]+)?)(%?)\s*\}\}',
+                  mix, Path(path).read_text())
+    return re.sub(r'\{\{\s*(\w+)\s*\}\}', lambda match: colors[match[1]], text)

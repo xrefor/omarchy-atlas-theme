@@ -1,9 +1,33 @@
+local function readable_comments()
+  local path = vim.fn.expand("~/.config/atlas/neovim-readability")
+  local info = (vim.uv or vim.loop).fs_lstat(path)
+  if not info or info.type ~= "file" then return false end
+  local file = io.open(path, "r")
+  if not file then return false end
+  local value = file:read(32) or ""
+  file:close()
+  return info.size <= 32 and vim.trim(value) == "readable"
+end
+
+local last_readability
 return {
   {
     "bjarneo/aether.nvim",
     branch = "v3",
     name = "aether",
     priority = 1000,
+    init = function()
+      -- Refresh only on focus, with no timer or background process. Leave other
+      -- colorschemes alone, and keep a single handler across template reloads.
+      vim.api.nvim_create_autocmd("FocusGained", {
+        group = vim.api.nvim_create_augroup("AtlasReadability", { clear = true }),
+        callback = function()
+          if vim.g.colors_name == "aether" and readable_comments() ~= last_readability then
+            vim.cmd.colorscheme("aether")
+          end
+        end,
+      })
+    end,
     opts = {
       colors = {
         bg = "{{ background }}",
@@ -12,10 +36,11 @@ return {
         lighter_bg = "{{ lighter_background }}",
 
         fg = "{{ foreground }}",
-        dark_fg = "{{ secondary }}",
+        dark_fg = "{{ light_foreground }}",
         light_fg = "{{ light_foreground }}",
         bright_fg = "{{ bright_foreground }}",
         muted = "{{ muted }}",
+        readable_comment = "{{ mix background foreground 75% }}",
 
         red = "{{ red }}",
         yellow = "{{ yellow }}",
@@ -44,6 +69,13 @@ return {
       -- Navigation uses the UI accent; syntax and Git/diagnostic colors retain
       -- their semantic roles. Values follow the active Omarchy palette.
       on_highlights = function(hl, c)
+        last_readability = readable_comments()
+        if last_readability then
+          for _, name in ipairs({ "Comment", "SpecialComment" }) do
+            hl[name] = hl[name] or {}
+            hl[name].fg = c.readable_comment
+          end
+        end
         hl.Directory = { fg = c.accent, bold = true }
         hl.CursorLine = { bg = c.lighter_bg }
         hl.CursorLineNr = { fg = c.accent, bold = true }

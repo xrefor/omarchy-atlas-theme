@@ -227,6 +227,127 @@ class BootInstallerTests(unittest.TestCase):
         self.assertTrue(empty.is_dir())
         self.assertEqual((self.root / "boot/limine.conf").read_text(), BASE_LIMINE)
 
+    def test_plymouth_recovery_preserves_later_settings_comments_and_mode(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        boot.run(BUNDLE, self.args(plymouth=True))
+        later = conf.read_text().replace("ShowDelay=1", "ShowDelay=9") + "# local note\nLocalKey=keep\n"
+        conf.write_text(later)
+        conf.chmod(0o640)
+        boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), later.replace("Theme=atlas", "Theme=previous"))
+        self.assertEqual(conf.stat().st_mode & 0o777, 0o640)
+        self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_plymouth_recovery_without_drift_restores_exact_snapshot(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        for original in (None, "# local\n[Daemon]\n Theme = previous\n", "[Other]\nKeep=yes\n"):
+            with self.subTest(original=original):
+                conf.unlink(missing_ok=True)
+                if original is not None:
+                    conf.write_text(original)
+                    conf.chmod(0o640)
+                before = boot._snapshot(conf)
+                boot.run(BUNDLE, self.args(plymouth=True))
+                boot.run(BUNDLE, self.args("boot-recover"))
+                self.assertEqual(boot._snapshot(conf), before)
+
+    def test_plymouth_recovery_preserves_settings_when_original_theme_was_absent(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        for original in (None, "[Other]\nKeep=yes\n", "[Daemon]\nShowDelay=1\n"):
+            with self.subTest(original=original):
+                conf.unlink(missing_ok=True)
+                if original is not None:
+                    conf.write_text(original)
+                boot.run(BUNDLE, self.args(plymouth=True))
+                later = conf.read_text().replace("Theme=atlas\n", "Theme=atlas\n# added later\nDeviceTimeout=7\n")
+                conf.write_text(later)
+                boot.run(BUNDLE, self.args("boot-recover"))
+                self.assertEqual(conf.read_text(), later.replace("Theme=atlas\n", ""))
+
+    def test_plymouth_recovery_rejects_later_theme_before_any_recovery_write(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        boot.run(BUNDLE, self.args(plymouth=True))
+        installed = conf.read_text()
+        for later in (installed.replace("Theme=atlas", "Theme=local"),
+                      installed.replace("Theme=atlas", "Theme=atlas\nTheme=local"),
+                      installed + "\n[Daemon]\nTheme=local\n"):
+            with self.subTest(later=later):
+                conf.write_text(later)
+                with mock.patch.object(boot, "_safe_write", side_effect=AssertionError("recovery wrote a file")):
+                    with self.assertRaisesRegex(ValueError, "Managed boot path changed"):
+                        boot.run(BUNDLE, self.args("boot-recover"))
+                self.assertEqual(conf.read_text(), later)
+                self.assertIsNotNone(boot._active_transaction(self.root))
+
+    def test_plymouth_recovery_refuses_ambiguous_original_selectors_with_drift(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        original = "[Daemon]\nTheme=first\nTheme=second\n"
+        conf.write_text(original)
+        boot.run(BUNDLE, self.args(plymouth=True))
+        installed = conf.read_text()
+        conf.write_text(installed + "ShowDelay=9\n")
+        with mock.patch.object(boot, "_safe_write", side_effect=AssertionError("recovery wrote a file")):
+            with self.assertRaisesRegex(ValueError, "duplicate Theme selectors"):
+                boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), installed + "ShowDelay=9\n")
+        conf.write_text(installed)
+        boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), original)
+
+    def test_plymouth_recovery_rechecks_drift_before_writing(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        boot.run(BUNDLE, self.args(plymouth=True))
+        later = conf.read_text() + "# edit while recovery starts\n"
+        real_journal_write = boot._journal_write
+
+        def edit_after_validation(root, transaction, journal):
+            real_journal_write(root, transaction, journal)
+            conf.write_text(later)
+
+        with mock.patch.object(boot, "_journal_write", side_effect=edit_after_validation):
+            with self.assertRaisesRegex(ValueError, "changed during recovery"):
+                boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), later)
+        self.assertIsNotNone(boot._active_transaction(self.root))
+        boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), later.replace("Theme=atlas", "Theme=previous"))
+
+    def test_plymouth_recovery_retry_preserves_edits_after_selector_was_restored(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        state = self.root / "var/lib/atlas-bundle/boot-state.json"
+        # Missing original config exercises a retry with a file containing no Theme.
+        conf.unlink()
+        boot.run(BUNDLE, self.args(plymouth=True))
+        conf.write_text(conf.read_text() + "# local note\nShowDelay=9\n")
+        expected = conf.read_text().replace("Theme=atlas\n", "")
+        real_write = boot._safe_write
+
+        def fail_after_selector(root, path, value):
+            if path == state:
+                raise OSError("simulated recovery interruption")
+            real_write(root, path, value)
+
+        with mock.patch.object(boot, "_safe_write", side_effect=fail_after_selector):
+            with self.assertRaisesRegex(OSError, "simulated recovery interruption"):
+                boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), expected)
+        self.assertIsNotNone(boot._active_transaction(self.root))
+        conf.write_text(expected + "DeviceTimeout=8\n")
+        boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), expected + "DeviceTimeout=8\n")
+        self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_recovery_of_plymouth_removal_preserves_later_settings(self):
+        conf = self.root / "etc/plymouth/plymouthd.conf"
+        boot.run(BUNDLE, self.args(plymouth=True))
+        boot.run(BUNDLE, self.args("boot-confirm"))
+        boot.run(BUNDLE, self.args("boot-restore", plymouth=True))
+        later = conf.read_text().replace("ShowDelay=1", "ShowDelay=9")
+        conf.write_text(later)
+        boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(conf.read_text(), later.replace("Theme=previous", "Theme=atlas"))
+        self.assertTrue((self.root / "usr/share/plymouth/themes/atlas/atlas.plymouth").is_file())
+
     def test_completed_recovery_refuses_drift_in_an_atlas_touched_esp_file(self):
         boot.run(BUNDLE, self.args(limine=True))
         (self.root / "boot/limine.conf").write_text("recipient edit\n")

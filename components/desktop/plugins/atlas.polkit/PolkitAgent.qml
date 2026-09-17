@@ -425,6 +425,7 @@ Item {
         anchors.leftMargin: Style.space(12)
         anchors.rightMargin: Style.space(12)
         text: root.authorizationLabel(root.currentMessage)
+        textFormat: Text.PlainText
         color: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall

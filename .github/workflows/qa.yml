@@ -1,0 +1,50 @@
+name: ATLAS QA
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-qa-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  portable:
+    name: Portable checks (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.14']
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Install test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends lua5.4 tmux
+          python -m pip install 'PyYAML==6.0.3'
+          bash tools/ci-deps.sh "$RUNNER_TEMP/atlas-ci/bin"
+          echo "$RUNNER_TEMP/atlas-ci/bin" >> "$GITHUB_PATH"
+      - name: Run portable checks
+        run: python tools/check.py --portable
+      - name: Verify release reproducibility and staged installation
+        run: python tools/check_release.py
+      - name: Validate showcase assets and links
+        run: python tools/build_site.py

@@ -285,6 +285,21 @@ def _ini_value(text: str, section: str, key: str) -> tuple[bool, str | None]:
     return section_exists, current
 
 
+def _ini_values(text: str, section: str, key: str) -> list[str]:
+    """Read every selector occurrence, including repeated INI sections."""
+    values = []
+    in_section = False
+    for line in text.splitlines():
+        heading = re.match(r"^\s*\[([^]]+)\]\s*(?:[#;].*)?$", line)
+        if heading:
+            in_section = heading.group(1).casefold() == section.casefold()
+            continue
+        match = re.match(r"^\s*([^#;][^=]*)=(.*)$", line)
+        if in_section and match and match.group(1).strip().casefold() == key.casefold():
+            values.append(match.group(2).strip())
+    return values
+
+
 def _set_ini_value(text: str, section: str, key: str, value: str | None,
                    remove_empty_created_section: bool = False) -> str:
     lines = text.splitlines(keepends=True)
@@ -751,11 +766,30 @@ def _guard_matches(path: Path, logical: str, current: dict, expected: dict,
         return _limine_current_values(_snapshot_bytes(current).decode()) == \
             _limine_current_values(_snapshot_bytes(expected).decode())
     if logical == str(PLYMOUTH_CONFIG):
-        if current["kind"] != "file" or expected["kind"] != "file":
-            return current == expected
-        return _ini_value(_snapshot_bytes(current).decode(), "Daemon", "Theme")[1] == \
-            _ini_value(_snapshot_bytes(expected).decode(), "Daemon", "Theme")[1]
+        # A recovered file can retain later settings even if it did not exist
+        # before installation. Treat a missing Theme like an absent config so
+        # that an interrupted recovery can safely be retried.
+        return _ini_values(_snapshot_bytes(current).decode(), "Daemon", "Theme") == \
+            _ini_values(_snapshot_bytes(expected).decode(), "Daemon", "Theme")
     return current == expected
+
+
+def _recovery_value(change: dict, current: dict) -> dict:
+    before = change["before"]
+    if change["path"] != str(PLYMOUTH_CONFIG) or current in (before, change["after"]):
+        return before
+    # The Plymouth guard owns only Theme. Preserve the rest of the current
+    # file, including its mode, rather than overwriting accepted local edits.
+    previous_values = _ini_values(_snapshot_bytes(before).decode(), "Daemon", "Theme")
+    text = _snapshot_bytes(current).decode()
+    if _ini_values(text, "Daemon", "Theme") == previous_values:
+        return current
+    if len(previous_values) > 1:
+        raise ValueError("Original Plymouth config has duplicate Theme selectors; "
+                         "refusing to merge later edits during recovery")
+    previous_theme = previous_values[0] if previous_values else None
+    return _file_value(_set_ini_value(text, "Daemon", "Theme", previous_theme),
+                       current.get("mode", before.get("mode", 0o644)))
 
 
 def _load_journal(transaction: Path) -> dict:
@@ -803,6 +837,7 @@ def _recover(root: Path, dry_run: bool) -> int:
     current_state = _snapshot(state_path)
     if current_state not in (journal["state_before"], journal["state_after"]):
         raise ValueError("Boot state changed after the checkpoint; refusing recovery")
+    recovery_changes = []
     for change in journal["changes"]:
         logical = change["path"]
         path = _rooted(root, Path(logical))
@@ -810,13 +845,17 @@ def _recover(root: Path, dry_run: bool) -> int:
         if not any(_guard_matches(path, logical, current, expected, journal.get("esp"))
                    for expected in (change["before"], change["after"])):
             raise ValueError(f"Managed boot path changed after the checkpoint: {logical}")
+        recovery_changes.append((logical, current, _recovery_value(change, current)))
     print(f"RECOVER pre-transaction boot state from {_logical(root, transaction)}")
     if dry_run:
         return 0
     journal["status"] = "recovering"
     _journal_write(root, transaction, journal)
-    for change in reversed(journal["changes"]):
-        _safe_write(root, _rooted(root, Path(change["path"])), change["before"])
+    for logical, expected, restored in reversed(recovery_changes):
+        path = _rooted(root, Path(logical))
+        if _snapshot(path) != expected:
+            raise ValueError(f"Managed boot path changed during recovery: {logical}")
+        _safe_write(root, path, restored)
     _safe_write(root, state_path, journal["state_before"])
     if esp is not None:
         if journal.get("esp_after") is not None:

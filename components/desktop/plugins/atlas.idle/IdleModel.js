@@ -1,7 +1,11 @@
 function secondsFromConfig(value, fallback) {
+  if ((typeof value !== "number" && typeof value !== "string")
+      || String(value).trim() === "") return fallback
   var n = Number(value)
   if (!isFinite(n) || n < 0) return fallback
-  return Math.floor(n)
+  var seconds = Math.floor(n)
+  // QML Timer.interval is a signed 32-bit millisecond value.
+  return seconds <= Math.floor(2147483647 / 1000) ? seconds : fallback
 }
 
 function eventParts(event, count) {

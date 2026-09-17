@@ -24,6 +24,171 @@ class StateTests(unittest.TestCase):
     def test_dry_run_creates_no_files(self):
         state.transact(self.home,{'config/file':state.value('new')},dry=True)
         self.assertEqual(list(self.home.iterdir()),[])
+    def test_unchanged_transaction_does_not_write_or_snapshot_manifest(self):
+        desired={'config/file':state.value('installed')}
+        self.tx(desired,components={'theme'})
+        manifest=state.metadata(self.home,'manifest.json')
+        before=manifest.stat()
+        original_snapshot=state.snapshot
+        def snapshot(path):
+            self.assertNotEqual(path,manifest,'Unchanged transaction copied the full manifest')
+            return original_snapshot(path)
+        with patch.object(state,'snapshot',side_effect=snapshot), \
+             patch.object(state,'write',side_effect=AssertionError('Unchanged transaction wrote a file')):
+            self.assertEqual(self.tx(desired,components={'theme'}),0)
+        after=manifest.stat()
+        self.assertEqual((after.st_ino,after.st_mtime_ns),(before.st_ino,before.st_mtime_ns))
+        self.assertFalse(state.metadata(self.home,'pending.json').exists())
+    def test_dry_run_does_not_snapshot_existing_manifest(self):
+        self.tx({'config/file':state.value('installed')})
+        manifest=state.metadata(self.home,'manifest.json')
+        original_snapshot=state.snapshot
+        def snapshot(path):
+            self.assertNotEqual(path,manifest,'Dry run copied the full manifest')
+            return original_snapshot(path)
+        with patch.object(state,'snapshot',side_effect=snapshot), \
+             patch.object(state,'write',side_effect=AssertionError('Dry run wrote a file')):
+            self.assertEqual(state.transact(self.home,{'config/file':state.value('changed')},dry=True),1)
+        self.assertEqual((self.home/'config/file').read_text(),'installed')
+    def test_matching_unmanaged_file_is_registered_and_restore_removes_metadata(self):
+        path=self.home/'existing';path.write_text('matching');path.chmod(0o640)
+        original=state.snapshot(path)
+        self.assertEqual(self.tx({'existing':original},components={'apps'}),0)
+        manifest=state.load(self.home)
+        self.assertEqual(manifest['files']['existing'],{'before':original,'installed':original})
+        self.assertEqual(manifest['components'],['apps'])
+        self.assertEqual(self.tx({'existing':original},restoring=True),0)
+        self.assertEqual(state.snapshot(path),original)
+        self.assertFalse(state.metadata(self.home,'manifest.json').exists())
+    def test_component_only_update_preserves_original_snapshots(self):
+        path=self.home/'config';path.write_text('original')
+        desired={'config':state.value('installed')}
+        self.tx(desired,components={'theme'})
+        before=state.load(self.home)['files']
+        self.assertEqual(self.tx(desired,components={'apps','theme'}),0)
+        manifest=state.load(self.home)
+        self.assertEqual(manifest['components'],['apps','theme'])
+        self.assertEqual(manifest['files'],before)
+    def test_unchanged_transaction_persists_legacy_directory_migration(self):
+        desired={'.local/share/atlas/lib/code.py':state.value('code')}
+        self.tx(desired,components={'theme'})
+        path=state.metadata(self.home,'manifest.json')
+        legacy=json.loads(path.read_text());del legacy['directories']
+        path.write_text(json.dumps(legacy))
+        self.assertEqual(self.tx(desired,components={'theme'}),0)
+        self.assertEqual(json.loads(path.read_text())['directories'],
+                         ['.local/share/atlas','.local/share/atlas/lib'])
+    def test_unchanged_transaction_repairs_manifest_permissions(self):
+        desired={'config':state.value('installed')}
+        self.tx(desired)
+        path=state.metadata(self.home,'manifest.json');before=path.read_bytes()
+        path.chmod(0o644)
+        self.assertEqual(self.tx(desired),0)
+        self.assertEqual(path.stat().st_mode & 0o777,0o600)
+        self.assertEqual(path.read_bytes(),before)
+    def test_unchanged_transaction_persists_metadata_normalization(self):
+        desired={'.config/atlas/config':state.value('installed')}
+        self.tx(desired,components={'theme','apps'})
+        path=state.metadata(self.home,'manifest.json')
+        original=json.loads(path.read_text())
+        unsorted=copy.deepcopy(original)
+        unsorted['directories']=list(reversed(original['directories']))+original['directories']
+        unsorted['components']=['theme','apps','theme']
+        path.write_text(json.dumps(unsorted))
+        self.assertEqual(self.tx(desired,components={'theme','apps'}),0)
+        self.assertEqual(json.loads(path.read_text()),original)
+        del original['components']
+        path.write_text(json.dumps(original))
+        self.assertEqual(self.tx(desired),0)
+        self.assertEqual(json.loads(path.read_text())['components'],[])
+    def test_nonregular_manifest_is_rejected_before_reading(self):
+        path=self.home/state.STATE/'manifest.json';path.parent.mkdir(parents=True)
+        for kind in ('fifo','directory','symlink'):
+            with self.subTest(kind=kind):
+                if kind=='fifo': os.mkfifo(path)
+                elif kind=='directory': path.mkdir()
+                else: path.symlink_to(self.home/'other')
+                try:
+                    with patch.object(Path,'read_text',side_effect=AssertionError('Unsafe manifest was read')):
+                        with self.assertRaisesRegex(ValueError,'regular manifest|symlinks'):
+                            self.tx({})
+                finally:
+                    if kind=='directory': path.rmdir()
+                    else: path.unlink()
+    def test_concurrent_manifest_edit_prevents_unchanged_fast_return(self):
+        desired={'config':state.value('installed')}
+        self.tx(desired)
+        path=state.metadata(self.home,'manifest.json')
+        edited=path.read_text()+'\n'
+        original_snapshot=state.snapshot
+        def snapshot(target):
+            result=original_snapshot(target)
+            if target==self.home/'config': path.write_text(edited)
+            return result
+        with patch.object(state,'snapshot',side_effect=snapshot), \
+             patch.object(state,'write',side_effect=AssertionError('Concurrent manifest was overwritten')):
+            with self.assertRaisesRegex(ValueError,'manifest changed during installation'):
+                self.tx(desired)
+        self.assertEqual(path.read_text(),edited)
+    def test_matching_file_changed_during_adoption_is_preserved(self):
+        path=self.home/'existing';path.write_text('matching')
+        desired={'existing':state.snapshot(path)}
+        pending=state.metadata(self.home,'pending.json')
+        original_write=state.write
+        def edit_after_journal(target,item):
+            original_write(target,item)
+            if target==pending: path.write_text('concurrent local edit')
+        with patch.object(state,'write',side_effect=edit_after_journal):
+            with self.assertRaisesRegex(ValueError,'File changed during installation'):
+                self.tx(desired)
+        self.assertEqual(path.read_text(),'concurrent local edit')
+        self.assertFalse(state.metadata(self.home,'manifest.json').exists())
+        self.assertFalse(pending.exists())
+    def test_matching_desired_state_does_not_bypass_drift_checks(self):
+        path=self.home/'config'
+        self.tx({'config':state.value('installed')})
+        for drift in ('content','mode','symlink'):
+            with self.subTest(drift=drift):
+                path.unlink();state.write(path,state.value('installed'))
+                if drift=='content': path.write_text('local edit')
+                elif drift=='mode': path.chmod(0o600)
+                else:
+                    path.unlink();path.symlink_to('local-file')
+                current=state.snapshot(path)
+                with patch.object(state,'write',side_effect=AssertionError('Drift check wrote a file')):
+                    with self.assertRaisesRegex(ValueError,'later edit'):
+                        self.tx({'config':current})
+                self.assertEqual(state.snapshot(path),current)
+    def test_metadata_only_failure_rolls_back_original_manifest(self):
+        desired={'config':state.value('installed')}
+        self.tx(desired,components={'theme'})
+        path=state.metadata(self.home,'manifest.json');before=state.snapshot(path)
+        original_write=state.write
+        failed=False
+        def fail_once(target,item):
+            nonlocal failed
+            if target==path and not failed:
+                failed=True;raise OSError('metadata write failure')
+            return original_write(target,item)
+        with patch.object(state,'write',side_effect=fail_once):
+            with self.assertRaisesRegex(OSError,'metadata write failure'):
+                self.tx(desired,components={'apps'})
+        self.assertEqual(state.snapshot(path),before)
+        self.assertFalse(state.metadata(self.home,'pending.json').exists())
+    def test_pending_metadata_only_transaction_blocks_noop_and_recovers(self):
+        desired={'config':state.value('installed')}
+        self.tx(desired,components={'theme'})
+        path=state.metadata(self.home,'manifest.json');before=state.snapshot(path)
+        pending=state.metadata(self.home,'pending.json')
+        state.write(pending,state.value(json.dumps({'changes':{},'manifest_before':before}),0o600))
+        updated=state.load(self.home);updated['components'].append('apps')
+        state.write(path,state.value(json.dumps(updated),0o600))
+        with patch.object(state,'write',side_effect=AssertionError('Pending transaction was ignored')):
+            with self.assertRaisesRegex(ValueError,'Interrupted'):
+                self.tx(desired,components={'theme','apps'})
+        with state.lock(self.home): state.recover(self.home)
+        self.assertEqual(state.snapshot(path),before)
+        self.assertFalse(pending.exists())
     def test_original_symlink_and_mode_restored(self):
         p=self.home/'original';p.write_text('data');p.chmod(0o600)
         (self.home/'link').symlink_to('original')
@@ -121,17 +286,24 @@ class BundleTests(unittest.TestCase):
     def test_all_components_install_idempotently_and_restore(self):
         self.write('.bashrc','# existing shell preferences\n')
         self.write('.local/bin/atlas-vpn', '# prior standalone VPN panel\n')
+        codex_config = '[tui]\ntheme = "atlas-readable"\n'
+        self.write('.codex/config.toml', codex_config)
         desired=self.plan(cli_groups={'all'})
         user.validate(desired);self.apply(desired)
         again=self.plan(cli_groups={'all'})
         self.assertTrue(all(state.snapshot(state.target(self.home,k))==v for k,v in again.items()))
-        self.assertEqual(user.plan(ROOT,self.home,user.COMPONENTS,self.colors,syncing=True),
-                         {k:v for k,v in desired.items() if k in user.plan(ROOT,self.home,user.COMPONENTS,self.colors,syncing=True)})
+        synced=user.plan(ROOT,self.home,user.COMPONENTS,self.colors,syncing=True)
+        self.assertEqual(synced,{k:v for k,v in desired.items() if k in synced})
+        with patch.object(state,'write',side_effect=AssertionError('Unchanged bundle wrote a file')):
+            self.apply(again)
+            self.apply(synced)
         self.assertTrue((self.home/'.local/bin/atlas-info').is_file())
         self.assertTrue(os.access(self.home/'.local/bin/atlas-vpn', os.X_OK))
         self.assertIn('atlas-vpn', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertTrue((self.home/'.config/atlas/atlas-prompt.py').is_file())
         self.assertTrue((self.home/'.codex/themes/atlas.tmTheme').is_file())
+        self.assertTrue((self.home/'.codex/themes/atlas-readable.tmTheme').is_file())
+        self.assertEqual((self.home/'.codex/config.toml').read_text(), codex_config)
         cache=self.home/'.local/lib/atlas-cli/atlas_cli/__pycache__'
         cache.mkdir()
         (cache/'runner.cpython-test.pyc').write_bytes(b'generated')
@@ -139,6 +311,8 @@ class BundleTests(unittest.TestCase):
         with state.lock(self.home): state.transact(self.home,{k:v['before'] for k,v in records.items()},restoring=True)
         self.assertEqual((self.home/'.bashrc').read_text(),'# existing shell preferences\n')
         self.assertEqual((self.home/'.local/bin/atlas-vpn').read_text(), '# prior standalone VPN panel\n')
+        self.assertEqual((self.home/'.codex/config.toml').read_text(), codex_config)
+        self.assertFalse((self.home/'.codex/themes/atlas-readable.tmTheme').exists())
         self.assertFalse((self.home/'.config/omarchy/themes/atlas/colors.toml').exists())
         self.assertFalse((self.home/'.config/omarchy/themes/atlas').exists())
         self.assertFalse((self.home/'.local/share/atlas').exists())
@@ -263,5 +437,18 @@ class BundleTests(unittest.TestCase):
         after=user.plan(ROOT,self.home,{'apps'},colors,syncing=True)
         self.assertNotEqual(before['.config/atlas/tmux.conf'],after['.config/atlas/tmux.conf'])
         self.assertFalse(any(k.startswith('.local/share/atlas') for k in after))
+        self.apply(before)
+        writes=[]
+        original_write=state.write
+        def record_write(path,item):
+            writes.append(str(path.relative_to(self.home)))
+            return original_write(path,item)
+        with patch.object(state,'write',side_effect=record_write):
+            self.apply(after)
+        self.assertEqual(state.snapshot(self.home/'.config/atlas/tmux.conf'),after['.config/atlas/tmux.conf'])
+        self.assertFalse(any(rel.startswith('.local/share/atlas') for rel in writes))
+        self.assertIn(state.STATE+'/pending.json',writes)
+        with patch.object(state,'write',side_effect=AssertionError('Repeated new palette wrote a file')):
+            self.apply(after)
 
 if __name__=='__main__': unittest.main()

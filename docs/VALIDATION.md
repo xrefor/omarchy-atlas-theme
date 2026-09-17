@@ -6,7 +6,8 @@ Authentication policy and workstation boot configuration were not changed.
 
 ## Automated and isolated checks
 
-Run `python3 tools/check.py` for the current test counts. It covers:
+Run `python3 tools/check.py` for the current test counts. The development checker
+requires Node.js for JavaScript model tests. It covers:
 
 - Full user installation into temporary homes, repeat installation with no
   changes, palette synchronization and exact original-file restoration.
@@ -19,16 +20,23 @@ Run `python3 tools/check.py` for the current test counts. It covers:
 - Authentication clone merging, rejection of competing custom clones,
   preservation of unrelated bar widgets and settings, and removal of the
   file-based askpass bridge from the distributed Polkit code.
+- Seeded Matrix rain/fill/resolve/restart cycles at 1080p, 4K and small sizes;
+  unique glyph drawing, continued fill animation, final branding and empty input.
+- Idle configuration bounds, event parsing and screensaver-window lifecycles;
+  monitor brightness, fractional scaling, invalid presets and display counts;
+  Polkit fingerprint hints, direct PAM module parsing and authorization labels.
 - Boot transactions against simulated EFI partitions; preservation of boot
   entries, original appearance restoration, mocked rebuild failures, and
-  boot-image/kernel-change recovery safeguards.
+  boot-image/kernel-change recovery safeguards. Plymouth recovery also covers
+  later settings/comments/permissions, originally absent selectors and files,
+  interrupted recovery, duplicate-selector rejection, and edits during recovery.
 - CLI byte/exit/signal preservation, machine-readable output bypass and
   selected optional-integration behavior. Tests do not scan or capture traffic.
 - Nym panel protocol, stale-status regression, mode/settings readback and invalid
   input checks; isolated tmux menu navigation and closing without disconnecting.
 - Seven mocked Yazi drive-menu cases: authorization, clean removal, busy failure,
   internal-device rejection, argument handling, mounted siblings and optical media.
-- Python, JSON, TOML, XML and shell syntax; four Omarchy plugin manifests;
+- Python, JSON, TOML, YAML, XML and shell syntax; four Omarchy plugin manifests;
   generated root theme files compared to their palette/templates.
 
 The four shell clones additionally passed QML/JavaScript lint/syntax checks
@@ -42,6 +50,49 @@ and the build is repeated to check deterministic archive output. Release files
 must be tracked by Git and explicitly selected; bytecode, private state, backups,
 logs, credentials, hardware layouts and account profiles are excluded.
 
+## Portable checks and CI
+
+The `ATLAS QA` GitHub Actions workflow runs on pushes, pull requests and manual
+dispatch. It uses Ubuntu 24.04, Python 3.11/3.14, Node.js 24, Lua 5.4 and pinned
+PyYAML. Actions use immutable commit references, repository permissions are
+read-only, and checkout credentials are not persisted.
+
+Each job runs all Python tests, authentication boundary checks, all four
+JavaScript model suites, mocked Lua checks, an isolated tmux VPN-panel fixture,
+source/configuration validation and palette/template consistency. Omarchy's
+standalone palette resolver is pinned to v4.0.4's commit and verified by SHA-256.
+No desktop, compositor, VPN account or live authentication service is needed.
+
+With the [test dependencies](DEPENDENCIES.md#building-and-validating-the-source)
+installed, run the same portable checks locally:
+
+```bash
+atlas_test_bin=$(mktemp -d)
+bash tools/ci-deps.sh "$atlas_test_bin"
+PATH="$atlas_test_bin:$PATH" python3 tools/check.py --portable
+PATH="$atlas_test_bin:$PATH" python3 tools/check_release.py
+python3 tools/build_site.py
+```
+
+`check_release.py` requires a Git checkout with the intended release files
+tracked. It builds twice, compares archive bytes, checks extracted payload
+hashes against both the manifest and source, runs the shipped model tests, then
+installs/repeats/syncs/checks/restores within a temporary home. The workflow also
+validates showcase assets and anchors. It does not publish or deploy artifacts.
+
+Portable mode explicitly skips Neovim plugin integration, Omarchy plugin
+validation and QML lint. Run `python3 tools/check.py` on Omarchy for those checks.
+VM/hardware validation below remains necessary; a green portable job does not
+establish live lock/unlock, fingerprint, boot or physical-display behavior.
+
+The helper suites contain 5 idle, 15 monitor and 9 Polkit cases, alongside the
+6 Matrix cases. They cover regressions discovered while adding coverage:
+malformed/overflowing idle timeouts, invalid scaling options, malformed or
+duplicate display rows, and misleading PAM/module or authorization-message
+matches. Polkit's helper recognizes modules in the supplied PAM text; following
+`include`/`substack` files and discovering alternate PAM config locations are
+outside that helper's scope. It does not decide whether authentication succeeds.
+
 ## rc5 validation
 
 - Both Terminal and Classic lock modes reached a secure session lock and
@@ -50,15 +101,243 @@ logs, credentials, hardware layouts and account profiles are excluded.
   the existing surface until the next lock.
 - The rc4-to-rc5 user upgrade, repeat installation, theme switch and original-file
   restoration completed in the VM.
-- Nutcracker's frontend tests cover APK path validation, subprocess cancellation,
-  log control-sequence filtering, reports, CLI path handling, and TUI navigation
-  at 100 × 32 and 80 × 24 cells. Packaging checks cover archive traversal,
-  source verification, tools, launchers, and restoration.
-- The portable Nutcracker installation completed on Linux x86-64 with verified
-  Java/JADX. A harmless generated resource-only APK completed static analysis
-  and produced JSON/PDF reports. No device or third-party application was tested.
-- Java/JADX are separately checksummed downloads. Python direct dependencies
-  use exact versions, but transitive wheels are not a hash-locked supply chain.
+
+## Recovery and Polkit follow-up — 2026-09-17
+
+- The complete checker passed 114 Python tests, including 28 boot tests, and six
+  authentication boundary checks, plus the existing integration and lint checks.
+- A disposable Omarchy VM installed Plymouth through the privileged installer
+  and rebuilt its real boot images. Confirmation was refused in that boot session.
+  After reboot, recovery preserved later Plymouth settings, a comment and mode
+  `0640`; every ESP entry changed by the installation matched its original
+  manifest afterward. The recovered VM rebooted successfully.
+- The installed Polkit clone displayed `<b>ATLAS QA</b> & <i>literal</i>` literally
+  in a real authorization dialog. A temporary VM-only action required native
+  administrator authentication and ran only `/usr/bin/true`. Cancellation denied
+  the action, an incorrect password left it pending, and the correct password
+  authorized it. The test policy was removed afterward.
+
+These checks did not change the reference workstation's boot or authentication
+configuration. The VM was unencrypted, so this run does not establish encrypted
+Plymouth prompt behavior or physical firmware compatibility.
+
+## Unchanged palette sync follow-up — 2026-09-17
+
+The complete checker passed 127 Python tests, six authentication boundary checks
+and the existing integration and lint checks. The personal security agent also
+reviewed the transaction changes and their recovery regressions.
+
+Unchanged installation and palette sync now validate the requested files and
+installation metadata before returning without writing a journal or manifest.
+Matching files being managed for the first time, new components, legacy directory
+metadata and manifest permission repairs still use a recoverable transaction.
+Dry runs also avoid copying the full manifest into a rollback snapshot.
+
+In a temporary home with all user components, the same local benchmark measured:
+
+| Operation | Journal/manifest bytes before → after | Transaction seconds before → after |
+| --- | --- | --- |
+| Repeat installation | approximately 81.5 MB → 0 | 0.831 → 0.200 |
+| Unchanged palette sync | approximately 81.5 MB → 0 | 0.741 → 0.103 |
+
+These are single local timing samples, not general storage benchmarks. The
+existing lock still checks directory permissions; the zero-byte result refers
+to journal/manifest payload writes. Peak RSS across fresh installation, repeat
+installation and sync fell from approximately 520 MiB to 255 MiB; that peak is
+not a measurement of sync alone.
+
+Regression coverage includes unchanged full-bundle installation/sync, applying a
+different palette and repeating it, original-file adoption, component/directory
+metadata updates, permission repair, later edits, concurrent edits, metadata-only
+failure/recovery and restoration with no file changes. The state format is
+unchanged.
+
+## Matrix drawing follow-up — 2026-09-17
+
+Completed fill columns now belong only to the full-column collection. They
+continue changing symbols and colors while other columns fill, and each glyph
+appears once in the draw list. Production animation settings are unchanged.
+
+Seeded simulations using 11×22-pixel cells measured the following maxima across
+complete animation cycles:
+
+| Resolution | Duplicate glyph references per frame before → after | Total draw-list entries before → after |
+| --- | --- | --- |
+| 1920×1080 | 8,477 → 0 | 17,002 → 8,526 |
+| 3840×2160 | 34,104 → 0 | 68,305 → 34,202 |
+
+These measure model drawing work, not live GPU frame rates or desktop CPU use.
+Six deterministic Node tests check column ownership, unique glyphs, painting,
+continued fill animation, complete cycles and fresh state after restart. Five
+of those tests reproduced the original defect before the fix. They now run as
+part of `tools/check.py`.
+
+An isolated Qt 6.11.2 Canvas check also rendered the fill phase and the complete
+262-glyph ATLAS mark from the shipped branding text. It used shortened timing
+for screenshots; the Node cycles use the production timing configuration. This
+follow-up did not invoke a live session lock or change authentication behavior.
+
+## Caps Lock polling follow-up — 2026-09-17
+
+Caps Lock polling now requires an active, visible lock or preview surface and a
+visible password prompt. It pauses while the Matrix screensaver covers the
+prompt. Activation refreshes the indicator immediately, and direct or deferred
+refresh requests also respect that gate. A reader already in flight may finish;
+no further reader starts while hidden. The visible polling interval remains
+400 ms, and readers cannot overlap.
+
+An isolated offscreen Quickshell harness exercised the production LockView with
+native processes and controlled LED output. Styling and Matrix rendering were
+stubbed. The original hidden preview launched three readers in 900 ms; the
+updated view launched none. All 14 lifecycle assertions passed, covering
+hidden/reopened windows, changed Caps Lock state, screensaver dismissal,
+inherited Item visibility, Classic and Terminal prompts, inactive surfaces,
+slow readers and a surface that is already active when created.
+
+This is a process-launch check, not a live desktop CPU or power benchmark.
+Authentication, session-lock transitions and physical keyboard LED behavior
+were not exercised by this harness. Polling remains per visible surface.
+
+## Semantic error-text follow-up — 2026-09-17
+
+Authentication error text and bar alerts use `#e46147`, derived by mixing the
+palette's bright red with 20% foreground. Terminal ANSI colors and error borders
+retain their original values. The Classic lock input field is now opaque carbon,
+so wallpaper brightness cannot wash out its password or error text.
+
+| Text pair | Contrast before → after |
+| --- | --- |
+| Polkit error / carbon | 3.39:1 → 5.60:1 |
+| Terminal lock error / carbon | 3.39:1 → 5.60:1 |
+| Bar alert / carbon | 3.39:1 → 5.60:1 |
+| Classic lock error / white wallpaper bound | 1.87:1 → 5.60:1 |
+
+Ratios use sRGB luminance; checks compare the unrounded values against the
+[4.5:1 normal-text benchmark](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html).
+This is a check of these specific pairs, not whole-theme WCAG conformance.
+The Classic white/black wallpaper bounds include its former 80% input background.
+Offscreen Quickshell captures of the actual Classic and Terminal LockViews were
+visually checked; sampled Classic field/text pixels matched the calculated colors.
+Style/border helpers were isolated fixtures; no live authentication was invoked.
+
+The Python renderer now supports Omarchy's native `mix` template expression.
+Five unit tests cover its amount forms, rounding, clamping, ordinary tokens and
+missing colors. Native Omarchy and Python output matched for all five desktop
+templates and nine mix inputs with ATLAS, Tokyo Night and Catppuccin Latte.
+The shared templates therefore continue following the active theme's palette.
+
+Editor syntax, muted text, disabled controls and wallpaper-dependent contrast
+in translucent application windows remain part of the proposed readability
+variant. This change targets authentication errors and bar alerts.
+
+## Responsive showcase previews — 2026-09-17
+
+The wallpaper picker uses committed WebP thumbnails and responsive hero images.
+Full-resolution PNG download links retain the original file bytes. Forty preview
+files total 828,078 bytes; the generator never enlarges a source image.
+
+A cold-cache Chromium check measured image response bodies for the initial
+wallpaper and all eight visible thumbnails:
+
+| Viewport / pixel density | Before | After |
+| --- | --- | --- |
+| 1280 px desktop / 1× | 12,706,150 bytes | 31,532 bytes |
+| 1280 px desktop / 2× | 12,706,150 bytes | 76,222 bytes |
+| 390 px mobile / 2× | 12,706,150 bytes | 31,532 bytes |
+| 320 px mobile / 1× | 12,706,150 bytes | 15,698 bytes |
+
+These are gallery image bytes, not whole-page transfer totals or page-load
+timings. Original downloads remain in the deployed site, so the staged site's
+total size increases by the preview assets while browsing transfers much less.
+External fonts were excluded consistently from this local comparison.
+
+All eight selections, captions, pressed states and keyboard activation passed at
+each viewport. All eight original downloads matched their original hashes.
+Switching previews fetched no original PNGs. The initial preview and original
+link also work without page JavaScript.
+Desktop/mobile captures were visually inspected; no horizontal overflow, page
+exceptions or missing local assets were observed.
+
+Three site-builder regressions cover staging responsive/dynamic paths, rejecting
+missing candidates before replacing a prior build, and validating candidate
+syntax and relative paths. Both source repositories use the same builder and
+preview bytes. The public Pages workflow runs these tests before staging.
+
+## Comment presets and release follow-up — 2026-09-17
+
+Optional brighter comments are available in Neovim through `atlas-settings
+readability readable`, and in the Codex CLI through its native **ATLAS Readable**
+theme. Standard appearance remains the default. On opaque ATLAS carbon, the
+Neovim comment pair changes from **1.57:1 to 7.34:1** (`#3a342c` → `#a59f96`);
+the CLI pair changes from **3.45:1 to 7.05:1** (`#6e675c` → `#a69b8c`). These
+measurements cover ordinary comments, not every editor highlight or translucent
+surface. Font sizes, semantic annotations and comment styles are preserved.
+
+The complete checker passes **140 Python tests**, six authentication boundary
+checks and **35 JavaScript tests**, plus Lua, native Neovim, plugin manifests,
+QML lint, isolated tmux and palette/template checks. The available Python 3.11.9
+runtime also passes the portable checker, using the installed PyYAML package's
+pure-Python implementation. These are local Arch results with Node.js 26.7;
+see the repository's ATLAS QA workflow for Ubuntu/Node.js 24 hosted results.
+
+Five new preference tests cover persistence, original-file restoration, no-op
+selection, managed-edit protection, symlink rejection and command validation.
+Native Neovim integration covers focus refresh, ordinary/Treesitter comments,
+preserved TODO/error annotations and italics, palette changes and switching to
+another colorscheme. Native Omarchy/Python template output matches for ATLAS,
+Tokyo Night and Catppuccin Latte. The independent security review found no
+material issues in the new preference path or journal integration.
+
+A fresh disposable overlay of the existing Omarchy 4.0.4 recovery VM installed
+the verified archive and all user components, including the Codex syntax assets:
+
+- Classic and Terminal locks both stayed secure after an incorrect password and
+  unlocked through native password PAM. A changed lock-style preference remained
+  deferred until the next lock.
+- The current Polkit model and agent displayed the markup fixture literally;
+  cancellation returned 126, an incorrect password did not authorize, and the
+  correct password authorized `/usr/bin/true`. The temporary action was removed.
+  Additional model cases preserve LF/CRLF command and service messages.
+- The installed Neovim template read the actual brighter-comment preference.
+  ATLAS → Tokyo Night → ATLAS preserved that choice and respected Tokyo Night's
+  own native editor configuration. A repeat installation made zero file changes
+  and left the manifest timestamp unchanged; diagnostics reported no drift.
+- Scaling to 1.25 worked, including secure lock/unlock. A second virtual output
+  appeared in the monitor panel; removing it while locked left the remaining
+  surface secure and usable for password unlock. These are virtual-output checks,
+  not physical hotplug or GPU coverage.
+- The production drive-action module ran against a real virtual USB through
+  UDisks. It rejected a busy eject and an internal disk, then successfully
+  unmounted, mounted and powered off the released USB. A Neovim adapter supplied
+  Yazi's JSON/process/UI primitives; the actual Yazi menu was not installed here.
+- H.264 playback advanced in mpv's Wayland software output (`--vo=wlshm`). The
+  default renderer aborted at `vo_x11_init` after graphics-context failures. The
+  same abort reproduced after ATLAS restoration with `--no-config`, so default
+  renderer compatibility remains a VM/application limitation. No persistent
+  renderer setting was changed; this does not establish accelerated playback.
+- Native user restoration removed the managed runtime and newly introduced
+  preferences/themes, restored saved files and restarted the original shell
+  without compositor configuration errors. The restored VM then rebooted to
+  its original SDDM login. Restoration guidance now explicitly requires logout
+  and login to clear the session's inherited `FONTCONFIG_FILE` value.
+
+The current archive's Limine/Plymouth/SDDM dry-run planned 20 boot-file changes
+without changing files or boot images. Boot code and assets are unchanged from
+the earlier real recovery/reboot validation; that evidence remains applicable.
+This follow-up did not install another kernel or repeat boot-image rebuilding.
+
+The Terminal lock now displays native authentication-failure messages as plain
+text that wraps beneath its narrow password prompt. The input and logo retain
+their positions and the normal font size. Feedback hides while typing, checking
+a password or showing the screensaver. Classic retains its inline message.
+An offscreen Quickshell check at 1× and 1.25× rendered native, long and multiline
+messages without truncation, including fingerprint hints and a 320-pixel-wide
+view. It also checked feedback visibility and fixed prompt geometry. Theme and
+Matrix helpers were stubbed; this layout check did not invoke authentication.
+
+Physical firmware/GPU variation, fingerprint readers, encrypted Plymouth prompts,
+suspend/resume, power profiling, real Nym connectivity and native Zen/Spotify
+workflows remain unverified in this pass.
 
 ## Before promoting the candidate to a stable release
 

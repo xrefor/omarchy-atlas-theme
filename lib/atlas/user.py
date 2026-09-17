@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import tomllib
-from . import config, lock_style, palette, settings, state
+from . import config, lock_style, palette, readability, settings, state
 
 COMPONENTS = {'theme', 'desktop', 'apps', 'shell', 'cli'}
 
@@ -68,6 +68,8 @@ def plan(root, home, components, colors, syncing=False, cli_groups=None):
         current=yaml.safe_load(get(rel)) or {}
         if not isinstance(current, dict): raise ValueError(f'Expected mapping in {rel}')
         put(rel, yaml.safe_dump(config.merge(current, yaml.safe_load(text)), sort_keys=False, allow_unicode=True))
+    if components & {'theme', 'desktop'} and not syncing:
+        put(readability.PREFERENCE, readability.current(home) + '\n')
     if 'theme' in components and not syncing:
         prefix='.config/omarchy/themes/atlas/'
         for name in ('colors.toml','icons.theme','keyboard.rgb','chromium.theme','preview.png','unlock.png','screensaver-mark.png','shell.toml','hyprland.lua','neovim.lua','gtk-3.0.css','gtk-4.0.css'):

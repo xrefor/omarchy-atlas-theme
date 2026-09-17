@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from . import state
+from . import readability, state
 
 MENU_PATH = '.config/omarchy/extensions/omarchy-menu.jsonc'
 OPACITY_FILES = ('.config/hypr/looknfeel.lua', '.config/hypr/hyprland.lua')
@@ -40,11 +40,12 @@ def menu_entries():
         'atlas': {'icon': '󰛲', 'label': 'ATLAS', 'description': 'Appearance, component status and maintenance', 'aliases': ['atlas-settings']},
         'atlas.wallpaper': {'icon': '', 'label': 'Wallpaper', 'action': 'atlas-settings wallpaper'},
         'atlas.opacity': {'icon': '󰂵', 'label': 'Window opacity', 'description': 'Fullscreen and app-specific exceptions stay opaque'},
+        'atlas.readability': {'label': 'Neovim comments', 'description': 'Choose standard or brighter comments; applies when you return to Neovim'},
+        'atlas.readability.standard': {'label': 'Standard', 'action': 'atlas-settings readability standard', 'checked': 'atlas-settings readability-is standard'},
+        'atlas.readability.readable': {'label': 'Brighter', 'action': 'atlas-settings readability readable', 'checked': 'atlas-settings readability-is readable'},
         'atlas.lock': {'icon': '', 'label': 'Lock screen', 'description': 'Choose the style for your next lock', 'when': 'command -v atlas-lock-style >/dev/null'},
         'atlas.lock.terminal': {'label': 'Terminal', 'action': 'atlas-lock-style terminal', 'checked': 'atlas-lock-style is terminal'},
         'atlas.lock.classic': {'label': 'Classic', 'action': 'atlas-lock-style classic', 'checked': 'atlas-lock-style is classic'},
-        'atlas.nutcracker': {'icon': '', 'label': 'Nutcracker', 'description': 'Android APK analysis and reports', 'action': 'omarchy launch tui --app-id=org.atlas.nutcracker atlas-nutcracker', 'when': 'command -v atlas-nutcracker >/dev/null'},
-        'atlas.nutcracker-install': {'icon': '', 'label': 'Install Nutcracker…', 'description': 'Optional Android analysis tools and ATLAS terminal interface', 'action': terminal + 'nutcracker-install --pause', 'when': '! command -v atlas-nutcracker >/dev/null'},
         'atlas.status': {'icon': '', 'label': 'Component status', 'action': terminal + 'status --pause'},
         'atlas.diagnostics': {'icon': '󰒓', 'label': 'Diagnostics', 'description': 'Check local dependencies and changed configuration', 'action': terminal + 'diagnostics --pause'},
         'atlas.help': {'icon': '󰋖', 'label': 'Shortcuts & help', 'action': terminal + 'help --pause'},
@@ -98,6 +99,8 @@ def status(home):
     except ValueError: print('Window opacity: custom / not controlled by ATLAS')
     bg = state.target(home, '.local/state/omarchy/current/background')
     print('Wallpaper: ' + (bg.resolve().name if bg.exists() else 'Not detected'))
+    try: print('Neovim comments: ' + readability.current(home))
+    except ValueError: print('Neovim comments: custom / invalid preference')
     print()
     probes = {
         'theme': '.config/omarchy/themes/atlas/colors.toml',
@@ -167,17 +170,25 @@ def restore(root, home):
     result = subprocess.run(args, check=False)
     if result.returncode == 0 and home == Path.home().resolve():
         hyprland_check()
-        print('Open a fresh terminal/editor to load the restored configuration.')
+        print('Log out and back in to load restored configuration and clear session font settings.')
     return result.returncode
 
 
 def main(root):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', nargs='?', default='menu', choices=['menu', 'wallpaper', 'opacity', 'opacity-is', 'status', 'diagnostics', 'help', 'restore', 'nutcracker-install'])
-    parser.add_argument('percent', nargs='?', type=int, choices=PRESETS)
+    parser.add_argument('action', nargs='?', default='menu', choices=['menu', 'wallpaper', 'opacity', 'opacity-is', 'readability', 'readability-is', 'status', 'diagnostics', 'help', 'restore'])
+    parser.add_argument('value', nargs='?')
     parser.add_argument('--home', type=Path, default=Path.home())
     parser.add_argument('--pause', action='store_true', help='Keep reports visible when launched from the menu')
     args = parser.parse_args()
+    if args.action in ('opacity', 'opacity-is'):
+        if args.value not in tuple(map(str, PRESETS)):
+            parser.error(args.action + ' requires 80, 87, 95 or 100')
+    elif args.action in ('readability', 'readability-is'):
+        if args.value not in readability.PRESETS:
+            parser.error(args.action + ' requires standard or readable')
+    elif args.value is not None:
+        parser.error(args.action + ' does not take a value')
     home = args.home.resolve()
     code = 0
     try:
@@ -190,20 +201,19 @@ def main(root):
                 if selection.returncode == 0 and selection.stdout.strip():
                     subprocess.run(['omarchy', 'theme', 'bg', 'set', selection.stdout.strip()], check=True)
         elif args.action == 'opacity-is':
-            try: return int(opacity_info(home)[1] != args.percent)
+            try: return int(opacity_info(home)[1] != int(args.value))
             except ValueError: return 1
         elif args.action == 'opacity':
-            if args.percent is None: parser.error('opacity requires a percentage')
-            set_opacity(home, args.percent, live=home == Path.home().resolve())
-        elif args.action == 'nutcracker-install':
-            if home != Path.home().resolve(): raise ValueError('Use atlas-theme nutcracker-install --home for a separate installation')
-            from . import nutcracker
-            nutcracker.setup(root, with_tools=True)
+            set_opacity(home, int(args.value), live=home == Path.home().resolve())
+        elif args.action == 'readability-is':
+            return int(readability.current(home) != args.value)
+        elif args.action == 'readability':
+            print('ATLAS Neovim comments: ' + readability.select(home, args.value))
         elif args.action == 'status': status(home)
         elif args.action == 'diagnostics': code = diagnostics(home)
         elif args.action == 'restore': code = restore(root, home)
         elif args.action == 'help':
-            print('ATLAS / everyday shortcuts\n\nCtrl+Space → f  Files (Yazi)\nEnter          Enter a folder / open a file\nRight or l     Enter a folder\nLeft or h      Parent folder\nCtrl+Space → c  New terminal tab\n\nNeovim: Space opens the key guide; :q closes the current window.\n\nAppearance: Omarchy → ATLAS, or run atlas-settings.\nOpacity: 80%, 87% (default), 95%, or fully opaque.\nFonts stay at the configured size; ATLAS uses 9 pt.\n\nDiagnostics are local and preserve manual edits.\nRestore shows the affected files before asking for confirmation.')
+            print('ATLAS / everyday shortcuts\n\nCtrl+Space → f  Files (Yazi)\nEnter          Enter a folder / open a file\nRight or l     Enter a folder\nLeft or h      Parent folder\nCtrl+Space → c  New terminal tab\n\nNeovim: Space opens the key guide; :q closes the current window.\n\nAppearance: Omarchy → ATLAS, or run atlas-settings.\nOpacity: 80%, 87% (default), 95%, or fully opaque.\nNeovim comments: Standard or Brighter (refreshes on focus).\nFonts stay at the configured size; ATLAS uses 9 pt.\n\nDiagnostics are local and preserve manual edits.\nRestore shows the affected files before asking for confirmation.')
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(f'ATLAS: {error}', file=sys.stderr)
         code = 1

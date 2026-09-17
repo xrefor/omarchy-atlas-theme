@@ -1,5 +1,22 @@
 # ATLAS showcase media
 
+## Responsive wallpaper previews
+
+`previews/` contains WebP derivatives of the original `backgrounds/*.png` files.
+The website uses 160/320-pixel thumbnail candidates and 640/1080/2160-pixel hero
+candidates, capped at each original's native width. The seven smaller originals
+therefore use 1672 pixels for their largest preview. PNG downloads are unchanged.
+
+Regenerate them with `python3 tools/build_previews.py` (Pillow with WebP support).
+The generator uses Lanczos resizing and WebP quality 85; the current assets were
+generated with Pillow 12.3.0 and libwebp 1.6.0. Commit the output with any changed
+wallpaper source. If dimensions change, update the corresponding `srcset` and
+`data-srcset` width descriptors in `index.html`.
+
+`tools/build_site.py` stages and validates every responsive candidate and the
+original downloads referenced by the wallpaper picker. Normal site builds use
+the committed previews and need only the Python standard library.
+
 ## Current README and website
 
 The approved overview is `atlas-overview.gif` / `atlas-overview.mp4`:
@@ -26,9 +43,6 @@ All interface elements are real captures; no UI was composited into the footage.
 
 - `atlas-lock-terminal.png`: actual 1280 × 800 QEMU display capture of the
   packaged terminal lock on the Omarchy validation VM, 2026-09-16.
-- `atlas-nutcracker.png`: headless Textual rendering of the packaged frontend
-  at 100 × 32 cells, exported as SVG and rasterized. It is a UI preview, not a
-  recording of an APK analysis or a physical terminal cursor.
 
 ## Original desktop recording
 

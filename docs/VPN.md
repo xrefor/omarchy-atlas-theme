@@ -1,5 +1,12 @@
 # ATLAS / NymVPN
 
+[NymVPN](https://nym.com/) is an open-source, decentralized VPN developed by
+[Nym Technologies SA](https://nym.com/trust-center) in Switzerland. Its Fast mode
+uses two-hop WireGuard routing; its Mixnet mode routes traffic through five hops,
+adding cover traffic and packet mixing to obscure traffic patterns, with higher
+latency. See Nym's [explanation of the two modes](https://support.nym.com/hc/en-us/articles/24326365096721-What-s-the-difference-between-NymVPN-Fast-Anonymous-mode).
+ATLAS provides an optional themed terminal panel for the service.
+
 The `apps` component installs `~/.local/bin/atlas-vpn` and binds **Ctrl+Space,
 then N** in tmux. It opens a side pane in wide terminals and a window in narrow
 ones. Repeat the shortcut to close it, or run `atlas-vpn` directly.

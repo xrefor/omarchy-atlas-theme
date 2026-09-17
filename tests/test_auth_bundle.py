@@ -51,6 +51,16 @@ def test_polkit_has_no_file_based_askpass_secret_bridge():
     assert "PolkitAgent {" in text
 
 
+def test_polkit_authorization_label_renders_untrusted_message_as_plain_text():
+    qml = (PLUGINS / "atlas.polkit" / "PolkitAgent.qml").read_text()
+    label = qml[qml.index("id: justificationText") :]
+    label = label[: label.index("\n      }")]
+    assert (
+        "text: root.authorizationLabel(root.currentMessage)\n"
+        "        textFormat: Text.PlainText"
+    ) in label
+
+
 def test_monitor_does_not_bundle_the_local_hardware_fallback():
     text = plugin_text("atlas.monitor")
     assert "omarchy-brightness-display" in text

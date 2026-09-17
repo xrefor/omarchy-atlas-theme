@@ -20,6 +20,9 @@ This bundle does not install or modify PAM policy, fingerprint enrollment, Polki
 
 `atlas.polkit` reads `/etc/pam.d/polkit-1` only to decide whether to show a fingerprint hint. Quickshell's `PolkitAgent` owns the authorization conversation.
 
+Authorization messages are displayed as plain text. Markup in a message is shown
+literally and cannot change the label's formatting.
+
 The local `~/.local/bin/omarchy-brightness-display` hardware fallback is also excluded. `atlas.monitor` calls the stock command name, so supported DDC or backlight hardware works as Omarchy intends; machines without supported brightness control simply omit that row. Night Light still works through `omarchy.nightlight`.
 
 ## Compatibility preflight

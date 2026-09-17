@@ -10,7 +10,8 @@ background       = "{{ background }}"
 background-alpha = 1.0
 text             = "{{ foreground }}"
 # Modules calling attention to themselves (recording, voxtype, alerts, updates)
-active           = "{{ red }}"
+# Derive readable UI red without changing the terminal ANSI palette.
+active           = "{{ mix bright_red foreground 20% }}"
 # Cross-axis size at font base-size 12. size-horizontal is the height of
 # top/bottom bars; size-vertical is the width of left/right bars. With
 # scale-with-font enabled, these grow/shrink with [font] base-size.
@@ -204,7 +205,7 @@ selected-border-width = 1
 background       = "{{ background }}"
 background-alpha = 1.0
 text             = "{{ foreground }}"
-text-error       = "{{ red }}"
+text-error       = "{{ mix bright_red foreground 20% }}"
 border           = "hyprland.active-border"
 border-error     = "{{ red }}"
 border-alpha     = 1.0
@@ -220,10 +221,11 @@ accent           = "{{ accent }}"
 # border-alpha applies to all three border states (they are mutually
 # exclusive in time).
 background       = "{{ background }}"
-background-alpha = 0.8
+# Keep password/error text independent of wallpaper brightness.
+background-alpha = 1.0
 text             = "{{ foreground }}"
 placeholder = "{{ secondary }}"
-text-error       = "{{ red }}"
+text-error       = "{{ mix bright_red foreground 20% }}"
 border = "{{ muted }}"
 border-active    = "hyprland.active-border"
 border-error     = "{{ red }}"

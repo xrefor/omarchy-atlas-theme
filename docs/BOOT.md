@@ -67,9 +67,17 @@ sudo python3 install.py boot-recover
 Recovery verifies the journal, managed selectors/files and kernel fingerprint.
 For a completed transaction it restores only ESP files changed by ATLAS, while
 preserving unrelated boot-time changes such as a refreshed random seed or new
-unrelated files. It refuses if an ATLAS-touched ESP file, kernel set, or managed
-appearance path was changed later. New boot writes remain locked out until the
-checkpoint is confirmed or recovered.
+unrelated files. Plymouth recovery restores only `[Daemon] Theme` when unrelated
+settings have changed, preserving later settings, comments and file permissions.
+If the original config was absent, a new file with later settings is retained
+without ATLAS's selector. With no later edits, the exact original snapshot is
+restored, including an originally absent file.
+
+Recovery refuses changed or added Theme selectors, an ATLAS-touched ESP file,
+or a changed kernel set. An original config with duplicate Theme selectors can
+be restored exactly; recovery refuses an ambiguous merge with later edits.
+An interrupted recovery retains its checkpoint and can be retried. New boot
+writes remain locked out until the checkpoint is confirmed or recovered.
 
 To remove the integrations, select the same components or omit flags to remove
 all installed boot components:

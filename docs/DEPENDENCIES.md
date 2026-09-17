@@ -46,6 +46,17 @@ data is bundled. See [VPN.md](VPN.md). Nym is not required to install ATLAS.
 
 ## Building and validating the source
 
-Rendering SVG artwork requires `rsvg-convert`. Tests additionally use Python
-unittest, Lua, Bash, and Omarchy's plugin validator. If available, `qmllint`
-checks the Quickshell files using the installed Omarchy import paths.
+Rendering SVG artwork requires `rsvg-convert`. Portable tests use Python 3.11+,
+PyYAML, Node.js, Lua, Bash, Git, tmux and the standalone `omarchy-theme-color`
+resolver. CI checks Python 3.11 and 3.14 with Node.js 24, Lua 5.4 and PyYAML 6.0.3.
+`tools/ci-deps.sh` can fetch a commit-pinned, checksum-verified Omarchy 4.0.4
+resolver into a selected temporary directory; it does not install Omarchy.
+
+The default checker additionally uses Omarchy's plugin validator, installed
+Neovim plugins and `qmllint` with Quickshell/Omarchy imports when available.
+Portable mode explicitly skips these desktop-specific checks. See
+[validation commands and CI coverage](VALIDATION.md#portable-checks-and-ci).
+
+Regenerating showcase wallpaper previews with `tools/build_previews.py` requires
+Pillow with WebP support. The generated previews are committed, so ordinary
+site staging, release builds and CI do not require Pillow.
