@@ -299,6 +299,8 @@ class BundleTests(unittest.TestCase):
             self.apply(synced)
         self.assertTrue((self.home/'.local/bin/atlas-info').is_file())
         self.assertTrue(os.access(self.home/'.local/bin/atlas-vpn', os.X_OK))
+        self.assertTrue(os.access(self.home/'.local/bin/atlas-agents', os.X_OK))
+        self.assertEqual(json.loads((self.home/'.config/atlas/agents-palette.json').read_text())['accent'], self.colors['accent'])
         self.assertIn('atlas-vpn', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertTrue((self.home/'.config/atlas/atlas-prompt.py').is_file())
         self.assertTrue((self.home/'.codex/themes/atlas.tmTheme').is_file())
@@ -353,12 +355,13 @@ class BundleTests(unittest.TestCase):
             'atlas-panel':'btop\n',
             'atlas-session':'tmux\nnew-session\n',
             'atlas-theme':'usage:',
+            'atlas-agents':'usage:',
         }
         for name,output in expected.items():
             with self.subTest(command=name):
                 command=self.home/'.local/bin'/name
                 self.assertTrue(os.access(command,os.X_OK),name+' is not executable')
-                args=[str(command)]+(['--help'] if name=='atlas-theme' else [])
+                args=[str(command)]+(['--help'] if name in ('atlas-theme','atlas-agents') else [])
                 result=subprocess.run(args,cwd=self.home,env=env,capture_output=True,text=True,timeout=10)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertIn(output,result.stdout)

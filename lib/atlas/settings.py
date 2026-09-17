@@ -213,7 +213,7 @@ def main(root):
         elif args.action == 'diagnostics': code = diagnostics(home)
         elif args.action == 'restore': code = restore(root, home)
         elif args.action == 'help':
-            print('ATLAS / everyday shortcuts\n\nCtrl+Space → f  Files (Yazi)\nEnter          Enter a folder / open a file\nRight or l     Enter a folder\nLeft or h      Parent folder\nCtrl+Space → c  New terminal tab\n\nNeovim: Space opens the key guide; :q closes the current window.\n\nAppearance: Omarchy → ATLAS, or run atlas-settings.\nOpacity: 80%, 87% (default), 95%, or fully opaque.\nNeovim comments: Standard or Brighter (refreshes on focus).\nFonts stay at the configured size; ATLAS uses 9 pt.\n\nDiagnostics are local and preserve manual edits.\nRestore shows the affected files before asking for confirmation.')
+            print('ATLAS / everyday shortcuts\n\nCtrl+Space → f  Files (Yazi)\nEnter          Enter a folder / open a file\nRight or l     Enter a folder\nLeft or h      Parent folder\nCtrl+Space → c  New terminal tab\nCtrl+Space → a  Agent panel\n\nNeovim: Space opens the key guide; :q closes the current window.\n\nAppearance: Omarchy → ATLAS, or run atlas-settings.\nOpacity: 80%, 87% (default), 95%, or fully opaque.\nNeovim comments: Standard or Brighter (refreshes on focus).\nFonts stay at the configured size; ATLAS uses 9 pt.\n\nDiagnostics are local and preserve manual edits.\nRestore shows the affected files before asking for confirmation.')
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(f'ATLAS: {error}', file=sys.stderr)
         code = 1

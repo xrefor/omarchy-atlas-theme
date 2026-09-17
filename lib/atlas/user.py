@@ -141,6 +141,9 @@ hl.env("PATH", os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or "/us
         put('.config/atlas/palette.bash',shell_palette(colors))
         put('.config/atlas/vpn-palette.json',json.dumps({key: colors[key] for key in
             ('accent','secondary','green','red','muted','bright_foreground','foreground')})+'\n')
+        put('.config/atlas/agents-palette.json',json.dumps({key: colors[key] for key in
+            ('background','lighter_background','foreground','dark_foreground','bright_foreground',
+             'secondary','muted','accent','green','yellow','red')})+'\n')
         revision=hashlib.sha256(json.dumps(colors,sort_keys=True).encode()).hexdigest()[:20]
         put('.config/atlas/revision',revision+'\n')
         if not syncing:

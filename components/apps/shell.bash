@@ -14,3 +14,18 @@ if [[ ! ${_ATLAS_PROMPT_HOOK:-} ]]; then
   PROMPT_COMMAND+=(_atlas_theme_refresh)
   _ATLAS_PROMPT_HOOK=1
 fi
+
+# Observe interactive Codex sessions in this tmux pane. Keep custom functions/aliases
+# intact; command codex remains an explicit bypass. The launcher execs Codex
+# with its original arguments, terminal, process group and exit behavior.
+if ! declare -F codex >/dev/null && ! alias codex >/dev/null 2>&1 && command -v atlas-agents >/dev/null 2>&1; then
+  function codex {
+    local atlas_codex_binary
+    atlas_codex_binary=$(type -P codex) || return
+    if [[ -n ${TMUX:-} && -t 0 && -t 1 && ${ATLAS_AGENTS_AUTO:-1} != 0 ]]; then
+      command atlas-agents launch -- "$atlas_codex_binary" "$@"
+    else
+      command "$atlas_codex_binary" "$@"
+    fi
+  }
+fi

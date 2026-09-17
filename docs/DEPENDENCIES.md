@@ -37,6 +37,13 @@ missing packages with Omarchy's package commands; select only components that
 match the applications you intend to use. Fonts and icons retain their package
 licenses and are managed separately from this bundle.
 
+## Optional Codex agent panel
+
+The apps component also includes the optional [Codex agent panel](AGENT-PANEL.md).
+Using it requires local Codex CLI 0.154.0, Linux `/proc`, tmux and Python's
+standard-library curses/SQLite modules. Codex is not required to install ATLAS.
+The observer does not add an API key, SDK dependency or Codex hook.
+
 ## Optional NymVPN panel
 
 The apps component includes `atlas-vpn`; using it requires a working NymVPN

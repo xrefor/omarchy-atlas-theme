@@ -339,6 +339,58 @@ Physical firmware/GPU variation, fingerprint readers, encrypted Plymouth prompts
 suspend/resume, power profiling, real Nym connectivity and native Zen/Spotify
 workflows remain unverified in this pass.
 
+## Codex agent panel — 2026-09-17
+
+The complete Omarchy checker passed. After the final shell and relaunch
+regressions were added, all **189 Python tests** passed with disposable tmux
+tests enabled. Release checks verified byte-identical builds, all 248 extracted
+payload files, staged installation, unchanged repeat/sync/check and restoration.
+Showcase assets and links also passed validation.
+
+Panel coverage includes exact conversation lineage, nested agents, inherited
+history boundaries, completed/resumed/interrupted turns, partial and oversized
+records, unavailable metadata, private snapshots and terminal control removal.
+Reported plans are displayed without inventing percentage progress. Palette
+tests cover source colors, live file reloads, invalid-role fallbacks and use of
+indexed terminal colors without redefining shared palette slots.
+
+Disposable tmux tests exercise detached wide/narrow layouts, focus preservation,
+duplicate suppression, literal command arguments, automatic opening, dismissal,
+CLI exit and quick relaunch handoff. PTY-driven Bash checks cover custom functions
+and aliases, exact arguments and exit status, opt-out and utility/noninteractive
+bypasses. The security review found no material remaining blocker.
+
+A live read-only preview on Codex CLI **0.154.0** showed this conversation's
+running and completed agents in the ATLAS palette, with active agents first and
+focus retained in the originating pane. This validates the local adapter on
+that version; it does not establish compatibility with future Codex metadata
+schemas or remote sessions. See [agent panel behavior](AGENT-PANEL.md).
+
+Agent panel exit cleanup follow-up: all nine lifecycle tests passed with real
+disposable tmux sessions. Open side panels and separate panel windows close on
+CLI exit. Removing the originating pane also closes its panel when the CLI
+survives SIGHUP, while unrelated panes remain. Regression checks cover cleanup
+after a final snapshot-write failure and ownership handoff during quick relaunch.
+The last snapshot remains available for manual reopening from the original pane.
+The complete Omarchy checker also passed, including all 193 Python tests.
+
+## rc6 release integration — 2026-09-17
+
+The agent panel is included in rc6 alongside the recovery, readability and
+performance improvements recorded above. The existing published rc5 release
+is preserved. The previous main commit's hosted QA passed on Ubuntu 24.04 with
+Python 3.11 and 3.14 and Node.js 24.
+
+Automatic observation now re-resolves the exact conversation when the same
+Codex process starts or resumes another thread. Temporary loss of the session
+file marks earlier observations stale. An explicit thread selection remains
+pinned and can update an already-running observer for that same CLI session.
+The regression fixture uses a disposable tmux server and a fake CLI opening
+real session files; it does not drive Codex's interactive `/new` or `/resume` UI.
+
+This release integration does not repeat the earlier VM authentication/boot
+checks or extend their physical hardware coverage.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:
@@ -357,4 +409,4 @@ The clean VM covers installation, reboot, password authentication, virtual USB
 media and recovery logic. It does not validate physical firmware rendering,
 GPU variation, fingerprint readers, encrypted Plymouth prompts, real Nym account
 connectivity or every optional application version. The archive is suitable for
-sharing as **1.0.0-rc5** with those limitations stated.
+sharing as **1.0.0-rc6** with those limitations stated.
