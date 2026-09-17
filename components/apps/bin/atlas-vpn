@@ -15,6 +15,136 @@ import threading
 import time
 
 
+SERVICE = 'nym-vpnd.service'
+SYSTEMCTL = '/usr/bin/systemctl'
+SUDO = '/usr/bin/sudo'
+NYM_APP = '/usr/bin/nym-vpn-app'
+
+
+def find_cli():
+    local_binary = Path.home()/'.local/bin/nym-vpnc'
+    return shutil.which('nym-vpnc') or (str(local_binary) if local_binary.is_file() and os.access(local_binary, os.X_OK) else None)
+
+
+def read_service():
+    """Read system service state without authentication or side effects."""
+    state = dict.fromkeys(('LoadState', 'ActiveState', 'SubState', 'UnitFileState'), 'unknown')
+    state['error'] = ''
+    try:
+        result = subprocess.run([SYSTEMCTL, '--system', '--no-pager', 'show', SERVICE,
+                                 '--property=LoadState,ActiveState,SubState,UnitFileState'],
+                                capture_output=True, text=True, timeout=3)
+        for line in result.stdout.splitlines():
+            name, _, value = line.partition('=')
+            if name in state and name != 'error':
+                state[name] = clean(value) or 'unknown'
+        if result.returncode:
+            state['error'] = clean(result.stderr).strip()[:500] or 'Unable to read system service state.'
+    except (OSError, subprocess.TimeoutExpired) as error:
+        state['error'] = 'Unable to read system service state: ' + str(error)[:300]
+    return state
+
+
+def service_blocker(state, action=None):
+    if state['LoadState'] == 'not-found':
+        return 'Nym service is not installed. Install NymVPN, then press R to refresh.'
+    if state['LoadState'] == 'masked' or state['UnitFileState'].startswith('masked'):
+        return 'Nym service is masked. Resolve that system setting before starting it here.'
+    if state['error'] or state['LoadState'] != 'loaded':
+        return state['error'] or 'Nym service state is unavailable. Press R to retry.'
+    if action == 'enable' and state['UnitFileState'] not in ('enabled', 'disabled', 'enabled-runtime'):
+        return 'This service cannot be enabled here (unit state: ' + state['UnitFileState'] + ').'
+    return ''
+
+
+def open_app():
+    if os.geteuid() == 0:
+        return 'Open the Nym app as your desktop user, without sudo.'
+    if not os.path.isfile(NYM_APP) or not os.access(NYM_APP, os.X_OK):
+        return 'Nym app is missing. Install the NymVPN desktop app to log in or sign up.'
+    try:
+        # No sudo: account setup belongs to the desktop user, outside this panel.
+        process = subprocess.Popen([NYM_APP], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL, start_new_session=True)
+        try:
+            code = process.wait(timeout=.3)
+        except subprocess.TimeoutExpired:
+            threading.Thread(target=process.wait, daemon=True).start()
+        else:
+            if code:
+                return f'Nym app exited with status {code}. Try opening it from the application launcher.'
+        return 'Nym app opened. Log in or sign up there, then return here and press R.'
+    except OSError as error:
+        return 'Unable to open Nym app: ' + str(error)
+
+
+def change_service(action):
+    """Called only after confirmation, with curses suspended for sudo's prompt."""
+    state = read_service()
+    if action not in ('start', 'enable'):
+        return state, 'Unknown service action.'
+    blocker = service_blocker(state, action)
+    if blocker:
+        return state, blocker
+    command = [SUDO, '--', SYSTEMCTL, '--system', '--no-pager']
+    command += ['start', SERVICE] if action == 'start' else ['enable', '--now', SERVICE]
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, timeout=120)
+    except (KeyboardInterrupt, OSError, subprocess.TimeoutExpired) as error:
+        state = read_service()
+        message = 'Service action cancelled.' if isinstance(error, KeyboardInterrupt) else 'Service action failed: ' + str(error)[:300]
+        return state, message + ' Review the service state before retrying.'
+    state = read_service()
+    if result.returncode:
+        return state, 'Service action failed: ' + (clean(result.stderr or result.stdout).strip()[:500] or 'Authentication cancelled or systemctl failed.')
+    if (service_blocker(state) or state['ActiveState'] != 'active'
+            or (action == 'enable' and state['UnitFileState'] != 'enabled')):
+        return state, 'Service change could not be verified. Review its state and press R before retrying.'
+    message = 'Service running. ' if action == 'start' else 'Service running and enabled at boot. '
+    return state, message + open_app()
+
+
+def service_rows(state, width, binary, message='', confirm=None):
+    rows = []
+    def row(value='', color=7):
+        rows.extend((line, color) for line in (textwrap.wrap(value, max(1, width)) or ['']))
+    row('A T L A S  /  N Y M', 1)
+    row('SERVICE & ACCOUNT SETUP', 6)
+    row('─' * width, 5)
+    row(SERVICE, 2)
+    row('Service: ' + state['ActiveState'] + ' / ' + state['SubState'], 1)
+    row('Startup: ' + state['UnitFileState'], 2)
+    row('Unit: ' + state['LoadState'], 2)
+    row()
+    blocker = service_blocker(state)
+    if blocker:
+        row(blocker, 4)
+    if confirm:
+        row('CONFIRM SERVICE CHANGE', 1)
+        row('Start the Nym service now; keep its existing startup setting.' if confirm == 'start'
+            else 'Enable the Nym service at every boot and start it now.')
+        row('Administrator authentication may be requested. After verification, the Nym app opens for login or sign-up.', 2)
+        row('Starting the service may resume a VPN if Nym is configured to auto-connect.', 2)
+        row('Y confirm / N or Esc cancel', 1)
+    else:
+        if not blocker:
+            row('1  Start service once (keep startup setting)', 1)
+            if not service_blocker(state, 'enable'):
+                row('2  Enable at boot and start service', 1)
+        row('O  Open Nym app / log in or sign up', 1)
+        row('R  Refresh service and VPN state', 2)
+        row()
+        row('Service startup and VPN connection are separate. Account setup takes place in the Nym app.', 2)
+    if not binary:
+        row()
+        row('Nym CLI is missing. Service and app setup are available; install a matching nym-vpnc for tunnel controls.', 2)
+    if message:
+        row()
+        row(message, 1)
+    row('─' * width, 5)
+    return rows
+
+
 class Session:
     def __init__(self, binary):
         self.process = subprocess.Popen([binary, 'start-session'], stdin=subprocess.PIPE,
@@ -321,6 +451,10 @@ def dashboard(data, width, events, detailed=False):
     row('A T L A S  /  N Y M', 1)
     row('M I X N E T   /   D V P N   C O N T R O L', 2)
     rule()
+    if 'service' in data:
+        service = data['service']
+        row('SERVICE  ' + service['ActiveState'] + ' / ' + service['SubState'] +
+            '   STARTUP  ' + service['UnitFileState'] + '   [B setup / O app]', 2)
     row(state, 3 if state == 'CONNECTED' else 4 if state in ('ERROR', 'OFFLINE', 'UNAVAILABLE') else 1)
     row(f'SELECTED MODE   {mode}   [M options]', 2)
     row()
@@ -378,17 +512,33 @@ def panel(screen, binary):
     curses.curs_set(0)
     screen.timeout(150)
     palette()
-    backend = Backend(binary)
-    data = {'status': 'Waiting for Nym authentication…', 'tunnel': '', 'gateway': '', 'message': ''}
+    service = read_service()
+    backend = None
+    data = {'status': 'Waiting for Nym service…', 'tunnel': '', 'gateway': '', 'message': '', 'service': service}
     ready, failed, busy = False, False, False
     updated = None
     scroll = 0
     events, detailed = [], False
     previous_status = None
-    page, editor, entry = None, None, ''
+    page = ('service' if not binary or service_blocker(service) or service['ActiveState'] != 'active'
+            or service['UnitFileState'] != 'enabled' else None)
+    editor, entry, confirm = None, '', None
+    service_refresh = time.monotonic() + 5
     try:
         while True:
-            while True:
+            if time.monotonic() >= service_refresh:
+                service = data['service'] = read_service()
+                service_refresh = time.monotonic() + 5
+            if backend and (service_blocker(service) or service['ActiveState'] != 'active'):
+                backend.close()
+                backend = None
+                ready, busy, failed = False, False, False
+                data.update(status='Waiting for Nym service…', tunnel='', gateway='')
+                updated = None
+            if not backend and binary and not failed and not service_blocker(service) and service['ActiveState'] == 'active':
+                backend = Backend(binary)
+                data['status'] = 'Waiting for Nym authentication…'
+            while backend:
                 try:
                     key, value = backend.events.get_nowait()
                 except queue.Empty:
@@ -424,7 +574,8 @@ def panel(screen, binary):
                         screen.addnstr(y, left, text, min(content_width, width-left-1), style)
                     except curses.error:
                         pass
-            body = (settings_rows(data, content_width, page, editor, entry) if page
+            body = (service_rows(service, content_width, binary, data['message'], confirm) if page == 'service'
+                    else settings_rows(data, content_width, page, editor, entry) if page
                     else dashboard(data, content_width, events, detailed))
             visible = max(0, height-5)
             scroll = min(scroll, max(0, len(body)-visible))
@@ -432,9 +583,11 @@ def panel(screen, binary):
             for y, (line, color) in enumerate(body[scroll:scroll+visible], top):
                 put(y, line, curses.color_pair(color))
             footer = top + min(len(body), visible)
-            age = f'Last reading {int(time.monotonic()-updated)}s ago' if updated else 'Approve Nym authentication if prompted'
+            age = (f'Last reading {int(time.monotonic()-updated)}s ago' if updated
+                   else 'Approve Nym authentication if prompted' if backend else 'Open service setup with B')
             put(footer, 'Request pending…' if busy else age, curses.color_pair(2))
-            controls = ('Digits select  A advanced  M modes  Esc back' if page
+            controls = ('Y confirm  N/Esc cancel' if confirm else '1 start  2 enable + start  O app  R refresh  Esc back' if page == 'service'
+                        else 'Digits select  A advanced  M modes  Esc back' if page
                         else 'C connect  D disconnect  M mode  S settings  R refresh  I details  Q close')
             put(footer+1, controls, curses.color_pair(1))
             put(footer+2, '↑↓ scroll   /   Closing the panel leaves VPN running', curses.color_pair(2))
@@ -442,6 +595,60 @@ def panel(screen, binary):
             key = screen.getch()
             if ord('A') <= key <= ord('Z'):
                 key += ord('a') - ord('A')
+            if page == 'service':
+                if confirm:
+                    if key in (27, ord('n'), ord('q')):
+                        confirm = None
+                        data['message'] = 'Service change cancelled.'
+                        scroll = 0
+                    elif key == ord('y'):
+                        curses.def_prog_mode()
+                        curses.endwin()
+                        try:
+                            print('ATLAS / Nym service setup: authenticate with sudo if requested.', flush=True)
+                            service, data['message'] = change_service(confirm)
+                            data['service'] = service
+                        finally:
+                            curses.reset_prog_mode()
+                            curses.curs_set(0)
+                            screen.timeout(150)
+                            screen.clear()
+                        confirm = None
+                        if backend:
+                            backend.close()
+                            backend = None
+                        ready, busy = False, False
+                        failed = False
+                        service_refresh = time.monotonic() + 5
+                        scroll = 0
+                    continue
+                if key in (27, ord('q')):
+                    page, scroll = None, 0
+                elif key in (ord('1'), ord('2')):
+                    action = 'start' if key == ord('1') else 'enable'
+                    service = data['service'] = read_service()
+                    data['message'] = service_blocker(service, action)
+                    if not data['message']:
+                        confirm = action
+                    scroll = 0
+                elif key == ord('o'):
+                    data['message'] = open_app()
+                    scroll = 0
+                elif key == ord('r'):
+                    binary = find_cli()
+                    service_refresh = 0
+                    if failed and backend:
+                        backend.close()
+                        backend = None
+                    failed = False
+                    if ready and backend and not busy:
+                        backend.requests.put('status')
+                        busy = True
+                elif key in (curses.KEY_DOWN, ord('j')):
+                    scroll += 1
+                elif key in (curses.KEY_UP, ord('k')):
+                    scroll = max(0, scroll-1)
+                continue
             if page:
                 if editor:
                     if key == 27:
@@ -499,14 +706,22 @@ def panel(screen, binary):
                 detailed = not detailed
                 scroll = 0
             elif key == ord('r'):
+                binary = find_cli()
+                service_refresh = 0
                 if failed:
-                    backend.close()
-                    backend = Backend(binary)
+                    if backend:
+                        backend.close()
+                    backend = None
                     failed = False
                     data['status'] = 'Waiting for Nym authentication…'
                 elif ready and not busy:
                     backend.requests.put('status')
                     busy = True
+            elif key == ord('b'):
+                page, scroll = 'service', 0
+            elif key == ord('o'):
+                data['message'] = open_app()
+                scroll = 0
             elif key in (ord('m'), ord('s')):
                 page = 'mode' if key == ord('m') else 'settings'
                 scroll = 0
@@ -514,7 +729,8 @@ def panel(screen, binary):
                 backend.requests.put('connect' if key == ord('c') else 'disconnect')
                 busy = True
     finally:
-        backend.close()
+        if backend:
+            backend.close()
 
 
 def toggle():
@@ -523,9 +739,6 @@ def toggle():
     if not os.environ.get('TMUX'):
         return False
     target = sys.argv[2] if len(sys.argv) > 2 else os.environ.get('TMUX_PANE', '')
-    if not shutil.which('nym-vpnc') and not (Path.home()/'.local/bin/nym-vpnc').is_file():
-        tmux('display-message', '-t', target, '-d', '7000', 'ATLAS VPN: install nym-vpnc matching your Nym daemon; see docs/VPN.md')
-        return True
     window = tmux('display-message', '-p', '-t', target, '#{window_id}')
     session = tmux('display-message', '-p', '-t', target, '#{session_id}')
     for row in tmux('list-panes', '-t', window, '-F', '#{pane_id} #{@atlas_vpn}').splitlines():
@@ -551,9 +764,7 @@ def toggle():
 if __name__ == '__main__':
     if len(sys.argv) > 1 and sys.argv[1] == '--toggle' and toggle():
         sys.exit(0)
-    binary = shutil.which('nym-vpnc') or str(Path.home()/'.local/bin/nym-vpnc')
-    if not Path(binary).is_file():
-        sys.exit('nym-vpnc is missing. Install the CLI matching your Nym daemon.')
+    binary = find_cli()
     try:
         curses.wrapper(panel, binary)
     except KeyboardInterrupt:

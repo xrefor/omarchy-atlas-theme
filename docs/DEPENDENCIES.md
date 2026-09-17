@@ -44,6 +44,12 @@ Using it requires local Codex CLI 0.154.0, Linux `/proc`, tmux and Python's
 standard-library curses/SQLite modules. Codex is not required to install ATLAS.
 The observer does not add an API key, SDK dependency or Codex hook.
 
+The same component includes the [Codex interface-color adapter](CLI.md#codex-interface-colors).
+It uses Linux pseudo-terminals and Python's standard library; no additional
+package or Codex modification is required. Its color mapping is based on the
+Codex 0.154.0 interface. Native syntax colors still use the separate `/theme`
+selection.
+
 ## Optional NymVPN panel
 
 The apps component includes `atlas-vpn`; using it requires a working NymVPN

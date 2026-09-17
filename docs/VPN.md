@@ -11,8 +11,9 @@ The `apps` component installs `~/.local/bin/atlas-vpn` and binds **Ctrl+Space,
 then N** in tmux. It opens a side pane in wide terminals and a window in narrow
 ones. Repeat the shortcut to close it, or run `atlas-vpn` directly.
 
-Requires Python with curses and a working NymVPN daemon with a matching
-`nym-vpnc` CLI. This integration was tested against Nym 2026.12.2. Install Nym
+Requires Python with curses. Tunnel controls require a running NymVPN daemon
+with a matching `nym-vpnc` CLI; service setup is available even without the CLI.
+This integration was tested against Nym 2026.12.2. Install Nym
 through the optional `./install.sh` prompt, or follow the
 [official Linux installation instructions](https://nym.com/download/linux).
 The prompt installs the AUR `nym-vpnd-bin` and `nym-vpn-app-bin` packages.
@@ -26,8 +27,19 @@ If the matching release or digest is unavailable, it reports the failure and
 continues installing ATLAS. Retry with `python3 lib/atlas/optional.py`.
 The downloaded CLI is separate from ATLAS theme restore and is not updated by
 pacman; after a daemon upgrade, keep your CLI version aligned with it.
-Complete daemon setup with `sudo systemctl enable --now nym-vpnd.service`
-and set up your Nym account separately. The panel uses Nym's normal authentication
+The panel detects whether `nym-vpnd.service` is running and enabled at boot.
+When setup is needed it opens the service page, which also remains available
+with **B**. Choose **1** to start the service for this session or **2** to enable
+it at boot and start it now. Review the confirmation and press **Y** to proceed;
+the panel temporarily leaves its interface for the normal `sudo` password prompt.
+It reads the service state back before reporting success, then opens the Nym app
+as your normal user so you can log in or sign up. **O** opens the app again when
+needed. Opening the panel alone does not enable the service or launch the app.
+
+Missing, masked or unavailable services are reported rather than installed or
+unmasked automatically. A missing app or CLI is reported with setup guidance.
+Account setup remains in Nym's app; ATLAS does not read or store account secrets.
+The panel uses Nym's normal authentication
 prompt and keeps one authenticated CLI session; it does not store credentials.
 
 ## Controls
@@ -35,6 +47,8 @@ prompt and keeps one authenticated CLI session; it does not store credentials.
 | Key | Action |
 | --- | --- |
 | C / D | Connect / disconnect |
+| B / O | Service setup / open Nym app for account setup |
+| 1 / 2 on service page | Start once / enable at boot and start, after confirmation |
 | M | Choose mode: 1 dVPN (two-hop WireGuard), 2 Mixnet; then view options |
 | S | Current mode's settings |
 | A in settings | Advanced options |
@@ -69,7 +83,10 @@ The normal bundle installer tracks the panel, palette and shortcut for restore,
 including any pre-existing standalone panel. No Nym binaries, logs, accounts,
 gateway addresses or device settings are packaged. Installation, synchronization
 and restore do not connect/disconnect the VPN or change its service startup.
-The workstation-specific Wi-Fi startup gate is not part of theme installation.
+Explicit service actions in the panel can start or enable the daemon. They do
+not send a VPN connect command; Nym may apply its own existing autoconnect policy
+when started. The workstation-specific Wi-Fi startup gate is not part of theme
+installation.
 
 The bundle's copy in `components/apps/bin/atlas-vpn` is the maintained source.
 Protocol tests are in `tests/test_vpn.py`; isolated UI tests in `tests/vpn_tmux.py`

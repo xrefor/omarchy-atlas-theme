@@ -48,8 +48,9 @@ class AgentsBackendTests(unittest.TestCase):
 
     def child(self, identifier='child', parent='root', events=(), inherited=0, metadata=None):
         path = self.home / 'sessions' / f'{identifier}.jsonl'
-        payload = {'id': identifier, 'parent_thread_id': parent,
-                   'subagent_history_start_ordinal': inherited}
+        payload = {'id': identifier, 'parent_thread_id': parent}
+        if inherited is not None:
+            payload['subagent_history_start_ordinal'] = inherited
         if metadata:
             payload.update(metadata)
         path.write_bytes(encoded({'type': 'session_meta', 'payload': payload}) +
@@ -85,7 +86,7 @@ class AgentsBackendTests(unittest.TestCase):
         self.assertIsNone(snapshot['agents'][0]['finished_at'])
 
     def test_metadata_boundary_counts_records_after_metadata(self):
-        path = self.child(inherited=2, events=[
+        path = self.child(inherited=2, metadata={'forked_from_id': 'root'}, events=[
             event('task_started', turn_id='inherited'),
             event('task_complete', turn_id='inherited'),
             event('message', kind='response_item', role='assistant', phase='commentary',
@@ -100,12 +101,51 @@ class AgentsBackendTests(unittest.TestCase):
         self.assertEqual(row['activity'], 'Checking child work')
         self.assertIsNone(row['finished_at'])
 
-    def test_child_without_history_boundary_is_rejected(self):
-        path = self.child()
-        path.write_bytes(encoded({'type': 'session_meta',
-                                 'payload': {'id': 'child', 'parent_thread_id': 'root'}}))
+    def test_nonforked_child_without_boundary_waits_for_own_turn(self):
+        path = self.child(inherited=None, events=[
+            event('message', kind='response_item', role='assistant', phase='commentary',
+                  content='Copied parent message'),
+            event('task_complete', turn_id='parent'),
+        ])
+        reader = self.reader(path)
+        row = reader.poll()
+        self.assertEqual(row['status'], 'starting')
+        self.assertEqual(row['activity'], 'Waiting for first update')
+        self.assertIsNone(row['finished_at'])
+        self.append(path, event('task_started', stamp=150, turn_id='own'),
+                    event('message', stamp=160, kind='response_item', role='assistant',
+                          phase='commentary', content='Child update'))
+        row = reader.poll()
+        self.assertEqual((row['status'], row['started_at'], row['activity']),
+                         ('running', 150, 'Child update'))
+        self.append(path, event('task_complete', stamp=170, turn_id='own'))
+        self.assertEqual(reader.poll()['status'], 'completed')
+
+    def test_observer_accepts_children_without_boundary_in_both_history_modes(self):
+        for mode in ('legacy', 'paginated'):
+            self.child(mode, inherited=None,
+                       metadata={'cli_version': '0.154.0', 'history_mode': mode},
+                       events=[event('task_started', turn_id=mode),
+                               event('task_complete', stamp=150, turn_id=mode)])
+            with self.connect() as database:
+                database.execute('UPDATE threads SET history_mode=? WHERE id=?', (mode, mode))
+        snapshot = backend.Observer('root', self.home).poll()
+        self.assertTrue(snapshot['connected'], snapshot['error'])
+        self.assertEqual(len(snapshot['agents']), 2)
+        self.assertTrue(all(row['status'] == 'completed' for row in snapshot['agents']))
+
+    def test_forked_child_without_history_boundary_is_rejected(self):
+        path = self.child(inherited=None, metadata={'forked_from_id': 'root'}, events=[
+            event('task_started', turn_id='parent')])
         with self.assertRaisesRegex(ValueError, 'inherited-history boundary'):
             self.reader(path)
+
+    def test_invalid_explicit_history_boundary_is_rejected(self):
+        for boundary in (-1, '0', 1.5):
+            with self.subTest(boundary=boundary):
+                path = self.child(str(boundary), inherited=boundary)
+                with self.assertRaisesRegex(ValueError, 'inherited-history boundary'):
+                    self.reader(path, str(boundary))
 
     def test_completion_resume_interruption_and_error_lifecycle(self):
         path = self.child(events=[event('task_started', turn_id='one')])

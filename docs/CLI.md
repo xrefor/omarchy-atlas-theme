@@ -90,11 +90,39 @@ the standard theme's values. Installation adds the choice without selecting it.
 
 The official [syntax-theme controls](https://learn.chatgpt.com/docs/developer-commands?surface=cli#choose-a-syntax-theme-with-theme)
 persist the selection; the installed 0.154.0 client also documents custom
-`.tmTheme` loading in its built-in theme picker. Selection is left to the user. Omarchy 4.0.4 does not provide a
-Codex themed template. The former PTY adapter is omitted because it patched a
-specific mise launcher and mapped UI escape sequences observed in Codex
-0.154.0. Codex UI updates can change those sequences, and editing another
-user's launcher or shell startup file is outside this bundle's portable scope.
+`.tmTheme` loading in its built-in theme picker. Selection is left to the user.
+
+### Codex interface colors
+
+The `apps` component also installs `atlas-codex`. In a fresh ATLAS Bash terminal,
+launch `codex` normally to get orange action accents and warm carbon prompt and
+approval backgrounds. The adapter reads the active Omarchy palette on launch
+and applies this mapping only to an ATLAS-family palette (accent `#ff5a12`).
+Native truecolor syntax foregrounds remain controlled by the `/theme` choice.
+
+The managed Bash integration preserves existing custom `codex` functions and
+aliases. It does not patch the Codex executable or a mise launcher. To use the
+adapter explicitly with a custom Bash setup:
+
+```bash
+atlas-codex --observe -- "$(type -P codex)"
+```
+
+`--observe` enables the agent observer when running in tmux. The observer follows
+the actual Codex child process inside the adapter's terminal. Closing Codex
+cleans up its observer and panel as before. The adapter does not record terminal
+input or output, or read Codex credentials.
+
+`ATLAS_CODEX_COLORS=0 codex` disables interface coloring while retaining normal
+agent observation. `command codex` bypasses both integrations. Redirected input,
+output or error output, utility/noninteractive commands, `NO_COLOR`, and missing/invalid or
+non-ATLAS palettes bypass the color adapter. Unknown terminal control sequences
+are passed through, and the adapter preserves native truecolor foregrounds.
+
+The mapping is based on the Codex 0.154.0 interface; future client versions may
+use different colors. Report visual differences with the client version and a
+screenshot. `atlas-theme restore` restores the prior managed launcher and Bash
+integration through the normal backup journal.
 
 ## Installation and rollback contract
 

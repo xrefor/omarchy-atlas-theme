@@ -47,4 +47,5 @@ python3 "$script_dir/install.py" --all "$@"
 if ! "$dry_run" && ! "$staged"; then
   omarchy theme set atlas
   printf '%s\n' 'ATLAS is installed and active. Open a new terminal to load the workspace.'
+  printf '%s\n' 'In Codex, use /theme to select ATLAS or ATLAS Readable for syntax highlighting.'
 fi

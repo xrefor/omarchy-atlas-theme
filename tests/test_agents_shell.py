@@ -130,6 +130,54 @@ raise SystemExit(int(os.environ['ATLAS_TEST_EXIT']))
         self.assertEqual(code, 37, errors)
         self.assertEqual([Path(call[0]).name for call in calls], ['atlas-agents', 'codex'])
 
+    def add_color_launcher(self):
+        path = self.bin / 'atlas-codex'
+        path.write_text(f'#!{sys.executable}\n' + '''
+import json, os, pathlib, sys
+with open(os.environ['ATLAS_TEST_CALLS'], 'a') as output:
+    output.write(json.dumps(sys.argv) + '\\n')
+args = sys.argv[1:]
+observe = args[0] == '--observe'
+if observe: args = args[1:]
+assert args.pop(0) == '--'
+if observe:
+    launcher = str(pathlib.Path(__file__).parent / 'atlas-agents')
+    args = [launcher, 'launch', '--', *args]
+os.execv(args[0], args)
+''')
+        path.chmod(0o755)
+
+    def test_color_launcher_preserves_arguments_and_observes_only_once(self):
+        self.add_color_launcher()
+        code, calls, errors = self.run_shell('source "$ATLAS_TEST_SHELL"\ncodex "$@"', terminal=True)
+        self.assertEqual(code, 37, errors)
+        self.assertEqual([Path(call[0]).name for call in calls], ['atlas-codex', 'atlas-agents', 'codex'])
+        self.assertEqual(calls[0][1:], ['--observe', '--', str(self.bin / 'codex'), *ARGUMENTS])
+        self.assertEqual(calls[-1][1:], ARGUMENTS)
+
+    def test_color_launcher_without_observation(self):
+        self.add_color_launcher()
+        for env in ({'TMUX': ''}, {'ATLAS_AGENTS_AUTO': '0'}):
+            with self.subTest(env=env):
+                self.calls.unlink(missing_ok=True)
+                code, calls, errors = self.run_shell(terminal=True, env=env)
+                self.assertEqual(code, 37, errors)
+                self.assertEqual([Path(call[0]).name for call in calls], ['atlas-codex', 'codex'])
+                self.assertEqual(calls[0][1:], ['--', str(self.bin / 'codex'), *ARGUMENTS])
+
+    def test_color_launcher_pipeline_and_command_bypass(self):
+        self.add_color_launcher()
+        self.assert_direct(self.run_shell())
+        self.calls.unlink()
+        self.assert_direct(self.run_shell('command codex "$@"', terminal=True))
+
+    def test_color_launcher_keeps_existing_custom_function(self):
+        self.add_color_launcher()
+        code, calls, errors = self.run_shell(
+            before='codex() { command "$ATLAS_TEST_CUSTOM" "$@"; }', terminal=True)
+        self.assertEqual(code, 37, errors)
+        self.assertEqual(calls, [[str(self.bin / 'custom-codex'), *ARGUMENTS]])
+
 
 if __name__ == '__main__':
     unittest.main()

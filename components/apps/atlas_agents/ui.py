@@ -36,6 +36,7 @@ _ANSI = re.compile(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\|$)|'
 _HEX = re.compile(r'#[0-9a-fA-F]{6}\Z')
 _MAX_AGENTS = 200
 _MAX_TEXT = 4096
+_COMPLETION_GRACE_SECONDS = 30
 
 
 def read_palette(path=None):
@@ -133,7 +134,36 @@ def elapsed(agent, now):
     return f'{seconds}s'
 
 
-def dashboard(snapshot, width, now=None):
+def _in_history(agent, now):
+    finished = agent.get('finished_at')
+    if agent.get('status') != 'completed' or isinstance(finished, bool):
+        return False
+    finished = _timestamp(finished, None)
+    return finished is not None and finished >= 0 and now - finished >= _COMPLETION_GRACE_SECONDS
+
+
+def _agent_rows(agent, width, now):
+    symbol, label, role = STATUS.get(agent.get('status'), STATUS['unknown'])
+    name = clean(agent.get('name') or agent.get('id') or 'Agent')
+    lines = [(f'{symbol} {name}', 'bright_foreground'),
+             (f'  {label} · {elapsed(agent, now)}', role)]
+    agent_role = clean(agent.get('role'))
+    if agent_role:
+        lines.append((f'  {agent_role}', 'secondary'))
+    activity = agent.get('activity') or agent.get('task') or 'Waiting for an activity update…'
+    lines.extend(('  ' + line, 'foreground') for line in
+                 _wrapped(activity, max(0, width - 2), 2))
+    plan = agent.get('plan')
+    if isinstance(plan, list) and plan:
+        valid = [item for item in plan if isinstance(item, dict)]
+        if valid:
+            done = sum(item.get('status') == 'completed' for item in valid)
+            lines.append((f'  Plan: {done} / {len(valid)} complete', 'secondary'))
+    lines.append(('', 'foreground'))
+    return lines
+
+
+def dashboard(snapshot, width, now=None, *, show_completed=False):
     """Return bounded (text, semantic color role) rows; the first four are fixed."""
     now = time.time() if now is None else now
     width = max(0, min(int(width), 4096))
@@ -141,6 +171,9 @@ def dashboard(snapshot, width, now=None):
     if not isinstance(raw_agents, list):
         raw_agents = []
     agents = [agent for agent in raw_agents[:_MAX_AGENTS] if isinstance(agent, dict)]
+    history = [agent for agent in agents if _in_history(agent, now)]
+    agents = [agent for agent in agents if not _in_history(agent, now)]
+    history.sort(key=lambda agent: -_timestamp(agent.get('finished_at'), 0))
     order = {'running': 0, 'starting': 0, 'waiting': 1, 'error': 2,
              'interrupted': 3, 'idle': 4, 'unknown': 5, 'completed': 6}
     agents.sort(key=lambda agent: (order.get(agent.get('status'), 5),
@@ -156,7 +189,7 @@ def dashboard(snapshot, width, now=None):
                          ('running', 'waiting', 'completed', 'interrupted', 'error', 'unknown')
                          if counts.get(key))
     lines = [('// A G E N T S' if width >= 14 else '// AGENTS', 'accent'),
-             (summary or 'No agents yet', 'secondary'),
+             (summary or ('No active agents' if history else 'No agents yet'), 'secondary'),
              ('─' * width, 'muted'), ('', 'foreground')]
     if snapshot.get('error'):
         lines.extend((line, 'yellow') for line in _wrapped(snapshot['error'], width, 2))
@@ -165,29 +198,20 @@ def dashboard(snapshot, width, now=None):
         lines.extend((line, 'secondary') for line in
                      _wrapped('Waiting for this Codex conversation…', width, 2))
         lines.append(('', 'foreground'))
-    if not agents:
+    if not agents and not history:
         lines.extend((line, 'foreground') for line in
                      _wrapped('Spawned agents will appear here.', width, 2))
         lines.extend((line, 'secondary') for line in
                      _wrapped('Activity and reported plan steps update automatically.', width, 3))
     for agent in agents:
-        symbol, label, role = STATUS.get(agent.get('status'), STATUS['unknown'])
-        name = clean(agent.get('name') or agent.get('id') or 'Agent')
-        lines.append((f'{symbol} {name}', 'bright_foreground'))
-        lines.append((f'  {label} · {elapsed(agent, now)}', role))
-        agent_role = clean(agent.get('role'))
-        if agent_role:
-            lines.append((f'  {agent_role}', 'secondary'))
-        activity = agent.get('activity') or agent.get('task') or 'Waiting for an activity update…'
-        lines.extend(('  ' + line, 'foreground') for line in
-                     _wrapped(activity, max(0, width - 2), 2))
-        plan = agent.get('plan')
-        if isinstance(plan, list) and plan:
-            valid = [item for item in plan if isinstance(item, dict)]
-            if valid:
-                done = sum(item.get('status') == 'completed' for item in valid)
-                lines.append((f'  Plan: {done} / {len(valid)} complete', 'secondary'))
-        lines.append(('', 'foreground'))
+        lines.extend(_agent_rows(agent, width, now))
+    if history:
+        symbol, action = ('▾', 'hide') if show_completed else ('▸', 'show')
+        lines.append((f'{symbol} Recently completed ({len(history)}) · h {action}', 'secondary'))
+        if show_completed:
+            lines.append(('', 'foreground'))
+            for agent in history:
+                lines.extend(_agent_rows(agent, width, now))
     if len(raw_agents) > _MAX_AGENTS:
         lines.append((f'{len(raw_agents) - _MAX_AGENTS} more agents omitted', 'secondary'))
     return [(clip(text, width), role) for text, role in lines]
@@ -272,6 +296,7 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
     screen.keypad(True)
     screen.timeout(500)
     offset = 0
+    show_completed = False
     previous_palette = None
     styles = {}
     snapshot = {'agents': [], 'connected': False}
@@ -292,7 +317,7 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
             previous_palette = palette
         height, columns = screen.getmaxyx()
         width = max(0, columns - 1)
-        rows = dashboard(snapshot, width, now)
+        rows = dashboard(snapshot, width, now, show_completed=show_completed)
         fixed = min(4, max(0, height - 1))
         available = max(0, height - fixed - 1)
         body = rows[4:]
@@ -307,8 +332,10 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
         for row, (line, role) in enumerate(body[offset:offset + available], fixed):
             _put(screen, row, line, styles[role], width)
         if height:
-            footer = ('↑↓/jk scroll · r refresh · q close' if width >= 35 else
-                      '↑↓ scroll · r · q close' if width >= 23 else 'q close')
+            footer = ('↑↓/jk scroll · h history · r refresh · q close' if width >= 44 else
+                      '↑↓ scroll · h history · r · q close' if width >= 34 else
+                      '↑↓ · h history · r · q' if width >= 23 else
+                      'h history · q close' if width >= 19 else 'q close')
             if len(body) > available and width >= 48:
                 footer += f'  {offset + 1}/{max(1, len(body) - available + 1)}'
             _put(screen, height - 1, footer.ljust(width), styles['footer'], width)
@@ -328,6 +355,9 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
             offset = 0
         elif key == curses.KEY_END:
             offset = max(0, len(body) - available)
+        elif key in (ord('h'), ord('H')):
+            show_completed = not show_completed
+            offset = 0
         elif key in (ord('r'), ord('R')):
             if on_refresh is not None:
                 on_refresh()

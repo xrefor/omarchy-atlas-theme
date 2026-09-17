@@ -216,10 +216,12 @@ sys.exit(int((root / 'exit-request').read_text()))
                 break
             time.sleep(.025)
 
-    def child(self, identifier, parent='root'):
+    def child(self, identifier, parent='root', *, boundary=True):
         path = self.home / 'sessions' / f'{identifier}.jsonl'
-        path.write_text(encoded({'type': 'session_meta', 'payload': {
-            'id': identifier, 'parent_thread_id': parent, 'subagent_history_start_ordinal': 0}}))
+        metadata = {'id': identifier, 'parent_thread_id': parent}
+        if boundary:
+            metadata['subagent_history_start_ordinal'] = 0
+        path.write_text(encoded({'type': 'session_meta', 'payload': metadata}))
         self.append(path, 'task_started', turn_id=identifier, started_at=time.time())
         with sqlite3.connect(self.database) as database:
             database.execute('INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -251,7 +253,7 @@ sys.exit(int((root / 'exit-request').read_text()))
         self.assertEqual(argv[argv.index('--pid') + 1], str(pid))
         self.assertEqual(argv[argv.index('--start') + 1], started)
 
-        child = self.child('first-child')
+        child = self.child('first-child', boundary=False)
         pane = self.wait(lambda: self.owned_panels())[0]
         self.wait(lambda: len(self.snapshot().get('agents', [])) == 1)
         self.assertEqual(self.snapshot()['agents'][0]['status'], 'running')

@@ -82,7 +82,9 @@ the Nym daemon, and a matching CLI.
 
 [![ATLAS terminal workspace alongside the NymVPN controls](docs/media/atlas-terminal.png)](docs/media/atlas-terminal.png)
 
-Open with **Ctrl+Space**, then **n**. [Panel controls and dependencies](docs/VPN.md).
+Open with **Ctrl+Space**, then **n**. The panel offers service startup and opening
+the Nym app for account setup; use **b** to revisit setup and **o** to open the app.
+[Panel controls and dependencies](docs/VPN.md).
 
 </details>
 
@@ -215,7 +217,7 @@ Component coverage, everyday controls, palette management, and recovery.
 | btop / LazyGit / Lazydocker | Native palette and panel styling |
 | Bash / eza / ls / fzf / jq | Coordinated listing, search and data colors |
 | Network tools / Metasploit / Shodan | Optional presentation wrappers and native console prompt |
-| Codex | Native ATLAS syntax theme asset; select through the client's theme controls |
+| Codex | Orange interface accents and carbon panels; native ATLAS syntax themes selected through `/theme` |
 | Other Omarchy apps | Standard Omarchy generation from the shared palette, including Chromium, Obsidian and supported AI clients |
 
 The proprietary graphical Spotify client, website content, and application
@@ -250,7 +252,9 @@ See [VPN panel controls and dependencies](docs/VPN.md).
 
 The [agent panel](docs/AGENT-PANEL.md) follows the current local Codex conversation
 without taking focus. It uses the active Omarchy palette and preserves the
-terminal's font. Closing it leaves agents running.
+terminal's font. Successful agents move into **Recently completed** after 30
+seconds; press **h** in the panel to show their results. Closing it leaves agents
+running.
 
 </details>
 

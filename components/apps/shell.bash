@@ -15,14 +15,20 @@ if [[ ! ${_ATLAS_PROMPT_HOOK:-} ]]; then
   _ATLAS_PROMPT_HOOK=1
 fi
 
-# Observe interactive Codex sessions in this tmux pane. Keep custom functions/aliases
-# intact; command codex remains an explicit bypass. The launcher execs Codex
-# with its original arguments, terminal, process group and exit behavior.
-if ! declare -F codex >/dev/null && ! alias codex >/dev/null 2>&1 && command -v atlas-agents >/dev/null 2>&1; then
+# Color interactive Codex sessions and observe agents in tmux. Keep custom
+# functions/aliases intact; command codex remains an explicit bypass.
+if ! declare -F codex >/dev/null && ! alias codex >/dev/null 2>&1 &&
+   { command -v atlas-codex >/dev/null 2>&1 || command -v atlas-agents >/dev/null 2>&1; }; then
   function codex {
     local atlas_codex_binary
     atlas_codex_binary=$(type -P codex) || return
-    if [[ -n ${TMUX:-} && -t 0 && -t 1 && ${ATLAS_AGENTS_AUTO:-1} != 0 ]]; then
+    if [[ -t 0 && -t 1 ]] && command -v atlas-codex >/dev/null 2>&1; then
+      if [[ -n ${TMUX:-} && ${ATLAS_AGENTS_AUTO:-1} != 0 ]]; then
+        command atlas-codex --observe -- "$atlas_codex_binary" "$@"
+      else
+        command atlas-codex -- "$atlas_codex_binary" "$@"
+      fi
+    elif [[ -n ${TMUX:-} && -t 0 && -t 1 && ${ATLAS_AGENTS_AUTO:-1} != 0 ]]; then
       command atlas-agents launch -- "$atlas_codex_binary" "$@"
     else
       command "$atlas_codex_binary" "$@"

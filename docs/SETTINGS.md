@@ -17,6 +17,12 @@ entries and comments. Omarchy reloads the extension automatically.
 
 The font is not an adjustable preset here: normal ATLAS typography remains 9 pt.
 
+The desktop component keeps **Super+T** as the tile/float toggle. Switching a
+tiled window to floating sizes it to **75% of its monitor's width and height**
+and centers it. Monitor scaling and rotation are accounted for. Pressing the
+shortcut again returns the window to tiling. Applications can impose their own
+minimum or maximum window size.
+
 With the optional `cli-codex` integration installed, Codex's native `/theme`
 picker also offers **ATLAS Readable**. This preset uses a brighter warm gray for
 code comments. Select **ATLAS** to return to the standard comment color; Codex

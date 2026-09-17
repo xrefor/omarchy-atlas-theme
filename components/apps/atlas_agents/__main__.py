@@ -17,6 +17,15 @@ from .backend import Observer, codex_home, process_root, process_start
 from .tmux_panel import Panels, runtime_directory
 
 
+class NoCodexProcess(ValueError):
+    """The originating pane has no local Codex process to observe."""
+
+
+def panel_message(origin, message):
+    tmux('display-message', '-t', origin, 'ATLAS agents: ' + message)
+    return 0
+
+
 def launcher():
     return str(Path(__file__).resolve().parents[1] / 'bin/atlas-agents')
 
@@ -105,8 +114,10 @@ def codex_process(origin):
             seen.add(current)
             current = processes.get(current, (0, ''))[0]
             if not current: break
+    if not found:
+        raise NoCodexProcess('Open Codex in this pane before showing its agents')
     if len(found) != 1:
-        raise ValueError('Open Codex in this pane before showing its agents')
+        raise ValueError('Multiple Codex processes are running in this pane')
     return found[0]
 
 
@@ -265,7 +276,10 @@ def attach(args):
     origin = origin_pane(args.pane)
     pid = codex_process(origin)
     root = args.thread or process_root(pid, codex_home())
-    if not root: raise ValueError('Waiting for Codex to open its conversation; try again shortly')
+    if not root:
+        spawn_watcher(pid, origin, args.thread)
+        panel_message(origin, 'Waiting for Codex to open its conversation; try again shortly')
+        return None
     observer = Observer(root)
     snapshot = observer.poll()
     snapshot.update(session_key=f'{pid}:{process_start(pid)}', cli_pid=pid, cli_start=process_start(pid))
@@ -283,16 +297,24 @@ def toggle(args):
         manager.close(); return 0
     try:
         pid = codex_process(origin)
-    except ValueError:
-        snapshot = read_cache(path)  # A completed session's summary remains accessible.
+    except NoCodexProcess:
+        try:
+            snapshot = read_cache(path)  # A completed session's summary remains accessible.
+        except FileNotFoundError:
+            snapshot = {}
+        if not snapshot.get('root_id'):
+            return panel_message(origin, 'Open Codex in this pane before showing its agents')
     else:
         try: snapshot = read_cache(path)
         except FileNotFoundError: snapshot = {}
         if snapshot.get('session_key') != f'{pid}:{process_start(pid)}':
-            attach(args)
+            if attach(args) is None:
+                return 0
             snapshot = read_cache(path)
         else:
             spawn_watcher(pid, origin, args.thread)
+        if not snapshot.get('root_id'):
+            return panel_message(origin, 'Waiting for Codex to open its conversation; try again shortly')
     with contextlib.suppress(FileNotFoundError): path.with_suffix('.dismissed').unlink()
     manager.open(snapshot['root_id'], str(path))
     return 0

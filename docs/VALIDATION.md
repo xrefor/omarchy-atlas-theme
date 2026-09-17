@@ -32,8 +32,16 @@ requires Node.js for JavaScript model tests. It covers:
   interrupted recovery, duplicate-selector rejection, and edits during recovery.
 - CLI byte/exit/signal preservation, machine-readable output bypass and
   selected optional-integration behavior. Tests do not scan or capture traffic.
+- Codex interface-color parsing with split sequences and opaque terminal payloads;
+  isolated PTY input, resize, signal/exit and terminal restoration; managed Bash
+  dispatch and agent observation inside the color adapter. These fixtures use a
+  fake CLI; they do not establish visual compatibility with future Codex versions.
 - Nym panel protocol, stale-status regression, mode/settings readback and invalid
-  input checks; isolated tmux menu navigation and closing without disconnecting.
+  input checks; service detection, explicit start/enable confirmation, cancellation,
+  failure/readback and unprivileged app launch. Isolated tmux tests use fake service,
+  privilege, CLI and app executables to exercise setup and closing without
+  disconnecting. Live systemd authorization and Nym account setup still require
+  hardware validation.
 - Seven mocked Yazi drive-menu cases: authorization, clean removal, busy failure,
   internal-device rejection, argument handling, mounted siblings and optical media.
 - Python, JSON, TOML, YAML, XML and shell syntax; four Omarchy plugin manifests;
@@ -374,6 +382,13 @@ after a final snapshot-write failure and ownership handoff during quick relaunch
 The last snapshot remains available for manual reopening from the original pane.
 The complete Omarchy checker also passed, including all 193 Python tests.
 
+Completed-agent history follow-up: the complete Omarchy checker passed with
+**200 Python tests**, including the 30-second boundary, retained results,
+invalid completion times, resumed agents and the history keyboard toggle.
+A disposable 48-column tmux panel also verified automatic expiry, retained
+error entries, showing/hiding completed results and a resumed agent returning
+to the main list through the real curses viewer.
+
 ## rc6 release integration — 2026-09-17
 
 The agent panel is included in rc6 alongside the recovery, readability and
@@ -390,6 +405,23 @@ real session files; it does not drive Codex's interactive `/new` or `/resume` UI
 
 This release integration does not repeat the earlier VM authentication/boot
 checks or extend their physical hardware coverage.
+
+## Agent history compatibility follow-up — 2026-09-18
+
+Codex CLI 0.154.0 can omit `subagent_history_start_ordinal` for non-forked
+children in both legacy and paginated history. The reader now accepts those
+sessions while still requiring a boundary for explicitly forked history.
+Read-only checks parsed 62 existing local sessions with the omitted field
+(60 legacy, two paginated). All 19 backend tests passed; both new missing-field
+regressions reproduced the original rejection before the fix.
+
+The complete `python3 tools/check.py` run passed, including 253 Python tests
+and disposable tmux checks. The automatic-opening lifecycle fixture now omits
+the field on its first child and covers running/completed status, dismissal
+and cleanup. The checker was rerun outside the sandbox because its socket
+restrictions prevented tmux checks. Validation on the reported stationary
+computer remains outstanding; the source change here does not update that
+installation.
 
 ## Before promoting the candidate to a stable release
 

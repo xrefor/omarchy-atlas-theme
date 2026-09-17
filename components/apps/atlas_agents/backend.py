@@ -117,7 +117,10 @@ class Rollout:
         self.skip = meta.get('subagent_history_start_ordinal', 0)
         if not isinstance(self.skip, int) or self.skip < 0:
             raise ValueError('Unsupported Codex inherited-history boundary')
-        if meta.get('parent_thread_id') and 'subagent_history_start_ordinal' not in meta:
+        # Non-forked children (including 0.154.0 legacy/paginated sessions) may
+        # omit the boundary. Their activity starts at the first task_started.
+        # A fork can copy parent lifecycle events, so still require its boundary.
+        if meta.get('forked_from_id') and 'subagent_history_start_ordinal' not in meta:
             raise ValueError('Codex child session lacks an inherited-history boundary')
         info = path.stat()
         self.identity = (info.st_dev, info.st_ino)

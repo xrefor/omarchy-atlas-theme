@@ -1,11 +1,12 @@
 """Exercise the bundled UI with a fake CLI in an isolated tmux server."""
+import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import time
 
-panel = str(Path(__file__).resolve().parents[1]/'components/apps/bin/atlas-vpn')
+panel_source = Path(__file__).resolve().parents[1]/'components/apps/bin/atlas-vpn'
 sock = 'atlas-vpn-test-'+str(os.getpid())
 def tm(*args):
     return subprocess.check_output(['tmux','-L',sock,*args],text=True).strip()
@@ -18,6 +19,53 @@ def wait(check):
 with tempfile.TemporaryDirectory() as d:
     binary=Path(d)/'nym-vpnc'
     log=Path(d)/'commands'
+    service_state=Path(d)/'service.json'
+    service_log=Path(d)/'service-actions'
+    app_log=Path(d)/'app-launches'
+    service_state.write_text(json.dumps({'LoadState':'loaded', 'ActiveState':'active',
+                                       'SubState':'running', 'UnitFileState':'enabled'}))
+    systemctl=Path(d)/'systemctl'
+    systemctl.write_text('''#!/usr/bin/env python3
+import json, pathlib, sys
+state_path=pathlib.Path(%r)
+state=json.loads(state_path.read_text())
+args=sys.argv[1:]
+if 'show' in args:
+ for key,value in state.items(): print(key+'='+value)
+ sys.exit(0)
+with open(%r,'a') as output: output.write(json.dumps(args)+'\\n')
+if 'start' in args or 'enable' in args:
+ state.update(ActiveState='active', SubState='running')
+ if 'enable' in args: state['UnitFileState']='enabled'
+ state_path.write_text(json.dumps(state))
+else: sys.exit(2)
+''' % (str(service_state), str(service_log)))
+    systemctl.chmod(0o755)
+    sudo=Path(d)/'sudo'
+    sudo.write_text('''#!/usr/bin/env python3
+import os, sys
+args=sys.argv[1:]
+if args and args[0]=='--': args=args[1:]
+assert args and args[0]==%r, args
+os.execv(%r, [%r, *args[1:]])
+''' % (str(systemctl), str(systemctl), str(systemctl)))
+    sudo.chmod(0o755)
+    app=Path(d)/'nym-vpn-app'
+    app.write_text('#!/usr/bin/env python3\nfrom pathlib import Path\np=Path(%r)\np.write_text(p.read_text()+"opened\\n" if p.exists() else "opened\\n")\n' % str(app_log))
+    app.chmod(0o755)
+    # Production uses fixed executables. Only this disposable copy substitutes
+    # fixtures, so this integration test cannot reach the real service or GUI.
+    source=panel_source.read_text()
+    for name, real_path, fake_path in [('SYSTEMCTL','/usr/bin/systemctl',systemctl),
+                                      ('SUDO','/usr/bin/sudo',sudo),
+                                      ('NYM_APP','/usr/bin/nym-vpn-app',app)]:
+        declaration=f'{name} = {real_path!r}'
+        assert source.count(declaration)==1, declaration
+        source=source.replace(declaration, f'{name} = {str(fake_path)!r}')
+    panel=Path(d)/'atlas-vpn'
+    panel.write_text(source)
+    panel.chmod(0o755)
+    panel=str(panel)
     binary.write_text('''#!/usr/bin/env python3
 import sys
 state='Disconnected'
@@ -87,6 +135,34 @@ for line in sys.stdin:
         wait(lambda:len(tm('list-windows','-t','test').splitlines())==2)
         tm('run-shell','-t',origin,panel+' --toggle '+origin)
         assert len(tm('list-windows','-t','test').splitlines())==1
-        print('PASS: wide toggle, narrow toggle, controls, q leaves connection unchanged')
+        assert not service_log.exists(), 'Opening/closing must not change service state'
+        assert not app_log.exists(), 'Opening/closing must not launch the app'
+        service_state.write_text(json.dumps({'LoadState':'loaded', 'ActiveState':'inactive',
+                                           'SubState':'dead', 'UnitFileState':'disabled'}))
+        tm('run-shell','-t',origin,panel+' --toggle '+origin)
+        wait(lambda:len(tm('list-windows','-t','test').splitlines())==2)
+        vpn=tm('list-panes','-t','test:1','-F','#{pane_id}')
+        wait(lambda:'SERVICE & ACCOUNT SETUP' in capture())
+        tm('send-keys','-t',vpn,'2')
+        wait(lambda:'confirm' in capture().lower())
+        tm('send-keys','-t',vpn,'Escape')
+        time.sleep(.2)
+        assert not service_log.exists(), 'Cancelling setup must not mutate service'
+        assert not app_log.exists(), 'Cancelling setup must not launch the app'
+        tm('send-keys','-t',vpn,'2')
+        wait(lambda:'confirm' in capture().lower())
+        tm('send-keys','-t',vpn,'y')
+        wait(lambda:app_log.exists())
+        actions=[json.loads(line) for line in service_log.read_text().splitlines()]
+        assert len(actions)==1 and 'enable' in actions[0] and '--now' in actions[0], actions
+        assert actions[0][-1]=='nym-vpnd.service', actions
+        assert json.loads(service_state.read_text())['UnitFileState']=='enabled'
+        tm('send-keys','-t',vpn,'o')
+        wait(lambda:app_log.read_text().count('opened')==2)
+        assert len(service_log.read_text().splitlines())==1
+        tm('run-shell','-t',origin,panel+' --toggle '+origin)
+        commands=log.read_text().splitlines()
+        assert commands.count('connect')==commands.count('disconnect')==1, 'Setup must not send tunnel connect/disconnect'
+        print('PASS: panel controls, close preserves tunnel, service setup confirmation/readback/app launch')
     finally:
         tm('kill-server')

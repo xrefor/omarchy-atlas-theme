@@ -36,10 +36,59 @@ class AgentsUiTests(unittest.TestCase):
         snapshot['agents'][0].update(status='completed', finished_at=185,
                                      activity='Palette and readability checks passed')
         before = ui.dashboard(snapshot, 48, now=200)
-        after = ui.dashboard(snapshot, 48, now=10000)
-        self.assertEqual(before, after)
+        after = ui.dashboard(snapshot, 48, now=10000, show_completed=True)
         self.assertIn(('  COMPLETED · 1m 25s', 'green'), before)
-        self.assertIn('checks passed', '\n'.join(line for line, _ in before))
+        self.assertIn(('  COMPLETED · 1m 25s', 'green'), after)
+        self.assertIn('checks passed', '\n'.join(line for line, _ in after))
+
+    def test_successful_completion_moves_to_history_after_thirty_seconds(self):
+        snapshot = self.snapshot()
+        snapshot['agents'][0].update(status='completed', finished_at=185)
+        before = ui.dashboard(snapshot, 60, now=214.999)
+        after = ui.dashboard(snapshot, 60, now=215)
+        self.assertIn(('✓ palette-review', 'bright_foreground'), before)
+        self.assertIn(('1 completed', 'secondary'), before)
+        self.assertNotIn(('✓ palette-review', 'bright_foreground'), after)
+        self.assertIn(('No active agents', 'secondary'), after)
+        self.assertIn(('▸ Recently completed (1) · h show', 'secondary'), after)
+        self.assertNotIn('Spawned agents will appear here.', '\n'.join(line for line, _ in after))
+
+    def test_only_successful_completed_agents_move_to_history(self):
+        snapshot = {'connected': True, 'agents': [
+            {'name': status, 'status': status, 'started_at': 100, 'finished_at': 185}
+            for status in ui.STATUS
+        ]}
+        rows = ui.dashboard(snapshot, 60, now=10000)
+        names = [line for line, role in rows if role == 'bright_foreground']
+        self.assertEqual(len(names), len(ui.STATUS) - 1)
+        for status, (symbol, _, _) in ui.STATUS.items():
+            if status != 'completed':
+                self.assertIn(f'{symbol} {status}', names)
+
+    def test_missing_invalid_or_future_completion_time_keeps_agent_visible(self):
+        for finished in (None, '', 'invalid', float('nan'), float('inf'),
+                         float('-inf'), {}, [], True, False, -1, 10001):
+            with self.subTest(finished=finished):
+                snapshot = self.snapshot()
+                snapshot['agents'][0].update(status='completed', finished_at=finished)
+                rows = ui.dashboard(snapshot, 60, now=10000)
+                self.assertIn(('✓ palette-review', 'bright_foreground'), rows)
+                self.assertFalse(any('Recently completed' in line for line, _ in rows))
+
+    def test_history_is_latest_first_and_resumed_agent_returns_to_main_list(self):
+        snapshot = {'connected': True, 'agents': [
+            {'name': 'older-result', 'status': 'completed', 'finished_at': 150},
+            {'name': 'newer-result', 'status': 'completed', 'finished_at': 160},
+            {'name': 'active', 'status': 'running'},
+        ]}
+        rows = ui.dashboard(snapshot, 60, now=200, show_completed=True)
+        names = [line for line, role in rows if role == 'bright_foreground']
+        self.assertEqual(names, ['● active', '✓ newer-result', '✓ older-result'])
+        snapshot['agents'][0]['status'] = 'running'
+        rows = ui.dashboard(snapshot, 60, now=200)
+        self.assertIn(('● older-result', 'bright_foreground'), rows)
+        self.assertIn(('2 running', 'secondary'), rows)
+        self.assertIn(('▸ Recently completed (1) · h show', 'secondary'), rows)
 
     def test_missing_completion_time_uses_last_update(self):
         snapshot = self.snapshot()
@@ -157,6 +206,28 @@ class AgentsUiTests(unittest.TestCase):
         on_refresh.assert_called_once_with()
         self.assertEqual(get_snapshot.call_count, 2)
         self.assertEqual(screen.refresh.call_count, 3)
+
+    def test_history_keyboard_toggle_recovers_results(self):
+        screen = Mock()
+        screen.getmaxyx.return_value = (12, 60)
+        screen.getch.side_effect = [ui.curses.KEY_END, ord('h'), ord('H'), ord('q')]
+        snapshot = self.snapshot()
+        snapshot['agents'][0].update(status='completed', finished_at=185,
+                                     activity='Recovered result')
+        on_refresh = Mock()
+        with patch.object(ui.curses, 'curs_set'), \
+             patch.object(ui.time, 'time', return_value=300), \
+             patch.object(ui, 'read_palette', return_value=ui.DEFAULT_PALETTE), \
+             patch.object(ui, '_styles', return_value=dict.fromkeys(
+                 [*ui.DEFAULT_PALETTE, 'header', 'header_prefix', 'footer'], 0)), \
+             patch.object(ui, 'dashboard', wraps=ui.dashboard) as dashboard:
+            ui._screen(screen, Mock(return_value=snapshot), None, on_refresh)
+        self.assertEqual([call.kwargs['show_completed'] for call in dashboard.call_args_list],
+                         [False, False, True, False])
+        rendered = [call.args[2] for call in screen.addstr.call_args_list]
+        self.assertIn('  Recovered result', rendered)
+        self.assertIn('▾ Recently completed (1) · h hide', rendered)
+        on_refresh.assert_not_called()
 
 
 if __name__ == '__main__':

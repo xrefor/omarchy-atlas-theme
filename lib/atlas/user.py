@@ -121,6 +121,28 @@ hl.env("PATH", os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or "/us
             # the existing catchall in that file as well.
             put(opacity_path, config.block(get(opacity_path), 'ZEN OPACITY', zen_opacity, '--'))
         put(rel,config.block(current,'APPEARANCE',appearance,'--'))
+        rel='.config/hypr/bindings.lua'
+        put(rel,config.block(get(rel),'FLOATING WINDOWS','''-- Super+T keeps its tile/float toggle, with a centered 75% floating size.
+hl.unbind("SUPER + T")
+o.bind("SUPER + T", "Toggle window floating/tiling", function()
+  local window = hl.get_active_window()
+  if not window then return end
+  local was_floating = window.floating
+  hl.dispatch(hl.dsp.window.float({ action = "toggle", window = window }))
+  if was_floating or not window.floating then return end
+  local monitor = window.monitor
+  if not monitor then return end
+  local width, height = monitor.width, monitor.height
+  -- Monitor dimensions are physical pixels; dispatchers use logical pixels.
+  if monitor.transform % 2 == 1 then width, height = height, width end
+  hl.dispatch(hl.dsp.window.resize({
+    x = math.floor(width / monitor.scale * 0.75),
+    y = math.floor(height / monitor.scale * 0.75),
+    relative = false,
+    window = window,
+  }))
+  hl.dispatch(hl.dsp.window.center({ window = window }))
+end)''','--'))
     if 'apps' in components:
         for rel, name in {
             '.config/starship.toml':'starship.toml',

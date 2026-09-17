@@ -49,9 +49,9 @@ def install():
     if available('nym-vpnd'):
         if not available('nym-vpnc'):
             nym_cli.offer()
-        print('\nNymVPN setup: see docs/VPN.md for daemon startup and account setup.')
+        print('\nNymVPN setup: after installation, open Ctrl+Space then N for service startup and account setup.')
         if not available('nym-vpnc'):
-            print('The ATLAS VPN panel still needs nym-vpnc matching the daemon; see docs/VPN.md.')
+            print('Tunnel controls still need nym-vpnc matching the daemon; service setup remains available. See docs/VPN.md.')
 
 
 if __name__ == '__main__':

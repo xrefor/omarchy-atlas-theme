@@ -286,6 +286,7 @@ class BundleTests(unittest.TestCase):
     def test_all_components_install_idempotently_and_restore(self):
         self.write('.bashrc','# existing shell preferences\n')
         self.write('.local/bin/atlas-vpn', '# prior standalone VPN panel\n')
+        self.write('.local/bin/atlas-codex', '# prior Codex launcher\n')
         codex_config = '[tui]\ntheme = "atlas-readable"\n'
         self.write('.codex/config.toml', codex_config)
         desired=self.plan(cli_groups={'all'})
@@ -300,6 +301,8 @@ class BundleTests(unittest.TestCase):
         self.assertTrue((self.home/'.local/bin/atlas-info').is_file())
         self.assertTrue(os.access(self.home/'.local/bin/atlas-vpn', os.X_OK))
         self.assertTrue(os.access(self.home/'.local/bin/atlas-agents', os.X_OK))
+        self.assertTrue(os.access(self.home/'.local/bin/atlas-codex', os.X_OK))
+        self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_codex/__main__.py').is_file())
         self.assertEqual(json.loads((self.home/'.config/atlas/agents-palette.json').read_text())['accent'], self.colors['accent'])
         self.assertIn('atlas-vpn', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertTrue((self.home/'.config/atlas/atlas-prompt.py').is_file())
@@ -313,6 +316,7 @@ class BundleTests(unittest.TestCase):
         with state.lock(self.home): state.transact(self.home,{k:v['before'] for k,v in records.items()},restoring=True)
         self.assertEqual((self.home/'.bashrc').read_text(),'# existing shell preferences\n')
         self.assertEqual((self.home/'.local/bin/atlas-vpn').read_text(), '# prior standalone VPN panel\n')
+        self.assertEqual((self.home/'.local/bin/atlas-codex').read_text(), '# prior Codex launcher\n')
         self.assertEqual((self.home/'.codex/config.toml').read_text(), codex_config)
         self.assertFalse((self.home/'.codex/themes/atlas-readable.tmTheme').exists())
         self.assertFalse((self.home/'.config/omarchy/themes/atlas/colors.toml').exists())
@@ -356,12 +360,13 @@ class BundleTests(unittest.TestCase):
             'atlas-session':'tmux\nnew-session\n',
             'atlas-theme':'usage:',
             'atlas-agents':'usage:',
+            'atlas-codex':'usage:',
         }
         for name,output in expected.items():
             with self.subTest(command=name):
                 command=self.home/'.local/bin'/name
                 self.assertTrue(os.access(command,os.X_OK),name+' is not executable')
-                args=[str(command)]+(['--help'] if name in ('atlas-theme','atlas-agents') else [])
+                args=[str(command)]+(['--help'] if name in ('atlas-theme','atlas-agents','atlas-codex') else [])
                 result=subprocess.run(args,cwd=self.home,env=env,capture_output=True,text=True,timeout=10)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertIn(output,result.stdout)
