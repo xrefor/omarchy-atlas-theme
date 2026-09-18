@@ -90,7 +90,7 @@ the Nym app for account setup; use **b** to revisit setup and **o** to open the 
 
 ## Install
 
-**Version 1.0.0-rc6.** Tested against Omarchy **4.0.4-1**, Hyprland's Lua
+**Version 1.0.0-rc7.** Tested against Omarchy **4.0.4-1**, Hyprland's Lua
 configuration, and the Quickshell-based Omarchy shell. See
 [compatibility](docs/COMPATIBILITY.md) and [release validation](docs/VALIDATION.md).
 
@@ -341,7 +341,7 @@ python3 tools/check_release.py
 python3 tools/build.py
 ```
 
-The build writes `dist/atlas-1.0.0-rc6.tar.gz` and a SHA-256 sidecar. The archive
+The build writes `dist/atlas-1.0.0-rc7.tar.gz` and a SHA-256 sidecar. The archive
 contains a per-file hash manifest, source, artwork, component installers, tests,
 licenses and documentation. It excludes caches, backups, account profiles,
 application logs, screenshots of personal content and hardware configuration.

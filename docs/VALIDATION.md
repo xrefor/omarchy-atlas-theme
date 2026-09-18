@@ -530,4 +530,4 @@ The clean VM covers installation, reboot, password authentication, virtual USB
 media and recovery logic. It does not validate physical firmware rendering,
 GPU variation, fingerprint readers, encrypted Plymouth prompts, real Nym account
 connectivity or every optional application version. The archive is suitable for
-sharing as **1.0.0-rc6** with those limitations stated.
+sharing as **1.0.0-rc7** with those limitations stated.

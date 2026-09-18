@@ -5,7 +5,8 @@ contains the full interactive showcase: the ATLAS palette, wallpaper selector,
 playback controls, and expandable reference sections.
 
 The website is published from the separate public `xrefor/atlas-showcase`
-repository. The ATLAS theme repository remains private. The Pages address is:
+repository. The public theme source and installation guides live in
+`xrefor/omarchy-atlas-theme`. The Pages address is:
 
 https://xrefor.github.io/atlas-showcase/
 
@@ -27,7 +28,7 @@ Documentation links point to their rendered Markdown on GitHub.
 
 The public showcase repository uses **GitHub Actions** as its Pages source.
 Its `Publish ATLAS showcase` workflow publishes changes from `main`.
-The private theme repository does not have a Pages deployment workflow.
+The theme source repository does not have a Pages deployment workflow.
 
 After editing this repository's `index.html` or showcase media, build the site
 and copy the resulting static files to the adjacent public checkout:
@@ -41,9 +42,8 @@ Review and commit the changes in the public checkout before pushing. Preserve
 its workflow, builder, README, and license. Copy only the generated `dist/site`
 contents; never copy the theme repository or its Git history into that checkout.
 
-The public page explains that installation and the linked technical guides
-require access to the private theme repository. The source visibility remains
-an explicit release decision.
+The public page links directly to the theme source and technical guides. Keep
+its release version and installation instructions aligned with the theme README.
 
 ## Media
 

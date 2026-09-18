@@ -13,7 +13,7 @@
 ~/Projects/atlas
 <span class="prompt">❯</span> <span style="color:var(--secondary)">▌</span></pre></div><p class="note">Illustrative layout using synthetic content. The installed tmux, Foot and Starship configuration produces the actual workspace.</p>
 <h2>Eight backgrounds</h2><img class="wall" id="wallpaper" src="../backgrounds/atlas-boot.png" alt="ATLAS Boot wallpaper"><p id="caption">ATLAS Boot — original vector wordmark, 3440 × 1440.</p><div class="gallery" id="gallery"></div>
-<footer>ATLAS 1.0.0-rc3 · Local preview · No external fonts, trackers, or network requests.</footer></main>
+<footer>ATLAS 1.0.0-rc7 · Local preview · No external fonts, trackers, or network requests.</footer></main>
 <script>
 const backgrounds=[['atlas-boot','ATLAS Boot'],['atlas-vault','ATLAS Vault'],['atlas-ember-seam','Ember Seam'],['atlas-thermal-horizon','Thermal Horizon'],['atlas-cinder-array','Cinder Array'],['atlas-umbra-core','Umbra Core'],['atlas-ember-causeway','Ember Causeway'],['atlas-obsidian-fold','Obsidian Fold']];
 for(const [file,name] of backgrounds){const button=document.createElement('button');button.type='button';button.setAttribute('aria-pressed',String(file==='atlas-boot'));const img=document.createElement('img');img.src='../backgrounds/'+file+'.png';img.alt='';const label=document.createElement('span');label.textContent=name;button.append(img,label);button.onclick=()=>{document.getElementById('wallpaper').src=img.src;document.getElementById('wallpaper').alt=name+' wallpaper';document.getElementById('caption').textContent=name;for(const b of document.querySelectorAll('.gallery button'))b.setAttribute('aria-pressed',String(b===button));};document.getElementById('gallery').append(button);}
