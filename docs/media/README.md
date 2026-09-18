@@ -24,12 +24,12 @@ library.
 The current overview and workspace stills were captured on **2026-09-18** using
 native applications on a temporary **1920 × 1080 headless Hyprland output at
 1.25 scale**. They show the current Neovim readability, Yazi layout and preview,
-and 95% default-opacity refinements. The capture workspace used public tracked
+and 100% default window opacity. The capture workspace used public tracked
 repository files and [`palette.py`](palette.py), with no private project content.
 
 Foot used its installed **IBM Plex Mono at 9 pt**, with the existing **8 pt Nerd
 Font fallback**. No font override was applied. Process-specific capture-window
-opacity was set to **95%**; the user's existing system setting remained **100%**,
+opacity was set to **100%**; the user's existing system setting remained **100%**,
 and Zen's **100%** exception was unchanged.
 
 Neovim used the current repository `neovim.lua`, the installed Aether plugin,

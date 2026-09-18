@@ -7,7 +7,7 @@ entries and comments. Omarchy reloads the extension automatically.
 | Control | Behavior |
 | --- | --- |
 | Wallpaper | Opens Omarchy's image picker for the active theme and user backgrounds. Cancelling leaves the current wallpaper alone. |
-| Window opacity | Offers 80%, 87%, 95% (ATLAS default), or 100%; the current preset gets a checkmark. Zen Browser stays fully opaque at every preset. Fullscreen and existing app exceptions keep their own rules. |
+| Window opacity | Offers 80%, 87%, 95%, or 100% (ATLAS default, fully opaque); the current preset gets a checkmark. Zen Browser stays fully opaque at every preset. Fullscreen and existing app exceptions keep their own rules. |
 | Lock screen | Selects Classic or Terminal for the next lock; shown when the shell component is installed. |
 | Neovim comments | Selects Standard or Brighter comments in the ATLAS Aether integration. The choice applies when Neovim regains focus or reloads its colorscheme. |
 | Component status | Shows the active theme, configured Foot font, wallpaper, opacity, and installer-managed or separately detected components. |
@@ -48,7 +48,7 @@ font sizes stay unchanged.
 
 Opacity is read from the existing ATLAS all-window rule in `looknfeel.lua` or
 `hyprland.lua`; there is no second preference store. Ambiguous/custom rules are
-left for manual review. New installations default to 95%; updates retain the
+left for manual review. New installations default to 100%; updates retain the
 selected opacity. The control checks
 Hyprland before and after changing the rule and rolls back if validation fails.
 It changes focused and unfocused opacity together, keeping fullscreen at 100%.
@@ -75,7 +75,7 @@ opening another terminal within that same session does not always clear it.
 ```bash
 atlas-settings status
 atlas-settings diagnostics
-atlas-settings opacity 95
+atlas-settings opacity 100
 atlas-settings readability readable
 atlas-settings restore
 ```

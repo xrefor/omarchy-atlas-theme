@@ -578,7 +578,7 @@ checks verified actual truecolor syntax output and T expansion/restoration;
 the process exited successfully. The normal layout is 1:4:3 and image bounds
 are 800×800. Image rendering at that larger bound was not visually validated.
 
-New desktop installations default to 95% opacity; existing choices survive
+New desktop installations default to 100% opacity; existing choices survive
 updates. Tests cover fresh installation, existing/main-config rules, all presets,
 restoration and the unchanged Zen Browser 100% exception.
 
