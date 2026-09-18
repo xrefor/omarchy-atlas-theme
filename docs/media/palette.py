@@ -11,6 +11,7 @@ class Swatch:
     color: str
 
     def rgb(self) -> tuple[int, int, int]:
+        # Strip the hex prefix before reading the RGB channels.
         value = self.color.removeprefix("#")
         red, green, blue = (int(value[i:i + 2], 16) for i in (0, 2, 4))
         return red, green, blue
@@ -21,6 +22,7 @@ def load_palette(path: Path) -> list[Swatch]:
     with path.open("rb") as source:
         colors = tomllib.load(source)
 
+    # UI accents stay distinct from diagnostic and Git colors.
     roles = ("background", "foreground", "accent", "green", "blue")
     return [Swatch(name, colors[name]) for name in roles]
 

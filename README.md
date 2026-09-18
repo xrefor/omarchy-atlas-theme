@@ -4,22 +4,180 @@
 
 # ATLAS for Omarchy
 
-**One palette. From boot to desktop.**
+**Carbon. Ivory. Signal.**
 
-Carbon surfaces. Warm ivory text. Signal orange.
-
-ATLAS brings a shared visual language to your whole setup: boot and login,
-windows and lock screen, terminals and everyday applications. Square edges,
-fine borders, and just enough orange to show what matters.
+ATLAS brings carbon surfaces, warm ivory text and signal orange to Omarchy.
+Readable code colors, square windows and coordinated application styling carry
+the palette through the desktop. Its terminal workspace adds tabs, visual file
+browsing and compact panels for Codex agents and NymVPN, with matching lock
+screens and optional boot and login styling.
 
 **[Explore ATLAS ↗](https://xrefor.github.io/atlas-showcase/)** · [Install](#install) · [Screenshots](#screenshots) · [Reference](#reference)
 
-[![Ember Seam: dark architectural walls with a narrow seam of orange light](docs/media/previews/atlas-ember-seam-1080.webp)](https://xrefor.github.io/atlas-showcase/#wallpapers)
+[![The ATLAS desktop with its coordinated terminal workspace](docs/media/atlas-desktop.png)](docs/media/atlas-desktop.png)
 
-*Ember Seam — one of eight included backgrounds.*
+Thin borders, IBM Plex typography and orange where attention belongs. New
+installations default to **95% window opacity**; Zen stays fully opaque. Updates
+preserve your existing opacity choice.
+
+| Carbon | Surface | Outline | Ivory | Signal |
+| --- | --- | --- | --- | --- |
+| `#100E0C` | `#1C1814` | `#3A342C` | `#D6CFC4` | `#FF5A12` |
+
+## Screenshots
+
+### A workspace for everyday use
+
+[![ATLAS in use: Neovim, Yazi and the terminal panels](docs/media/atlas-overview.gif)](https://xrefor.github.io/atlas-showcase/#screenshots)
+
+*20 seconds in real applications at the normal 9 pt terminal font size.
+The agent and VPN panels show demonstration data.*
+[Watch with playback controls](https://xrefor.github.io/atlas-showcase/#screenshots) · [Download the video](docs/media/atlas-overview.mp4)
+
+| Neovim | Yazi |
+| --- | --- |
+| [![Code in Neovim with the ATLAS syntax palette](docs/media/atlas-editor.png)](docs/media/atlas-editor.png) | [![Yazi file browsing with an ATLAS code preview](docs/media/atlas-files.png)](docs/media/atlas-files.png) |
+| Readable comments and hints; distinct colors for functions, strings, types and control flow. Completion icons follow those same roles. | Matching code-preview colors, quiet directory names and a clear focused row. Filenames get half the width; **T** expands the preview. |
+
+The tmux workspace keeps files, monitoring and music within reach, with a
+persistent header, tabs and a Starship prompt. Terminal preferences cover Foot,
+Ghostty, Kitty and Alacritty; app styling also includes btop, LazyGit, Lazydocker,
+Spotify Player and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
+
+### Panels alongside your work
+
+Both panels use the active Omarchy palette. They open beside your work on wide
+terminals and in a separate tmux window when space is limited. The panels and
+shortcuts are included in the apps component; their external applications are
+needed to use the integrations.
+
+| Codex agents | NymVPN |
+| --- | --- |
+| [![ATLAS agent panel with demonstration task descriptions and lifecycle status](docs/media/atlas-agents.png)](docs/media/atlas-agents.png) | [![ATLAS NymVPN panel with demonstration status beside the terminal workspace](docs/media/atlas-terminal.png)](docs/media/atlas-terminal.png) |
+| Follow the current local Codex CLI conversation's child agents: tasks, status, elapsed time and reported plan progress. The read-only panel opens automatically without taking focus. **Ctrl+Space → a** toggles it. | See tunnel status, select dVPN or Mixnet mode, and adjust Nym settings. Requires a NymVPN account, daemon and matching CLI. **Ctrl+Space → n** toggles it. |
+
+*Demonstration data: the panel captures use sample agent tasks and VPN status.*
+
+Closing a panel leaves agents and the VPN running. The agent observer is a local,
+version-sensitive integration; Nym setup and account management remain in Nym's
+own tools. See [agent panel behavior](docs/AGENT-PANEL.md) and
+[NymVPN setup and controls](docs/VPN.md).
+
+### Two lock-screen styles
+
+| Classic · default | Terminal |
+| --- | --- |
+| [![Classic ATLAS lock screen with animated Matrix rain, captured from the native lock component](docs/media/atlas-lock.gif)](docs/media/atlas-lock.gif) | [![Terminal ATLAS lock screen with a blinking chevron, captured from the native lock component](docs/media/atlas-lock-terminal.gif)](docs/media/atlas-lock-terminal.gif) |
+| Matrix rain, blurred wallpaper and a framed password field. | A centered ATLAS mark and a blinking chevron, opening directly to password input. |
+
+*Looping captures of the native lock-screen component.
+Still images: [Classic](docs/media/atlas-lock.png) · [Terminal](docs/media/atlas-lock-terminal.png).*
+
+Choose **ATLAS → Lock screen → Classic / Terminal**. Both appearances use the
+same Omarchy session-lock service and native authentication backend. The shell
+component retains your idle timeouts; Classic's Matrix screensaver runs inside
+the lock surface, so it locks at the earlier of the screensaver and lock
+timeouts. [Styles](docs/LOCK-SCREEN.md) · [Authentication behavior](docs/AUTH.md).
+
+## Install
+
+**Version 1.0.0-rc7.** Tested against Omarchy **4.0.4-1**, Hyprland's Lua
+configuration and the Quickshell-based Omarchy shell.
+[Compatibility](docs/COMPATIBILITY.md) · [Validation](docs/VALIDATION.md).
+
+Clone the repository and run the installer as your normal user:
+
+```bash
+git clone https://github.com/xrefor/omarchy-atlas-theme.git && cd omarchy-atlas-theme && ./install.sh
+```
+
+The installer checks dependencies, installs every user component and activates
+ATLAS. **Boot and login styling are installed separately.** Preview the operation
+with `./install.sh --dry-run`. For a release archive, extract it and run
+`./install.sh` inside the extracted directory.
+
+In an interactive terminal, missing optional applications are offered
+individually: Yazi, Spotify Player, Lazygit, Lazydocker, Zen and NymVPN. Every
+choice defaults to **No**, and AUR packages are identified before confirmation.
+If Nym is installed, a separate prompt offers its missing CLI matched to the
+daemon version. Dry runs, staged installs and noninteractive runs skip these
+prompts. Revisit them with `python3 lib/atlas/optional.py`.
+
+Existing enabled clones of the lock, idle, Polkit or monitor plugins conflict
+with ATLAS shell styling. The prerequisite check lists commands to disable
+them while preserving their files. To retain those clones, install with
+`python3 install.py --components theme,desktop,apps,cli`, then activate using
+`omarchy theme set atlas`.
+
+Open a new terminal and restart Zen after activation. Log out and back in to
+propagate the font environment consistently. Optional app integrations become
+active when their applications are installed. See [dependencies](docs/DEPENDENCIES.md)
+if the prerequisite check reports a missing command.
 
 <details>
-<summary>Explore the eight wallpapers</summary>
+<summary>Choose components</summary>
+
+```bash
+# Standard desktop colors, artwork and windows:
+python3 install.py --components theme
+
+# Add fonts, toolkits, terminals and the application workspace:
+python3 install.py --components theme,desktop,apps
+
+# Lock styles, Matrix rain, Polkit dialog and display widget:
+python3 install.py --components shell
+
+# Network-command colors:
+python3 install.py --components cli
+```
+
+The `desktop` and `shell` components also install the theme. Later component
+installs share the original backup baseline. Optional CLI skins are selected
+explicitly; see [CLI coverage](docs/CLI.md).
+
+Omarchy's normal repository theme installer loads the root palette and artwork.
+The local installer above installs the complete workspace and shell additions.
+
+</details>
+
+<details>
+<summary>Optional boot menu, Plymouth and SDDM styling</summary>
+
+```bash
+sudo python3 install.py boot --dry-run
+sudo python3 install.py boot
+# After rebooting and checking the boot and login screens:
+sudo python3 install.py boot-confirm
+```
+
+The boot component adds ATLAS styling to Limine, Plymouth and SDDM, preserving
+boot entries, disk identifiers, kernel parameters and authentication policies.
+It backs up the EFI partition and changed system files, retaining its private
+transaction backup until confirmation. Select surfaces with `--limine`,
+`--plymouth` or `--sddm`. Read [boot installation and recovery](docs/BOOT.md) for
+supported layouts, enrollment handling and interrupted transactions.
+
+</details>
+
+## Reference
+
+Open **Omarchy → ATLAS**, or run `atlas-settings`, for wallpapers, opacity,
+lock styles, Neovim comment brightness, shortcuts, diagnostics and restoration.
+In tmux, **Ctrl+Space** then **f**, **m** or **s** opens files, monitoring or music;
+**Alt+1 / Alt+2 / …** switches tabs. In Yazi, **M** or **g m** opens Drives.
+
+| Guide | What it covers |
+| --- | --- |
+| [Settings](docs/SETTINGS.md) | Appearance choices, editor behavior and managed configuration |
+| [Dependencies](docs/DEPENDENCIES.md) | Required tools and optional application integrations |
+| [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
+| [NymVPN panel](docs/VPN.md) | Dependencies, service setup and tunnel controls |
+| [Lock screen](docs/LOCK-SCREEN.md) · [Authentication](docs/AUTH.md) | Classic and Terminal styles, idle and authentication behavior |
+| [Boot](docs/BOOT.md) | Installation, recovery and removal of boot/login styling |
+| [CLI coverage](docs/CLI.md) | Command colors and optional tool integrations |
+
+<details>
+<summary>Eight included wallpapers</summary>
 
 <table>
 <tr>
@@ -40,273 +198,24 @@ fine borders, and just enough orange to show what matters.
 
 </details>
 
-## A consistent look, screen to screen
-
-| Boot & login | Desktop & lock screen | Terminal & applications |
-| --- | --- | --- |
-| ATLAS branding across Limine, Plymouth, and SDDM, installed as an optional component. | Square Hyprland windows, thin orange focus borders, coordinated shell panels, and Matrix rain. | IBM Plex typography, tmux tabs, Starship prompts, Neovim syntax colors, and Yazi previews. |
-
-| Carbon | Surface | Outline | Ivory | Signal |
-| --- | --- | --- | --- | --- |
-| `#100E0C` | `#1C1814` | `#3A342C` | `#D6CFC4` | `#FF5A12` |
-
-## Screenshots
-
-A quiet desktop, Python in Neovim, and files you can browse visually. The editor
-shares the ATLAS palette, with warm syntax colors against carbon surfaces.
-
-[![ATLAS in use: opening a Python script in Neovim, file browsing, and a brief Nym panel](docs/media/atlas-overview.gif)](https://xrefor.github.io/atlas-showcase/#screenshots)
-
-*20 seconds on a real ATLAS desktop: desktop → Python in Neovim → files → Nym → desktop.
-Recorded at the normal 9 pt terminal font size.*
-
-[Watch with playback controls](https://xrefor.github.io/atlas-showcase/#screenshots) · [Download the 1080p video](docs/media/atlas-overview.mp4)
-
-| Python, in the shared palette | The same character, at rest |
-| --- | --- |
-| [![Python script open in Neovim with the ATLAS Aether theme](docs/media/atlas-editor.png)](docs/media/atlas-editor.png) | [![ATLAS Matrix lock screen with warm ivory and orange characters](docs/media/atlas-lock.png)](docs/media/atlas-lock.png) |
-| Ivory text, warm syntax colors, and carbon surfaces. | Matrix rain inside the lock surface, captured during Omarchy VM validation. |
-
 <details>
-<summary>A closer look: the NymVPN panel · optional integration</summary>
+<summary>Palette synchronization and restoration</summary>
 
-[NymVPN](https://nym.com/) is an open-source, decentralized VPN developed by
-[Nym Technologies SA](https://nym.com/trust-center) in Switzerland. Its Fast mode
-uses two-hop WireGuard routing for everyday browsing. Its Mixnet mode routes
-traffic through five hops, adding cover traffic and packet mixing to obscure
-traffic patterns, with higher latency. [How the two modes work](https://support.nym.com/hc/en-us/articles/24326365096721-What-s-the-difference-between-NymVPN-Fast-Anonymous-mode).
-
-ATLAS's optional tmux side panel brings live tunnel status, dVPN / Mixnet mode
-selection, and settings into the workspace. It requires a NymVPN account,
-the Nym daemon, and a matching CLI.
-
-[![ATLAS terminal workspace alongside the NymVPN controls](docs/media/atlas-terminal.png)](docs/media/atlas-terminal.png)
-
-Open with **Ctrl+Space**, then **n**. The panel offers service startup and opening
-the Nym app for account setup; use **b** to revisit setup and **o** to open the app.
-[Panel controls and dependencies](docs/VPN.md).
-
-</details>
-
-## Install
-
-**Version 1.0.0-rc7.** Tested against Omarchy **4.0.4-1**, Hyprland's Lua
-configuration, and the Quickshell-based Omarchy shell. See
-[compatibility](docs/COMPATIBILITY.md) and [release validation](docs/VALIDATION.md).
-
-Clone the repository and run the one-command installer as your normal user:
-
-```bash
-git clone https://github.com/xrefor/omarchy-atlas-theme.git && cd omarchy-atlas-theme && ./install.sh
-```
-
-The script checks core dependencies, installs every user component, and activates
-ATLAS. In a terminal, it first offers missing optional applications individually
-(Yazi, Spotify Player, Lazygit, Lazydocker, Zen, and NymVPN). Each defaults to No;
-AUR packages are identified before confirmation. If NymVPN is installed, a
-separate prompt offers its missing `nym-vpnc` CLI, matched to the daemon version.
-Boot configuration stays separate. Preview
-the same operation with `./install.sh --dry-run`. If you downloaded a release
-archive, extract it and run `./install.sh` inside the extracted directory.
-Dry runs, staged installs and noninteractive runs skip optional package prompts.
-To revisit the choices, run `python3 lib/atlas/optional.py`.
-
-Existing enabled clones of the lock, idle, Polkit or monitor plugins conflict
-with ATLAS shell styling. The prerequisite check lists all of them with
-`omarchy plugin disable <id>` commands. Disable those you want ATLAS to replace
-and rerun; their plugin files are preserved. To retain your clones, use
-`python3 install.py --components theme,desktop,apps,cli` instead, then activate
-with `omarchy theme set atlas`.
-
-Open a new terminal and restart Zen after activation. Log out and back in to
-propagate the font environment consistently. See the
-[dependency list](docs/DEPENDENCIES.md) if the prerequisite check reports a
-missing command. Optional application integrations, including Yazi, become active
-when those applications are installed.
-
-The extended shell uses the recipient's existing idle timeouts. Its Matrix
-screensaver runs inside the secure lock surface, so it locks at the earlier of
-screensaver and lock timeouts. Choose Classic or Terminal under **ATLAS → Lock screen**. See [lock-screen styles](docs/LOCK-SCREEN.md) and [authentication and shell](docs/AUTH.md).
-
-[![ATLAS terminal lock screen captured in the validation VM](docs/media/atlas-lock-terminal.png)](docs/media/atlas-lock-terminal.png)
-
-Terminal lock screen, captured during Omarchy VM validation.
-
-<details>
-<summary>Boot menu, Plymouth, and SDDM</summary>
-
-The boot component is included in the same archive and installed explicitly:
-
-```bash
-sudo python3 install.py boot --dry-run
-sudo python3 install.py boot
-# After rebooting and checking the boot/login screens:
-sudo python3 install.py boot-confirm
-```
-
-It backs up the recipient's current EFI partition and changed system files,
-adds the ATLAS assets, updates appearance settings, and rebuilds boot images
-when required. It preserves disk identifiers, boot entries, kernel parameters,
-timeouts, default entry, and authentication policies. A private transaction
-backup is retained until `boot-confirm`. Interrupted transactions are handled
-with `boot-recover`; see the recovery conditions in the boot guide. It never
-copies a boot image from the creator's machine.
-
-Select individual surfaces with `--limine`, `--plymouth`, or `--sddm`.
-See [boot installation and recovery](docs/BOOT.md) for supported partition
-layouts, enrollment handling, and rollback.
-
-</details>
-
-<details>
-<summary>Choose components</summary>
-
-```bash
-# Standard desktop colors, artwork and windows only:
-python3 install.py --components theme
-
-# Desktop fonts/toolkits/terminals and application workspace:
-python3 install.py --components theme,desktop,apps
-
-# Lock screen, Matrix rain, Polkit dialog and display widget:
-python3 install.py --components shell
-
-# Core network-command colors:
-python3 install.py --components cli
-
-# Optional CLI skins, selected explicitly:
-python3 install.py --components cli --cli-groups cli-tcpdump,cli-metasploit,cli-shodan,cli-codex
-```
-
-`desktop` and `shell` also install the theme. Components share one installation
-record, so later installation adds to the same backup baseline. The full archive
-always contains every component regardless of the selected installation.
-
-Omarchy's normal repository theme installer can load the root palette/artwork.
-Omarchy restricts executable
-theme files from downloaded repositories, so the complete experience uses the
-local installer above.
-
-</details>
-
-## Reference
-
-Component coverage, everyday controls, palette management, and recovery.
-
-<details>
-<summary>Included</summary>
-
-| Surface | ATLAS treatment |
-| --- | --- |
-| Limine | ATLAS branding, carbon background, matching terminal colors |
-| Plymouth | Original angular ATLAS wordmark, refined lock/password tile, progress line |
-| SDDM | Matching logo, carbon login surface and warm password controls |
-| Hyprland | Square windows, 1px focus borders, no shadows; desktop component defaults to 95% window opacity |
-| Omarchy shell | Thin neutral outlines, orange focus, opaque panels; existing bar widgets and positions retained |
-| Lock / authentication | Matrix rain, ATLAS tile and native Omarchy PAM/Polkit backend |
-| Wallpapers | ATLAS Boot, ATLAS Vault, Ember Seam, Thermal Horizon, Cinder Array, Umbra Core, Ember Causeway, Obsidian Fold |
-| Fonts / GTK | IBM Plex Mono and Sans, GTK3/GTK4 colors, Yaru orange icons |
-| Terminals | Foot, Ghostty, Kitty and Alacritty preferences; palette generated by Omarchy |
-| Neovim | ATLAS Aether theme, matching syntax palette and Python highlighting |
-| NymVPN panel | Live ATLAS tunnel dashboard, dVPN/Mixnet mode and settings menus; optional Nym installation |
-| Codex agent panel | Automatically shows spawned agents, concise task descriptions, lifecycle status, elapsed time and reported progress in the active palette |
-| tmux / Starship | Persistent ATLAS header, tabs, full directory path and compact Git status |
-| Yazi | Matching code-preview colors, clear file markers, expandable previews and removable-drive menu |
-| Zen | Browser chrome and browser-owned internal pages; native profile discovery |
-| Spotify terminal player | Selection, playback, lyrics, border and progress colors |
-| btop / LazyGit / Lazydocker | Native palette and panel styling |
-| Bash / eza / ls / fzf / jq | Coordinated listing, search and data colors |
-| Network tools / Metasploit / Shodan | Optional presentation wrappers and native console prompt |
-| Codex | Orange interface accents and carbon panels; native ATLAS syntax themes selected through `/theme` |
-| Other Omarchy apps | Standard Omarchy generation from the shared palette, including Chromium, Obsidian and supported AI clients |
-
-The proprietary graphical Spotify client, website content, and application
-binaries are not modified. Wifite's visual adapter is included as reference
-source, with its version and installation boundary documented; no machine-bound
-root launcher is distributed. See [CLI coverage](docs/CLI.md).
-
-</details>
-
-<details>
-<summary>Everyday terminal shortcuts</summary>
-
-| Shortcut | Action |
-| --- | --- |
-| Super+Shift+F | Yazi |
-| Super+Shift+Alt+M | Spotify terminal player |
-| Ctrl+Space, then F | Files tab |
-| Ctrl+Space, then M | Monitoring pane on wide terminals, tab on narrow terminals |
-| Ctrl+Space, then S | Music tab |
-| Ctrl+Space, then N | NymVPN panel (requires Nym daemon and matching CLI) |
-| Ctrl+Space, then A | Codex agent panel; automatically opens when an observed session spawns agents |
-| Ctrl+Space, then I | Directory summary |
-| Alt+1 / Alt+2 / … | Switch terminal tabs |
-| Ctrl+B | Alternative tmux prefix |
-
-Press the prefix, release it, then press the lowercase letter. In Yazi, **Enter**
-enters directories and opens files with their normal application; **Right** / **l**
-also enters directories. **M** or
-**g m** opens Drives. The drive menu uses UDisks/Polkit for mount and eject actions.
-
-See [VPN panel controls and dependencies](docs/VPN.md).
-
-The [agent panel](docs/AGENT-PANEL.md) follows the current local Codex conversation
-without taking focus. It uses the active Omarchy palette and preserves the
-terminal's font. Successful agents move into **Recently completed** after 30
-seconds; press **h** in the panel to show their results. Closing it leaves agents
-running.
-
-</details>
-
-<details>
-<summary>One palette</summary>
-
-The palette lives in `~/.config/omarchy/themes/atlas/colors.toml` after installation.
-Apply changes with `omarchy theme set atlas`. The application hook reads the
-active resolved Omarchy palette, so it also follows other themes.
+The installed palette lives in `~/.config/omarchy/themes/atlas/colors.toml`.
+Apply palette edits with `omarchy theme set atlas`. Application colors and the
+terminal panels also follow other active Omarchy themes.
 
 ```bash
 atlas-theme sync          # regenerate managed application colors
-atlas-theme check         # report drift; exit nonzero if regeneration is needed
+atlas-theme check         # report drift
 atlas-theme doctor --all  # check dependencies
 ```
 
-Templates live in `components/apps/templates/` and `components/desktop/themed/`.
-The installed runtime is self-contained in `~/.local/share/atlas/`; the extracted
-archive can be removed after installation. Manual edits to managed files stop
-updates/removal until reconciled, rather than being silently overwritten.
+The installed runtime is self-contained in `~/.local/share/atlas/`. Configuration
+changes use the installation journal; later manual edits require reconciliation
+before updates or restoration overwrite them.
 
-</details>
-
-<details>
-<summary>ATLAS settings</summary>
-
-Open **Omarchy → ATLAS**, or run `atlas-settings`. The menu includes the native
-wallpaper picker, window opacity (80%, 87%, **95% default**, 100%), component
-status, local diagnostics, shortcuts, and a preview before restoring saved files.
-Fullscreen and application-specific opacity exceptions retain their existing
-rules. The terminal font stays at **9 pt**.
-
-Optional brighter comments are available under **ATLAS → Neovim comments**.
-The Codex CLI integration also includes **ATLAS Readable** in its native `/theme`
-picker. Both preserve the standard preset and existing syntax colors.
-
-Neovim's explorer, picker, completion, command dialogs, help overlays and normal
-status line share the active palette's accent. Syntax, Git changes, diagnostics,
-and editing modes retain their semantic colors, including after theme switches.
-Standard comments and editor hints use readable warm gray; completion icons
-follow the syntax roles. Yazi shares those core code colors, gives filenames
-half the window width, and expands its preview with **T**.
-
-Settings use the installer's existing backup journal. Later manual edits block
-changes until reconciled. See [settings and diagnostics](docs/SETTINGS.md).
-
-</details>
-
-<details>
-<summary>Remove</summary>
-
-Select a different Omarchy theme before restoring user files:
+To remove ATLAS, select another theme, then preview and restore saved files:
 
 ```bash
 omarchy theme set "Tokyo Night"
@@ -314,52 +223,23 @@ atlas-theme restore --dry-run
 atlas-theme restore
 ```
 
-Log out and back in afterward to clear ATLAS font settings retained by the
-running desktop session.
-
-User originals and installed snapshots are recorded privately under
-`~/.local/state/atlas-bundle/`. Original file modes and symlinks are restored;
-files introduced by the bundle are removed. This directory is local state and
-must never be included in a shared archive. An interrupted user installation
-can be rolled back with `atlas-theme recover` or `python3 install.py recover`.
-
-For boot removal, use the extracted bundle:
-
-```bash
-sudo python3 install.py boot-restore --dry-run
-sudo python3 install.py boot-restore
-```
-
-Boot removal rebuilds the current installed kernel with the restored appearance.
-It does not downgrade to the boot image saved during the original installation.
+Log out and back in to clear the session's retained font settings. Original files
+and snapshots are stored privately under `~/.local/state/atlas-bundle/`.
+Interrupted user installs can be rolled back with `atlas-theme recover`. Boot
+removal is separate: see [boot restoration](docs/BOOT.md).
 
 </details>
 
 <details>
-<summary>Development and sharing</summary>
+<summary>Development, validation and credits</summary>
 
-```bash
-python3 tools/check.py
-python3 tools/check_release.py
-python3 tools/build.py
-```
+See the [contributor guide](CONTRIBUTING.md), [validation commands and CI coverage](docs/VALIDATION.md),
+[credits](docs/CREDITS.md) and [migration notes](docs/MIGRATION.md).
+`python3 tools/check.py` runs the complete repository checks;
+`python3 tools/check_release.py` verifies packaging and release behavior.
 
-The build writes `dist/atlas-1.0.0-rc7.tar.gz` and a SHA-256 sidecar. The archive
-contains a per-file hash manifest, source, artwork, component installers, tests,
-licenses and documentation. It excludes caches, backups, account profiles,
-application logs, screenshots of personal content and hardware configuration.
-
-GitHub Actions runs portable tests, release verification and showcase validation
-on disposable Ubuntu runners on pushes and pull requests. The workflow uses
-`apt-get` to install test tools on those runners; ATLAS itself targets Omarchy/Arch.
-See [CI coverage and local commands](docs/VALIDATION.md#portable-checks-and-ci)
-and the [contributor guide](CONTRIBUTING.md) for the repository layout.
-
-See [release validation](docs/VALIDATION.md), [credits](docs/CREDITS.md), and
-[renaming/migration](docs/MIGRATION.md). MIT license applies to project source;
+ATLAS was previously named Blackburn. Project source uses the MIT license;
 upstream notices are retained in `LICENSES/`.
-
-ATLAS is the new name for the earlier Blackburn customization.
 
 </details>
 
