@@ -17,8 +17,9 @@ screens and optional boot and login styling.
 [![The ATLAS desktop with its coordinated terminal workspace](docs/media/atlas-desktop.png)](docs/media/atlas-desktop.png)
 
 Thin borders, IBM Plex typography and orange where attention belongs. New
-installations default to **100% window opacity**; Zen stays fully opaque. Updates
-preserve your existing opacity choice.
+installations default to **100% window opacity**. Change it through
+**Omarchy → ATLAS → Window opacity**, or run `atlas-settings`. Updates preserve
+your existing opacity choice.
 
 | Carbon | Surface | Outline | Ivory | Signal |
 | --- | --- | --- | --- | --- |
