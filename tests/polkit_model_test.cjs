@@ -77,11 +77,11 @@ test('requires pam_fprintd to be an authentication module', () => {
 test('shortens known command authorization messages', () => {
   assert.equal(
     model.authorizationLabel("Authentication is required to run `/usr/bin/example' as the super user"),
-    "Authorize running '/usr/bin/example'"
+    "Authorize running '/usr/bin/example' as the super user"
   );
   assert.equal(
     model.authorizationLabel("authentication is needed to run 'example --safe' as root"),
-    "Authorize running 'example --safe'"
+    "Authorize running 'example --safe' as root"
   );
 });
 

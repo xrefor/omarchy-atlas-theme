@@ -1,8 +1,10 @@
 # Release validation
 
-This release candidate was prepared on the reference workstation and exercised
-in an isolated Omarchy 4.0.4 VM. The rc5 run upgraded an rc4 user installation.
-Authentication policy and workstation boot configuration were not changed.
+The commands below validate the current source tree. Dated sections record
+checks of earlier revisions and are not substitutes for rerunning them after
+changes. Release candidates have also been exercised in an isolated Omarchy
+4.0.4 VM; the rc5 run upgraded an rc4 user installation. Authentication policy
+and workstation boot configuration were not changed.
 
 ## Automated and isolated checks
 
@@ -65,6 +67,11 @@ dispatch. It uses Ubuntu 24.04, Python 3.11/3.14, Node.js 24, Lua 5.4 and pinned
 PyYAML. Actions use immutable commit references, repository permissions are
 read-only, and checkout credentials are not persisted.
 
+`apt-get` installs Lua and tmux inside GitHub's disposable Ubuntu runner. It is
+not part of the ATLAS installer and does not run on the recipient's Omarchy
+system. Ubuntu is a host for portable tests; it is not a supported installation
+target. See [GitHub's runner reference](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).
+
 Each job runs all Python tests, authentication boundary checks, all four
 JavaScript model suites, mocked Lua checks, an isolated tmux VPN-panel fixture,
 source/configuration validation and palette/template consistency. Omarchy's
@@ -85,16 +92,21 @@ python3 tools/build_site.py
 `check_release.py` requires a Git checkout with the intended release files
 tracked. It builds twice, compares archive bytes, checks extracted payload
 hashes against both the manifest and source, runs the shipped model tests, then
-installs/repeats/syncs/checks/restores within a temporary home. The workflow also
-validates showcase assets and anchors. It does not publish or deploy artifacts.
+stages the showcase using the extracted builder, then
+installs/repeats/syncs/checks/restores within a temporary home. The archive
+includes `index.html` and its referenced assets so that the shipped site builder
+is usable. The workflow also validates showcase assets and anchors from the
+checkout. It does not publish or deploy artifacts.
 
-Portable mode explicitly skips Neovim plugin integration, Omarchy plugin
-validation and QML lint. Run `python3 tools/check.py` on Omarchy for those checks.
+Portable mode explicitly skips the native Quickshell monitor fixtures, Neovim
+plugin integration, Omarchy plugin validation and QML lint. Python test skips
+and their reasons are printed in the checker output. Run `python3 tools/check.py`
+on Omarchy for the native checks.
 VM/hardware validation below remains necessary; a green portable job does not
 establish live lock/unlock, fingerprint, boot or physical-display behavior.
 
-The helper suites contain 5 idle, 15 monitor and 9 Polkit cases, alongside the
-6 Matrix cases. They cover regressions discovered while adding coverage:
+The idle, monitor, Polkit and Matrix helper suites report their current case
+counts when run. They cover regressions discovered while adding coverage:
 malformed/overflowing idle timeouts, invalid scaling options, malformed or
 duplicate display rows, and misleading PAM/module or authorization-message
 matches. Polkit's helper recognizes modules in the supplied PAM text; following
@@ -511,6 +523,28 @@ These are conflict checks, not a shared lock with package managers or other
 administrative tools. External writes must still be avoided during boot
 operations, especially after rebuild/enrollment starts and full ESP rollback
 may be required. See [boot installation and recovery](BOOT.md).
+
+## Public repository review — 2026-09-18
+
+The reviewed source passed **307 Python tests without skips**, six authentication
+boundary checks, 37 JavaScript model cases, Lua checks, native offscreen monitor
+fixtures, Neovim integration, plugin validation, QML lint and the isolated tmux
+VPN fixture. This run used Omarchy 4.0.4-1, Quickshell 0.3.1-1, Python 3.14.7,
+Node.js 26.7.0, Neovim 0.12.5-1 and tmux 3.7_c-1. The sandbox initially blocked
+temporary tmux sockets; the complete suite was rerun with socket access.
+
+New regressions cover recovery preserving a file edited after preflight,
+release-path and archive-integrity checks, rapid/failed/same-value monitor
+text-size changes, and command lookup through PATH. Polkit summaries retain the
+target identity, and the lock plugin rejects an empty password PAM file.
+The PAM change has static boundary coverage; no new real authentication or
+boot/reboot validation was performed during this review.
+
+README wallpaper images now reference 45,928 bytes of committed WebP previews
+instead of 12,706,150 bytes of original PNGs. This compares referenced asset
+sizes, not measured browser traffic. Original wallpaper downloads are retained.
+Unused template copies and obsolete preview/media files were removed after
+checking installer consumers and documentation/site links.
 
 ## Before promoting the candidate to a stable release
 

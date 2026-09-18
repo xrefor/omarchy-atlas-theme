@@ -14,6 +14,8 @@ SHELL = Path('/usr/share/omarchy/shell')
 QUICKSHELL = shutil.which('quickshell')
 
 
+@unittest.skipIf(os.environ.get('ATLAS_TEST_PORTABLE') == '1',
+                 'native monitor test omitted in portable mode')
 @unittest.skipUnless(QUICKSHELL and (SHELL / 'Ui/Panel.qml').is_file(),
                      'native monitor test requires Quickshell and Omarchy shell')
 class MonitorNightlightTests(unittest.TestCase):

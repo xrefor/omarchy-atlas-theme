@@ -55,8 +55,8 @@ function fingerprintConfiguredFromPamConfig(raw) {
 
 function authorizationLabel(message) {
   var text = String(message || "")
-  var match = text.match(/^Authentication is (?:needed|required) to run [`']([^`'\r\n]+)[`'] as .+$/i)
-  if (match && match[0].length === text.length) return "Authorize running '" + match[1] + "'"
+  var match = text.match(/^Authentication is (?:needed|required) to run [`']([^`'\r\n]+)[`'] as ([^\r\n]+)$/i)
+  if (match && match[0].length === text.length) return "Authorize running '" + match[1] + "' as " + match[2]
   var manage = text.match(/^Authentication is (?:needed|required) to (start|stop|restart|reload) (?:the )?['`]?([^'`\r\n]+?)['`]?$/i)
   if (manage && manage[0].length === text.length) {
     var action = manage[1].toLowerCase()

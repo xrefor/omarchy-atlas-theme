@@ -92,6 +92,33 @@ raise SystemExit(int(os.environ['ATLAS_TEST_EXIT']))
     def test_noninteractive_pipe_preserves_exact_arguments_and_exit(self):
         self.assert_direct(self.run_shell())
 
+    def test_real_launcher_resolves_path_and_preserves_explicit_paths(self):
+        # A bare name must follow PATH even when cwd contains the same filename.
+        shadow = self.root / 'codex'
+        shadow.write_text(f'#!{sys.executable}\nraise SystemExit(98)\n')
+        shadow.chmod(0o755)
+        executable = self.bin / 'codex'
+        for binary in ('codex', str(executable), str(executable.relative_to(self.root))):
+            with self.subTest(binary=binary):
+                self.calls.unlink(missing_ok=True)
+                result = subprocess.run(
+                    [sys.executable, str(ROOT / 'components/apps/bin/atlas-agents'),
+                     'launch', '--', binary, *ARGUMENTS],
+                    env=self.env, cwd=self.root, input=b'', capture_output=True, timeout=5)
+                self.assertEqual(result.returncode, 37, result.stderr)
+                calls = [json.loads(line) for line in self.calls.read_text().splitlines()]
+                self.assertEqual(calls, [[str(executable), *ARGUMENTS]])
+                self.assertFalse((self.root / 'unwanted').exists())
+
+    def test_real_launcher_explains_missing_path_executable(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / 'components/apps/bin/atlas-agents'),
+             'launch', '--', 'missing-codex'],
+            env=self.env, cwd=self.root, input=b'', capture_output=True, timeout=5)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(b'Executable not found on PATH: missing-codex', result.stderr)
+        self.assertFalse(self.calls.exists())
+
     def test_terminal_session_launches_observer_with_exact_binary_and_arguments(self):
         code, calls, errors = self.run_shell(terminal=True)
         self.assertEqual(code, 37, errors)

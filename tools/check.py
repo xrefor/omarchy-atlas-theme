@@ -27,6 +27,17 @@ def run(args,label):
     return result
 
 
+def source_files():
+    excluded={'dist','__pycache__','.git','.pytest_cache','.venv'}
+    for directory,dirs,files in os.walk(ROOT):
+        dirs[:]=sorted(name for name in dirs if name not in excluded)
+        for name in sorted(dirs+files):
+            path=Path(directory)/name
+            if path.is_symlink(): raise SystemExit('Symlink in release source: '+str(path))
+        for name in sorted(files):
+            yield Path(directory)/name
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--portable',action='store_true',help='Run headless checks; omit installed Omarchy/Neovim/QML integration')
@@ -35,9 +46,10 @@ def main():
     if args.portable: required.append('tmux')
     missing=[command for command in required if not shutil.which(command)]
     if missing: raise SystemExit('Missing test dependencies: '+', '.join(missing)+'. See docs/VALIDATION.md.')
+    ENV['ATLAS_TEST_PORTABLE']='1' if args.portable else '0'
     result=run([sys.executable,'-m','unittest','discover','-s','tests','-v'],'Python installer, boot and CLI tests')
     for line in result.stderr.splitlines():
-        if line.startswith('Ran '): print(line)
+        if line.startswith(('Ran ','OK')) or '... skipped ' in line: print(line)
     spec=importlib.util.spec_from_file_location('atlas_auth_checks',ROOT/'tests/test_auth_bundle.py')
     mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
     count=0
@@ -58,16 +70,14 @@ def main():
         if 'SKIP:' in result.stdout + result.stderr: print((result.stdout + result.stderr).strip())
     else: print('SKIP: Neovim UI integration (Neovim not installed)')
     checked=0
-    for path in sorted(ROOT.rglob('*')):
-        if not path.is_file() or any(part in ('dist','__pycache__','.git') for part in path.relative_to(ROOT).parts): continue
-        if path.is_symlink(): raise SystemExit('Symlink in release source: '+str(path))
+    for path in source_files():
         suffix=path.suffix
         if suffix=='.py': ast.parse(path.read_text(),filename=str(path));checked+=1
         elif suffix=='.json': json.loads(path.read_text());checked+=1
         elif suffix=='.toml': tomllib.loads(path.read_text());checked+=1
         elif suffix in ('.yaml','.yml'): yaml.safe_load(path.read_text());checked+=1
         elif suffix in ('.svg','.tmTheme'): ET.fromstring(path.read_bytes());checked+=1
-        data=path.read_bytes()
+        with path.open('rb') as source: data=source.read(32)
         if suffix=='.bash' or data.startswith((b'#!/bin/bash',b'#!/usr/bin/env bash',b'#!/bin/sh')):
             run(['bash','-n',str(path)],str(path.relative_to(ROOT))+' shell syntax')
     print(f'PASS: {checked} structured source/configuration files')

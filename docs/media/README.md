@@ -14,12 +14,13 @@ wallpaper source. If dimensions change, update the corresponding `srcset` and
 `data-srcset` width descriptors in `index.html`.
 
 `tools/build_site.py` stages and validates every responsive candidate and the
-original downloads referenced by the wallpaper picker. Normal site builds use
-the committed previews and need only the Python standard library.
+original downloads referenced by the wallpaper picker. The README also uses these previews for its wallpaper hero and thumbnails,
+with thumbnails linking to the original PNG downloads. Normal site builds use the committed
+previews and need only the Python standard library.
 
 ## Current README and website
 
-The approved overview is `atlas-overview.gif` / `atlas-overview.mp4`:
+The current overview is `atlas-overview.gif` / `atlas-overview.mp4`:
 
 - 20 seconds, silent, with a 1920 × 1080 H.264 video and 1280 × 720 GIF at 10 fps.
 - 0–2 seconds: desktop; 2–13: opening and navigating Python in Neovim;
@@ -51,9 +52,11 @@ captures of Foot, tmux, Starship, the NymVPN panel, and Yazi. File browsing uses
 a temporary copy of the public repository. Only the demonstration workspace
 was captured.
 
-- `atlas-desktop.gif`: 26-second silent loop, 1280 × 720, 10 fps.
-- `atlas-desktop.mp4`: the same capture, 1920 × 1080, 10 fps, H.264, no audio.
-- `atlas-terminal.png` and `atlas-files.png`: 1920 × 1080 stills from the capture.
+- `atlas-desktop.mp4`: 26-second source capture, 1920 × 1080, 10 fps, H.264,
+  no audio. Retained as source material for the current overview edit.
+- `atlas-terminal.png`: 1920 × 1080 still used by the Nym panel section.
+- The superseded desktop GIF and unused file-browser still were removed; the
+  current README and website use the overview above.
 
 The terminal uses the installed Foot configuration: IBM Plex Mono at 9 pt,
 ATLAS colors, and a temporary tmux session. The hostname is omitted from that
@@ -66,7 +69,6 @@ recording. It shows live readings from the local daemon. The demo opens the
 mode menu without changing the selected mode, settings, or VPN connection.
 Authentication and password entry are not included in the recording.
 
-The video joins the Nym and Yazi captures with straight cuts. The GIF is a
-scaled, palette-optimized version of that video. No interface elements were
+The video joins the Nym and Yazi captures with straight cuts. No interface elements were
 composited into the captures. The source wallpaper artwork is
 credited in [the project credits](../CREDITS.md).

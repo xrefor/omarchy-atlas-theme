@@ -49,6 +49,9 @@ def main():
             raise ValueError('Release payload differs from its checksum manifest')
         print(f'PASS: {len(manifest)} extracted payload files and internal checksums', flush=True)
 
+        run(sys.executable, 'tools/build_site.py', cwd=release)
+        print('PASS: showcase builder and assets from the extracted release', flush=True)
+
         # Execute the shipped tests so omissions from the build allowlist fail.
         for model in ('idle', 'matrix', 'monitor', 'polkit'):
             run('node', f'tests/{model}_model_test.cjs', cwd=release)

@@ -65,8 +65,9 @@ resolver. CI checks Python 3.11 and 3.14 with Node.js 24, Lua 5.4 and PyYAML 6.0
 `tools/ci-deps.sh` can fetch a commit-pinned, checksum-verified Omarchy 4.0.4
 resolver into a selected temporary directory; it does not install Omarchy.
 
-The default checker additionally uses Omarchy's plugin validator, installed
-Neovim plugins and `qmllint` with Quickshell/Omarchy imports when available.
+The default checker additionally uses Quickshell for isolated monitor-panel
+fixtures, Omarchy's plugin validator, installed Neovim plugins and `qmllint`
+with Quickshell/Omarchy imports when available.
 Portable mode explicitly skips these desktop-specific checks. See
 [validation commands and CI coverage](VALIDATION.md#portable-checks-and-ci).
 

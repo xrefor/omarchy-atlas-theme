@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import signal
 import stat
 import subprocess
@@ -159,7 +160,12 @@ def interactive_launch(args):
 def launch(args):
     if args and args[0] == '--': args = args[1:]
     if not args: raise ValueError('launch requires the Codex executable')
-    binary = str(Path(args[0]).resolve())
+    binary = args[0]
+    if '/' not in binary:
+        binary = shutil.which(binary)
+        if binary is None:
+            raise ValueError('Executable not found on PATH: ' + args[0])
+    binary = str(Path(binary).resolve())
     watcher = None
     if (os.isatty(0) and os.isatty(1) and os.environ.get('TMUX')
             and os.environ.get('ATLAS_AGENTS_AUTO', '1') != '0' and interactive_launch(args[1:])):

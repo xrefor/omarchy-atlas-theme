@@ -270,6 +270,26 @@ class StateTests(unittest.TestCase):
             state.write(self.home/'a',state.value('a later edit'))
             state.write(state.metadata(self.home,'pending.json'),state.value(json.dumps(pending),0o600))
             with self.assertRaisesRegex(ValueError,'later edit'): state.recover(self.home)
+    def test_recovery_preserves_edit_made_after_preflight(self):
+        pending={'changes':{
+            'a':{'before':state.value('a before'),'after':state.value('a after')},
+            'b':{'before':state.value('b before'),'after':state.value('b after')},
+        },'manifest_before':{'kind':'absent'}}
+        state.write(self.home/'a',state.value('a after'))
+        state.write(self.home/'b',state.value('b after'))
+        journal=state.metadata(self.home,'pending.json')
+        state.write(journal,state.value(json.dumps(pending),0o600))
+        original_write=state.write
+        def edit_between_recovery_writes(path,item):
+            original_write(path,item)
+            if path == self.home/'b':
+                (self.home/'a').write_text('concurrent local edit')
+        with state.lock(self.home), patch.object(state,'write',side_effect=edit_between_recovery_writes):
+            with self.assertRaisesRegex(ValueError,'changed during recovery'):
+                state.recover(self.home)
+        self.assertEqual((self.home/'a').read_text(),'concurrent local edit')
+        self.assertEqual((self.home/'b').read_text(),'b before')
+        self.assertTrue(journal.exists())
 
 
 class BundleTests(unittest.TestCase):

@@ -230,21 +230,6 @@
     "source_sha256": "4f74af37c550b3a1e05ef8985954740aa3c380e00d02818a0dbabb476dd51e3b"
   },
   {
-    "file": "components/apps/templates/shell.toml.tpl",
-    "origin": "application-source/templates/shell.toml.tpl",
-    "source_sha256": "c2c42562b05b0f39433520ba57229acf9726278bd8441648cfa1f8890a482ea5"
-  },
-  {
-    "file": "components/apps/templates/hyprland.lua.tpl",
-    "origin": "application-source/templates/hyprland.lua.tpl",
-    "source_sha256": "275b417c7a98c2b096d6b2480366b184d340cd4fe57fd0fe4cedb395ac436f05"
-  },
-  {
-    "file": "components/apps/templates/neovim.lua.tpl",
-    "origin": "application-source/templates/neovim.lua.tpl",
-    "source_sha256": "07db6ed735b5fe9712e2e314416a306f4d899ff35954d045dcac1c61d5aedb9c"
-  },
-  {
     "file": "components/apps/templates/btop.theme",
     "origin": "application-source/templates/btop.theme",
     "source_sha256": "a3e5c989c534b5818ba8c6ea2b8794c7e321b5fdc062b83fa0b9c64696858815"

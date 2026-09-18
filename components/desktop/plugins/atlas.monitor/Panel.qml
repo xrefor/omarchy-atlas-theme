@@ -69,6 +69,8 @@ Panel {
   // base-size so the knob doesn't snap back during the file round-trip. -1 =
   // no pending change; follow Style.font.baseSize.
   property int textSizePreviewIndex: -1
+  property int pendingTextSize: 0
+  property bool textSizeSetQueued: false
 
   // A text-size change reflows the whole panel (both font and spacing scale),
   // which slides rows under a stationary pointer and fires synthetic hover.
@@ -370,16 +372,22 @@ Panel {
   }
 
   function setTextSize(px) {
+    markReflowing()
+    textSizePreviewIndex = nearestTextStop(px)
+    pendingTextSize = px
+    if (textScaleProc.running) {
+      textSizeSetQueued = true
+      return
+    }
+    textSizeSetQueued = false
     textScaleProc.command = ["omarchy-display-text-size", String(px)]
-    if (!textScaleProc.running) textScaleProc.running = true
+    textScaleProc.running = true
   }
 
   function adjustTextSize(deltaSteps) {
     var idx = currentTextIndex() + deltaSteps
     if (idx < 0) idx = 0
     if (idx > textSizeStops.length - 1) idx = textSizeStops.length - 1
-    markReflowing()
-    textSizePreviewIndex = idx
     setTextSize(textSizeStops[idx])
   }
 
@@ -524,6 +532,13 @@ Panel {
   Process {
     id: textScaleProc
     stdout: StdioCollector { waitForEnd: true }
+    onExited: function(exitCode, exitStatus) {
+      // Repeated keys or slider releases keep only the latest requested size.
+      // A failed command must neither drop that request nor leave a false preview.
+      if (root.textSizeSetQueued) root.setTextSize(root.pendingTextSize)
+      else if (exitCode !== 0 || Style.font.baseSize === root.pendingTextSize)
+        root.textSizePreviewIndex = -1
+    }
   }
 
   // Clears the hover-suppression flag once the reflow triggered by a text-size

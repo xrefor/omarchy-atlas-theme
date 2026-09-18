@@ -14,7 +14,7 @@ fine borders, and just enough orange to show what matters.
 
 **[Explore ATLAS ↗](https://xrefor.github.io/atlas-showcase/)** · [Install](#install) · [Screenshots](#screenshots) · [Reference](#reference)
 
-[![Ember Seam: dark architectural walls with a narrow seam of orange light](backgrounds/atlas-ember-seam.png)](https://xrefor.github.io/atlas-showcase/#wallpapers)
+[![Ember Seam: dark architectural walls with a narrow seam of orange light](docs/media/previews/atlas-ember-seam-1080.webp)](https://xrefor.github.io/atlas-showcase/#wallpapers)
 
 *Ember Seam — one of eight included backgrounds.*
 
@@ -23,16 +23,16 @@ fine borders, and just enough orange to show what matters.
 
 <table>
 <tr>
-<td align="center"><a href="backgrounds/atlas-ember-seam.png"><img src="backgrounds/atlas-ember-seam.png" alt="Ember Seam" width="200"></a><br>Ember Seam</td>
-<td align="center"><a href="backgrounds/atlas-boot.png"><img src="backgrounds/atlas-boot.png" alt="ATLAS Boot" width="200"></a><br>ATLAS Boot</td>
-<td align="center"><a href="backgrounds/atlas-vault.png"><img src="backgrounds/atlas-vault.png" alt="ATLAS Vault" width="200"></a><br>ATLAS Vault</td>
-<td align="center"><a href="backgrounds/atlas-thermal-horizon.png"><img src="backgrounds/atlas-thermal-horizon.png" alt="Thermal Horizon" width="200"></a><br>Thermal Horizon</td>
+<td align="center"><a href="backgrounds/atlas-ember-seam.png"><img src="docs/media/previews/atlas-ember-seam-320.webp" alt="Ember Seam" width="200"></a><br>Ember Seam</td>
+<td align="center"><a href="backgrounds/atlas-boot.png"><img src="docs/media/previews/atlas-boot-320.webp" alt="ATLAS Boot" width="200"></a><br>ATLAS Boot</td>
+<td align="center"><a href="backgrounds/atlas-vault.png"><img src="docs/media/previews/atlas-vault-320.webp" alt="ATLAS Vault" width="200"></a><br>ATLAS Vault</td>
+<td align="center"><a href="backgrounds/atlas-thermal-horizon.png"><img src="docs/media/previews/atlas-thermal-horizon-320.webp" alt="Thermal Horizon" width="200"></a><br>Thermal Horizon</td>
 </tr>
 <tr>
-<td align="center"><a href="backgrounds/atlas-cinder-array.png"><img src="backgrounds/atlas-cinder-array.png" alt="Cinder Array" width="200"></a><br>Cinder Array</td>
-<td align="center"><a href="backgrounds/atlas-umbra-core.png"><img src="backgrounds/atlas-umbra-core.png" alt="Umbra Core" width="200"></a><br>Umbra Core</td>
-<td align="center"><a href="backgrounds/atlas-ember-causeway.png"><img src="backgrounds/atlas-ember-causeway.png" alt="Ember Causeway" width="200"></a><br>Ember Causeway</td>
-<td align="center"><a href="backgrounds/atlas-obsidian-fold.png"><img src="backgrounds/atlas-obsidian-fold.png" alt="Obsidian Fold" width="200"></a><br>Obsidian Fold</td>
+<td align="center"><a href="backgrounds/atlas-cinder-array.png"><img src="docs/media/previews/atlas-cinder-array-320.webp" alt="Cinder Array" width="200"></a><br>Cinder Array</td>
+<td align="center"><a href="backgrounds/atlas-umbra-core.png"><img src="docs/media/previews/atlas-umbra-core-320.webp" alt="Umbra Core" width="200"></a><br>Umbra Core</td>
+<td align="center"><a href="backgrounds/atlas-ember-causeway.png"><img src="docs/media/previews/atlas-ember-causeway-320.webp" alt="Ember Causeway" width="200"></a><br>Ember Causeway</td>
+<td align="center"><a href="backgrounds/atlas-obsidian-fold.png"><img src="docs/media/previews/atlas-obsidian-fold-320.webp" alt="Obsidian Fold" width="200"></a><br>Obsidian Fold</td>
 </tr>
 </table>
 
@@ -347,7 +347,10 @@ licenses and documentation. It excludes caches, backups, account profiles,
 application logs, screenshots of personal content and hardware configuration.
 
 GitHub Actions runs portable tests, release verification and showcase validation
-on pushes and pull requests. See [CI coverage and local commands](docs/VALIDATION.md#portable-checks-and-ci).
+on disposable Ubuntu runners on pushes and pull requests. The workflow uses
+`apt-get` to install test tools on those runners; ATLAS itself targets Omarchy/Arch.
+See [CI coverage and local commands](docs/VALIDATION.md#portable-checks-and-ci)
+and the [contributor guide](CONTRIBUTING.md) for the repository layout.
 
 See [release validation](docs/VALIDATION.md), [credits](docs/CREDITS.md), and
 [renaming/migration](docs/MIGRATION.md). MIT license applies to project source;

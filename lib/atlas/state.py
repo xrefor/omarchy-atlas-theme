@@ -202,15 +202,20 @@ def recover(home, dry=False):
         print('No interrupted ATLAS transaction.')
         return
     pending = json.loads(journal.read_text())
+    validated = []
     for rel, item in pending['changes'].items():
         current = snapshot(target(home, rel))
         if current not in (item['before'], item['after']):
             raise ValueError(f'Recovery preserves a later edit: {rel}')
+        validated.append((rel, item, current))
     print(f"Recover {len(pending['changes'])} files from interrupted transaction")
     if dry:
         return
-    for rel, item in reversed(list(pending['changes'].items())):
-        write(target(home, rel), item['before'])
+    for rel, item, expected in reversed(validated):
+        path = target(home, rel)
+        if snapshot(path) != expected:
+            raise ValueError(f'Recovery preserves a file changed during recovery: {rel}')
+        write(path, item['before'])
     write(metadata(home, 'manifest.json'), pending['manifest_before'])
     unlink(journal)
 

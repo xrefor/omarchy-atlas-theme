@@ -33,6 +33,7 @@ def test_lock_uses_omarchy_pam_services_without_bundling_pam_policy():
     assert 'config: "omarchy-lock-password"' in service
     assert 'config: "omarchy-lock-fingerprint"' in service
     assert 'path: "/etc/pam.d/omarchy-lock-password"' in service
+    assert "passwordPamConfigured = text().trim().length > 0" in service
     assert not list(ROOT.rglob("pam.d"))
 
 
