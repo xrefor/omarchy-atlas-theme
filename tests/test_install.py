@@ -3,11 +3,13 @@ import copy
 import configparser
 import json
 import os
+import plistlib
 import shlex
 import subprocess
 from pathlib import Path
 import sys
 import tempfile
+import tomllib
 import unittest
 from unittest.mock import patch
 
@@ -352,6 +354,51 @@ class BundleTests(unittest.TestCase):
         self.assertFalse((self.home/'.local/share/atlas').exists())
         self.assertFalse((self.home/'.local/lib/atlas-cli').exists())
         self.assertFalse((self.home/'.config/atlas').exists())
+        self.assertFalse((self.home/'.config/yazi/atlas.tmTheme').exists())
+        self.assertFalse((self.home/'.config/yazi/plugins/atlas-preview.yazi/main.lua').exists())
+
+    def test_yazi_preview_install_sync_and_restore_without_optional_cli(self):
+        original_theme = '[flavor]\ndark = "personal-dark"\nlight = "personal-light"\n[mgr]\nsyntect_theme = "~/personal.tmTheme"\n'
+        original_config = '[preview]\nwrap = "yes"\n'
+        original_keys = '[mgr]\nprepend_keymap = [{ on = "Q", run = "quit --no-cwd-file" }]\n'
+        originals = {'.config/yazi/theme.toml': original_theme,
+                     '.config/yazi/yazi.toml': original_config,
+                     '.config/yazi/keymap.toml': original_keys}
+        for rel, text in originals.items(): self.write(rel, text)
+        desired = self.plan({'apps'})
+        user.validate(desired)
+        self.assertNotIn('.codex/themes/atlas.tmTheme', desired)
+        yazi = {rel: value for rel, value in desired.items() if rel.startswith('.config/yazi/')}
+        self.apply(yazi)
+        theme = tomllib.loads(state.text_value(yazi['.config/yazi/theme.toml']))
+        self.assertEqual(theme['mgr']['syntect_theme'], '~/.config/yazi/atlas.tmTheme')
+        self.assertEqual(theme['flavor'], {'dark': '', 'light': ''})
+        config = tomllib.loads(state.text_value(yazi['.config/yazi/yazi.toml']))
+        self.assertEqual(config['mgr']['ratio'], [1, 4, 3])
+        self.assertEqual(config['preview']['max_width'], 800)
+        self.assertEqual(config['preview']['max_height'], 800)
+        self.assertEqual(config['preview']['wrap'], 'yes')
+        keymap = tomllib.loads(state.text_value(yazi['.config/yazi/keymap.toml']))['mgr']['prepend_keymap']
+        self.assertEqual([key['run'] for key in keymap if key['on'] == 'T'], ['plugin atlas-preview'])
+        self.assertIn({'on': 'Q', 'run': 'quit --no-cwd-file'}, keymap)
+        self.assertTrue((self.home/'.config/yazi/plugins/atlas-preview.yazi/main.lua').is_file())
+        again = self.plan({'apps'})
+        self.assertEqual(yazi, {rel: again[rel] for rel in yazi})
+        changed_colors = dict(self.colors, green='#55aa77', foreground='#e0d0c0')
+        synced = user.plan(ROOT, self.home, {'apps'}, changed_colors, syncing=True)
+        preview = plistlib.loads(state.text_value(synced['.config/yazi/atlas.tmTheme']).encode())
+        string_roles = [item['settings']['foreground'] for item in preview['settings']
+                        if item.get('scope') == 'string']
+        self.assertEqual(string_roles, ['#55aa77'])
+        self.assertNotIn('.config/yazi/yazi.toml', synced)
+        self.assertNotIn('.config/yazi/plugins/atlas-preview.yazi/main.lua', synced)
+        self.apply({rel: value for rel, value in synced.items() if rel.startswith('.config/yazi/')})
+        records = state.load(self.home)['files']
+        with state.lock(self.home):
+            state.transact(self.home, {rel: value['before'] for rel, value in records.items()}, restoring=True)
+        for rel, text in originals.items(): self.assertEqual((self.home/rel).read_text(), text)
+        self.assertFalse((self.home/'.config/yazi/atlas.tmTheme').exists())
+        self.assertFalse((self.home/'.config/yazi/plugins/atlas-preview.yazi/main.lua').exists())
 
     def test_restore_preserves_preexisting_and_nonempty_directories(self):
         preexisting=self.home/'.config/yazi'

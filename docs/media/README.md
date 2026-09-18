@@ -22,6 +22,10 @@ previews and need only the Python standard library.
 
 The current overview is `atlas-overview.gif` / `atlas-overview.mp4`:
 
+These recordings predate the 2026-09-18 editor readability, Yazi layout and
+95% default-opacity refinements. They document the captured revision; current
+configuration details are in [SETTINGS.md](../SETTINGS.md).
+
 - 20 seconds, silent, with a 1920 × 1080 H.264 video and 1280 × 720 GIF at 10 fps.
 - 0–2 seconds: desktop; 2–13: opening and navigating Python in Neovim;
   13–16: Yazi; 16–18: a brief Nym panel; 18–20: desktop.

@@ -1,8 +1,14 @@
 # Generated from the active Omarchy palette. Yazi 26.9 schema.
+[flavor]
+# External flavors override syntect_theme; use the managed ATLAS preview palette.
+dark = ""
+light = ""
+
 [app]
 overall = { fg = "{{ foreground }}", bg = "{{ background }}" }
 
 [mgr]
+syntect_theme = "~/.config/yazi/atlas.tmTheme"
 cwd = { fg = "{{ accent }}", bold = true }
 find_keyword = { fg = "{{ accent }}", bold = true, underline = true }
 find_position = { fg = "{{ secondary }}" }
@@ -12,7 +18,7 @@ marker_cut = { fg = "{{ red }}", bg = "{{ red }}" }
 marker_marked = { fg = "{{ accent }}", bg = "{{ accent }}" }
 marker_selected = { fg = "{{ accent }}", bg = "{{ accent }}" }
 count_copied = { fg = "{{ background }}", bg = "{{ green }}" }
-count_cut = { fg = "{{ foreground }}", bg = "{{ red }}" }
+count_cut = { fg = "{{ background }}", bg = "{{ bright_red }}" }
 count_selected = { fg = "{{ selection_foreground }}", bg = "{{ accent }}" }
 border_symbol = "│"
 border_style = { fg = "{{ muted }}" }
@@ -28,8 +34,8 @@ normal_main = { fg = "{{ accent }}", bg = "{{ background }}", bold = true }
 normal_alt = { fg = "{{ secondary }}", bg = "{{ background }}" }
 select_main = { fg = "{{ background }}", bg = "{{ accent }}", bold = true }
 select_alt = { fg = "{{ accent }}", bg = "{{ selection }}" }
-unset_main = { fg = "{{ background }}", bg = "{{ red }}", bold = true }
-unset_alt = { fg = "{{ red }}", bg = "{{ background }}" }
+unset_main = { fg = "{{ background }}", bg = "{{ bright_red }}", bold = true }
+unset_alt = { fg = "{{ bright_red }}", bg = "{{ background }}" }
 
 [indicator]
 parent = { fg = "{{ foreground }}", bg = "{{ lighter_background }}" }
@@ -108,7 +114,7 @@ hovered = { fg = "{{ accent }}", bg = "{{ selection }}", bold = true }
 [filetype]
 rules = [
   { url = "*", is = "orphan", fg = "{{ bright_red }}" },
-  { url = "*/", fg = "{{ accent }}" },
+  { url = "*/", fg = "{{ foreground }}" },
   { url = "*", is = "exec", fg = "{{ green }}" },
   { url = "*", fg = "{{ foreground }}" },
 ]

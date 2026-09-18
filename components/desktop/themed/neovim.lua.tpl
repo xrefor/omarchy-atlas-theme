@@ -40,7 +40,10 @@ return {
         light_fg = "{{ light_foreground }}",
         bright_fg = "{{ bright_foreground }}",
         muted = "{{ muted }}",
+        secondary_text = "{{ mix background foreground 65% }}",
         readable_comment = "{{ mix background foreground 75% }}",
+        syntax_keyword = "{{ mix bright_magenta foreground 20% }}",
+        syntax_number = "{{ mix orange foreground 10% }}",
 
         red = "{{ red }}",
         yellow = "{{ yellow }}",
@@ -66,15 +69,45 @@ return {
         selection_foreground = "{{ background }}",
         selection_background = "{{ accent }}",
       },
-      -- Navigation uses the UI accent; syntax and Git/diagnostic colors retain
-      -- their semantic roles. Values follow the active Omarchy palette.
+      -- Text uses readable shades of its semantic role; muted is reserved for
+      -- decoration. These adjustments leave ANSI, Git and diagnostic signals
+      -- intact and follow the active Omarchy palette.
       on_highlights = function(hl, c)
         last_readability = readable_comments()
-        if last_readability then
-          for _, name in ipairs({ "Comment", "SpecialComment" }) do
+        local function foreground(names, color)
+          for _, name in ipairs(names) do
             hl[name] = hl[name] or {}
-            hl[name].fg = c.readable_comment
+            hl[name].fg = color
           end
+        end
+        -- Change only the foreground so Aether's italic/bold preferences and
+        -- group backgrounds survive, including across a focus refresh.
+        foreground({ "Comment", "SpecialComment" }, last_readability and c.readable_comment or c.secondary_text)
+        foreground({
+          "LineNr", "LineNrAbove", "LineNrBelow", "LspCodeLens",
+          "LspCodeLensSeparator", "LspInlayHint", "DiagnosticUnnecessary",
+          "BlinkCmpLabelDeprecated",
+        }, c.secondary_text)
+        foreground({
+          "Keyword", "Conditional", "Repeat", "Exception", "Define",
+          "@keyword", "@keyword.function", "@string.escape",
+        }, c.syntax_keyword)
+        foreground({ "Number", "Boolean", "Float" }, c.syntax_number)
+        foreground({ "Delimiter", "@punctuation.bracket", "@punctuation.delimiter" }, c.secondary_text)
+        foreground({ "@lsp.type.enumMember" }, c.bright_yellow)
+
+        -- Completion kinds use the same language roles as the code they insert.
+        for kind, color in pairs({
+          Class = c.yellow, Color = c.cyan, Constant = c.bright_yellow,
+          Constructor = c.yellow, Enum = c.yellow, EnumMember = c.bright_yellow,
+          Event = c.syntax_keyword, Field = c.cyan, File = c.fg, Folder = c.accent,
+          Function = c.blue, Interface = c.yellow, Keyword = c.syntax_keyword,
+          Method = c.blue, Module = c.blue, Operator = c.fg, Parameter = c.cyan,
+          Property = c.bright_cyan, Reference = c.syntax_number, Snippet = c.green,
+          Struct = c.yellow, Text = c.fg, TypeParameter = c.yellow,
+          Unit = c.syntax_number, Value = c.syntax_number, Variable = c.fg,
+        }) do
+          foreground({ "BlinkCmpKind" .. kind, "CmpItemKind" .. kind }, color)
         end
         hl.Directory = { fg = c.accent, bold = true }
         hl.CursorLine = { bg = c.lighter_bg }

@@ -148,7 +148,7 @@ local installer above.</p>
 </tr>
 <tr>
 <td>Hyprland</td>
-<td>Square windows, 1px focus borders, no shadows; desktop component adds 87% window opacity</td>
+<td>Square windows, 1px focus borders, no shadows; desktop component defaults to 95% window opacity</td>
 </tr>
 <tr>
 <td>Omarchy shell</td>
@@ -188,7 +188,7 @@ local installer above.</p>
 </tr>
 <tr>
 <td>Yazi</td>
-<td>Native colors, file markers, bounded image previews and removable-drive menu</td>
+<td>Matching code-preview colors, clear file markers, expandable previews and removable-drive menu</td>
 </tr>
 <tr>
 <td>Zen</td>
@@ -298,7 +298,7 @@ archive can be removed after installation. Manual edits to managed files stop
 updates/removal until reconciled, rather than being silently overwritten.</p>
 </div></details><details class="reference" id="settings"><summary>ATLAS settings</summary><div class="reference-body">
 <p dir="auto">Open <strong>Omarchy → ATLAS</strong>, or run <code class="notranslate">atlas-settings</code>. The menu includes the native
-wallpaper picker, window opacity (80%, <strong>87% default</strong>, 95%, 100%), component
+wallpaper picker, window opacity (80%, 87%, <strong>95% default</strong>, 100%), component
 status, local diagnostics, shortcuts, and a preview before restoring saved files.
 Fullscreen and application-specific opacity exceptions retain their existing
 rules. The terminal font stays at <strong>9 pt</strong>.</p>
@@ -307,7 +307,10 @@ The Codex CLI integration also includes <strong>ATLAS Readable</strong> in its n
 picker. Both preserve the standard preset and existing syntax colors.</p>
 <p dir="auto">Neovim's explorer, picker, completion, command dialogs, help overlays and normal
 status line share the active palette's accent. Syntax, Git changes, diagnostics,
-and editing modes retain their semantic colors, including after theme switches.</p>
+and editing modes retain their semantic colors, including after theme switches.
+Standard comments and editor hints use readable warm gray; completion icons
+follow the syntax roles. Yazi shares those core code colors, gives filenames
+half the window width, and expands its preview with <strong>T</strong>.</p>
 <p dir="auto">Settings use the installer's existing backup journal. Later manual edits block
 changes until reconciled. See <a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/SETTINGS.md">settings and diagnostics</a>.</p>
 </div></details><details class="reference" id="remove"><summary>Remove</summary><div class="reference-body">

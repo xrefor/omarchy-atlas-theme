@@ -546,6 +546,42 @@ sizes, not measured browser traffic. Original wallpaper downloads are retained.
 Unused template copies and obsolete preview/media files were removed after
 checking installer consumers and documentation/site links.
 
+## Editor and file-browser refinements — 2026-09-18
+
+Standard Neovim comments, line numbers, inlay hints, code lenses and punctuation
+now use a readable text role, distinct from muted borders. Keyword and numeric
+roles are brightened without changing terminal ANSI, Git or diagnostic severity
+colors. Unnecessary-code hints use the brighter secondary text color.
+Completion kinds follow code semantics, including bright-sage properties and
+bright-amber enum members. The optional Brighter comment preset remains available.
+
+Measured opaque ATLAS pairs:
+
+| Role | Color | Carbon | Current line | Selection |
+| --- | --- | --- | --- | --- |
+| Standard comments / secondary text / punctuation | `#918b84` | 5.71:1 | 5.23:1 | 5.11:1 |
+| Keywords / escapes | `#c86d54` | 5.29:1 | 4.85:1 | 4.74:1 |
+| Numbers / booleans | `#e15721` | 5.12:1 | 4.69:1 | 4.58:1 |
+
+Native Neovim checks exercise resolved highlights, custom italic/bold styles,
+semantic completion, palette changes, focus refresh and colorscheme switching.
+They also verify preservation of ANSI, Git, diagnostic severity and language-specific
+highlights. These ratios describe opaque colors; they do not measure compositor
+transparency against arbitrary wallpapers.
+
+Yazi's generated TextMate theme shares the core syntax roles and refreshes with
+the active palette, independently of optional CLI integrations. Inherited flavor
+selections are disabled while ATLAS manages the theme. Installer checks cover
+palette synchronization, preserved unrelated preferences, repeated installation
+and restoration of original flavor/configuration files. Native Yazi 26.9.1 PTY
+checks verified actual truecolor syntax output and T expansion/restoration;
+the process exited successfully. The normal layout is 1:4:3 and image bounds
+are 800×800. Image rendering at that larger bound was not visually validated.
+
+New desktop installations default to 95% opacity; existing choices survive
+updates. Tests cover fresh installation, existing/main-config rules, all presets,
+restoration and the unchanged Zen Browser 100% exception.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:

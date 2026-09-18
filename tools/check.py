@@ -63,6 +63,7 @@ def main():
             if line.startswith(('ℹ tests ', '# tests ')): print(line)
     run(['lua','tests/mount_cross_test.lua'],'7 mocked drive-menu checks')
     run(['lua','tests/yazi_enter_test.lua'],'Yazi Enter navigation and file-opening behavior')
+    run(['lua','tests/yazi_preview_test.lua'],'Yazi preview expansion and layout restoration')
     if args.portable:
         print('SKIP: Neovim UI integration (portable mode; needs installed editor plugins)')
     elif shutil.which('nvim'):

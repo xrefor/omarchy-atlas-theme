@@ -30,6 +30,9 @@ class SettingsTests(unittest.TestCase):
         self.assertIn('// cast } menu', result)
         self.assertEqual(config.jsonc(result)['cast']['action'], 'https://example.org/a//b')
         self.assertEqual(config.menu_extension(result, settings.menu_entries()), result)
+        entries = settings.menu_entries()
+        self.assertEqual(entries['atlas.opacity.p95']['label'], '95% · Default')
+        self.assertEqual(entries['atlas.opacity.p87']['label'], '87%')
         with self.assertRaisesRegex(ValueError, 'unmarked'):
             config.menu_extension('{"atlas": {}}', settings.menu_entries())
 
@@ -111,9 +114,9 @@ class SettingsTests(unittest.TestCase):
                 with state.lock(home):
                     state.transact(home, relevant)
                 rel, percent = settings.opacity_info(home)
-                self.assertEqual(percent, 87)
+                self.assertEqual(percent, 95 if name == 'fresh' else 87)
                 text = (home / rel).read_text()
-                self.assertGreater(text.rfind(opaque), text.index(global_rule))
+                self.assertGreater(text.rfind(opaque), settings.OPACITY_RULE.search(text).start())
                 repeated = user.plan(ROOT, home, {'desktop'}, colors)
                 for path, value in relevant.items():
                     self.assertEqual(repeated[path], value)

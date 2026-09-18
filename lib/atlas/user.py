@@ -127,7 +127,7 @@ def plan(root, home, components, colors, syncing=False, cli_groups=None):
         appearance='''hl.env("FONTCONFIG_FILE", os.getenv("HOME") .. "/.config/fontconfig/atlas.conf")
 hl.env("PATH", os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or "/usr/bin"))'''
         try: opacity_path, percent = settings.opacity_info(home)
-        except ValueError: opacity_path, percent = rel, 87
+        except ValueError: opacity_path, percent = rel, settings.DEFAULT_OPACITY
         zen_opacity = 'o.window("^zen$", { opacity = "1.0 override 1.0 override 1.0 override" })'
         if opacity_path == rel:
             opacity = '1.0' if percent == 100 else f'{percent / 100:.2f}'
@@ -171,6 +171,7 @@ end)''','--'))
             '.config/btop/themes/atlas-current.theme':'btop.theme',
         }.items(): put(rel,template(name))
         merge_toml('.config/yazi/theme.toml',tomllib.loads(template('yazi.toml')))
+        put('.config/yazi/atlas.tmTheme', template('yazi.tmTheme'))
         spotify=tomllib.loads(get('.config/spotify-player/theme.toml'))
         incoming=tomllib.loads(template('spotify.toml'))
         for key, entries in incoming.items():
@@ -203,10 +204,11 @@ end)''','--'))
             source(app/'mount-cross.lua','.config/yazi/plugins/mount.yazi/cross.lua')
             source(root/'LICENSES/mount.yazi-MIT.txt','.config/yazi/plugins/mount.yazi/LICENSE')
             source(app/'atlas-enter.lua','.config/yazi/plugins/atlas-enter.yazi/main.lua')
-            merge_toml('.config/yazi/yazi.toml',{'mgr':{'ratio':[1,3,4],'sort_by':'natural','sort_dir_first':True,'show_hidden':False,'show_symlink':True,'linemode':'size'},'preview':{'max_width':400,'max_height':400,'image_filter':'triangle','image_quality':75}})
+            source(app/'atlas-preview.lua','.config/yazi/plugins/atlas-preview.yazi/main.lua')
+            merge_toml('.config/yazi/yazi.toml',{'mgr':{'ratio':[1,4,3],'sort_by':'natural','sort_dir_first':True,'show_hidden':False,'show_symlink':True,'linemode':'size'},'preview':{'max_width':800,'max_height':800,'image_filter':'triangle','image_quality':75}})
             keymap=tomllib.loads(get('.config/yazi/keymap.toml'))
             keys=keymap.setdefault('mgr',{}).setdefault('prepend_keymap',[])
-            for on, run, desc in [('<Enter>','plugin atlas-enter','Enter directory or open file'),('M','plugin mount','ATLAS Drives'),(['g','m'],'plugin mount','ATLAS Drives'),(['g','d'],'cd ~/Downloads','Downloads')]:
+            for on, run, desc in [('<Enter>','plugin atlas-enter','Enter directory or open file'),('T','plugin atlas-preview','Toggle expanded preview'),('M','plugin mount','ATLAS Drives'),(['g','m'],'plugin mount','ATLAS Drives'),(['g','d'],'cd ~/Downloads','Downloads')]:
                 keys[:]=[key for key in keys if key.get('on') != on]
                 keys.append({'on':on,'run':run,'desc':desc})
             put('.config/yazi/keymap.toml',config.toml(keymap))

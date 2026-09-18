@@ -201,7 +201,7 @@ Component coverage, everyday controls, palette management, and recovery.
 | Limine | ATLAS branding, carbon background, matching terminal colors |
 | Plymouth | Original angular ATLAS wordmark, refined lock/password tile, progress line |
 | SDDM | Matching logo, carbon login surface and warm password controls |
-| Hyprland | Square windows, 1px focus borders, no shadows; desktop component adds 87% window opacity |
+| Hyprland | Square windows, 1px focus borders, no shadows; desktop component defaults to 95% window opacity |
 | Omarchy shell | Thin neutral outlines, orange focus, opaque panels; existing bar widgets and positions retained |
 | Lock / authentication | Matrix rain, ATLAS tile and native Omarchy PAM/Polkit backend |
 | Wallpapers | ATLAS Boot, ATLAS Vault, Ember Seam, Thermal Horizon, Cinder Array, Umbra Core, Ember Causeway, Obsidian Fold |
@@ -211,7 +211,7 @@ Component coverage, everyday controls, palette management, and recovery.
 | NymVPN panel | Live ATLAS tunnel dashboard, dVPN/Mixnet mode and settings menus; optional Nym installation |
 | Codex agent panel | Automatically shows spawned agents, concise task descriptions, lifecycle status, elapsed time and reported progress in the active palette |
 | tmux / Starship | Persistent ATLAS header, tabs, full directory path and compact Git status |
-| Yazi | Native colors, file markers, bounded image previews and removable-drive menu |
+| Yazi | Matching code-preview colors, clear file markers, expandable previews and removable-drive menu |
 | Zen | Browser chrome and browser-owned internal pages; native profile discovery |
 | Spotify terminal player | Selection, playback, lyrics, border and progress colors |
 | btop / LazyGit / Lazydocker | Native palette and panel styling |
@@ -282,7 +282,7 @@ updates/removal until reconciled, rather than being silently overwritten.
 <summary>ATLAS settings</summary>
 
 Open **Omarchy → ATLAS**, or run `atlas-settings`. The menu includes the native
-wallpaper picker, window opacity (80%, **87% default**, 95%, 100%), component
+wallpaper picker, window opacity (80%, 87%, **95% default**, 100%), component
 status, local diagnostics, shortcuts, and a preview before restoring saved files.
 Fullscreen and application-specific opacity exceptions retain their existing
 rules. The terminal font stays at **9 pt**.
@@ -294,6 +294,9 @@ picker. Both preserve the standard preset and existing syntax colors.
 Neovim's explorer, picker, completion, command dialogs, help overlays and normal
 status line share the active palette's accent. Syntax, Git changes, diagnostics,
 and editing modes retain their semantic colors, including after theme switches.
+Standard comments and editor hints use readable warm gray; completion icons
+follow the syntax roles. Yazi shares those core code colors, gives filenames
+half the window width, and expands its preview with **T**.
 
 Settings use the installer's existing backup journal. Later manual edits block
 changes until reconciled. See [settings and diagnostics](docs/SETTINGS.md).

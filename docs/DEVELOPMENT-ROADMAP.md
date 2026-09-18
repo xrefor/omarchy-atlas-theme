@@ -16,10 +16,16 @@ settings**. Contrast variants and project workspaces remain future proposals.
 Neovim explorers, pickers, completion menus, command/search dialogs, help overlays
 and the normal status line share the active palette's accent. Ordinary text
 uses ivory and selection surfaces use carbon. Syntax, Git, diagnostics, completion
-kind icons and editing modes retain their semantic colors.
+kind icons and editing modes retain their semantic colors. Completion icons now
+match code roles; standard comments, punctuation and editor hints use readable
+secondary text rather than the decorative border color.
 
 Yazi's Enter key enters directories and retains the ordinary file opener,
 including multi-selection. Right-arrow navigation remains available.
+Its generated code-preview theme shares Neovim's core syntax roles. Ivory
+directory names and orange markers distinguish file type from current-row
+focus. The 1:4:3 layout gives filenames half the width; T expands the preview
+and restores the prior layout. Images remain bounded, now at 800×800 pixels.
 
 Agents and Nym share terminal panel styling: title and footer strips, content
 spacing, semantic colors and sidebar sizing. Both reload palette changes while
