@@ -175,6 +175,186 @@ class BootInstallerTests(unittest.TestCase):
         self.assertFalse((esp / "EFI/Linux/new.efi").exists())
         self.assertFalse(state_path.exists())
 
+    def test_esp_edit_during_command_progress_is_preserved_before_command_starts(self):
+        for journal_fails in (False, True):
+            with self.subTest(journal_fails=journal_fails):
+                esp = self.root / "boot"
+                config = esp / "limine.conf"
+                unrelated = esp / "EFI/Linux/external.efi"
+                unrelated.unlink(missing_ok=True)
+                config.write_text(BASE_LIMINE)
+                state_path = self.root / "var/lib/atlas-bundle/boot-state.json"
+                new_state = {"version": 1, "components": ["plymouth"], "files": {}, "selectors": {}}
+                real_journal_write = boot._journal_write
+                command_invoked = False
+                injected = False
+
+                def edit_during_command_progress(root, transaction, journal):
+                    nonlocal injected
+                    real_journal_write(root, transaction, journal)
+                    if journal.get("esp_command_started") and not injected:
+                        injected = True
+                        unrelated.parent.mkdir(parents=True, exist_ok=True)
+                        unrelated.write_bytes(b"external generation")
+                        if journal_fails:
+                            raise OSError("simulated command-progress journal failure")
+
+                def rebuild():
+                    nonlocal command_invoked
+                    command_invoked = True
+
+                expected_error = OSError if journal_fails else ValueError
+                expected_message = "journal failure" if journal_fails else "before boot rebuild"
+                with mock.patch.object(boot, "_journal_write", side_effect=edit_during_command_progress):
+                    with self.assertRaisesRegex(expected_error, expected_message):
+                        boot._commit(
+                            self.root, esp, [(config, boot._file_value("attempted\n"))],
+                            state_path, new_state, rebuild=rebuild,
+                        )
+                self.assertFalse(command_invoked)
+                self.assertEqual(config.read_text(), BASE_LIMINE)
+                self.assertEqual(unrelated.read_bytes(), b"external generation")
+                self.assertFalse(state_path.exists())
+                self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_conflict_before_first_write_is_preserved_without_checkpoint(self):
+        config = self.root / "boot/limine.conf"
+        concurrent = BASE_LIMINE + "# concurrent administrator edit\n"
+        real_prepare = boot._prepare_transaction
+
+        def edit_after_prepare(*args, **kwargs):
+            prepared = real_prepare(*args, **kwargs)
+            config.write_text(concurrent)
+            return prepared
+
+        with mock.patch.object(boot, "_prepare_transaction", side_effect=edit_after_prepare):
+            with self.assertRaisesRegex(ValueError, "changed before write"):
+                boot.run(BUNDLE, self.args(limine=True))
+        self.assertEqual(config.read_text(), concurrent)
+        self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_later_target_conflict_rolls_back_written_target_and_preserves_edit(self):
+        first = self.root / "etc/plymouth/plymouthd.conf"
+        second = self.root / "etc/sddm.conf.d/zz-atlas-theme.conf"
+        first_before = boot._snapshot(first)
+        second.write_text("original selector\n")
+        second_before = boot._snapshot(second)
+        external = "concurrent selector edit\n"
+        state_path = self.root / "var/lib/atlas-bundle/boot-state.json"
+        new_state = {"version": 1, "components": ["sddm"], "files": {}, "selectors": {}}
+        changes = [(first, boot._file_value("first attempted\n")),
+                   (second, boot._file_value("second attempted\n"))]
+        real_write = boot._safe_write
+
+        def edit_second_after_first(root, path, value):
+            real_write(root, path, value)
+            if path == first:
+                second.write_text(external)
+
+        with mock.patch.object(boot, "_safe_write", side_effect=edit_second_after_first):
+            with self.assertRaisesRegex(ValueError, "changed before write"):
+                boot._commit(
+                    self.root, None, changes, state_path, new_state,
+                    planned_before={first: first_before, second: second_before},
+                    planned_state={"kind": "absent"},
+                )
+        self.assertEqual(boot._snapshot(first), first_before)
+        self.assertEqual(second.read_text(), external)
+        self.assertFalse(state_path.exists())
+        self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_unrelated_esp_change_during_backup_is_preserved_and_refused(self):
+        esp = self.root / "boot"
+        unrelated = esp / "EFI/Linux/external.efi"
+        real_manifest = boot._tree_manifest
+        injected = False
+
+        def edit_after_initial_manifest(path):
+            nonlocal injected
+            result = real_manifest(path)
+            if path == esp and not injected:
+                injected = True
+                unrelated.parent.mkdir(parents=True)
+                unrelated.write_bytes(b"external generation")
+            return result
+
+        with mock.patch.object(boot, "_tree_manifest", side_effect=edit_after_initial_manifest):
+            with self.assertRaisesRegex(ValueError, "ESP changed while"):
+                boot.run(BUNDLE, self.args(limine=True))
+        self.assertEqual(unrelated.read_bytes(), b"external generation")
+        self.assertEqual((esp / "limine.conf").read_text(), BASE_LIMINE)
+        self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_state_change_during_commit_is_preserved_and_written_target_rolls_back(self):
+        target = self.root / "etc/sddm.conf.d/zz-atlas-theme.conf"
+        state_path = self.root / "var/lib/atlas-bundle/boot-state.json"
+        target_before = boot._snapshot(target)
+        external_state = boot._file_value('{"external": true}\n', 0o600)
+        new_state = {"version": 1, "components": ["sddm"], "files": {}, "selectors": {}}
+        real_journal_write = boot._journal_write
+
+        def edit_state_before_its_write(root, transaction, journal):
+            real_journal_write(root, transaction, journal)
+            if journal.get("state_attempted"):
+                boot._safe_write(root, state_path, external_state)
+
+        with mock.patch.object(boot, "_journal_write", side_effect=edit_state_before_its_write):
+            with self.assertRaisesRegex(ValueError, "Boot state changed before"):
+                boot._commit(
+                    self.root, None, [(target, boot._file_value("installed\n"))],
+                    state_path, new_state, planned_before={target: target_before},
+                    planned_state={"kind": "absent"},
+                )
+        self.assertEqual(boot._snapshot(target), target_before)
+        self.assertEqual(boot._snapshot(state_path), external_state)
+        self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_planning_drift_is_refused_before_checkpoint_creation(self):
+        target = self.root / "etc/plymouth/plymouthd.conf"
+        planned = boot._snapshot(target)
+        external = "[Daemon]\nTheme=external\n"
+        target.write_text(external)
+        state_path = self.root / "var/lib/atlas-bundle/boot-state.json"
+        new_state = {"version": 1, "components": ["plymouth"], "files": {}, "selectors": {}}
+
+        with self.assertRaisesRegex(ValueError, "changed while planning"):
+            boot._commit(
+                self.root, None, [(target, boot._file_value("attempted\n"))],
+                state_path, new_state, planned_before={target: planned},
+                planned_state={"kind": "absent"},
+            )
+        self.assertEqual(target.read_text(), external)
+        self.assertIsNone(boot._active_transaction(self.root))
+
+    def test_new_checkpoint_recovers_only_attempted_paths_and_preserves_esp_drift(self):
+        esp = self.root / "boot"
+        first = esp / "limine.conf"
+        second = self.root / "etc/plymouth/plymouthd.conf"
+        state_path = self.root / "var/lib/atlas-bundle/boot-state.json"
+        first_after = boot._file_value("first attempted\n")
+        second_after = boot._file_value("second attempted\n")
+        new_state = {"version": 1, "components": ["limine"], "files": {}, "selectors": {}}
+        transaction, journal = boot._prepare_transaction(
+            self.root, esp, [(first, first_after), (second, second_after)],
+            state_path, new_state,
+        )
+        journal["attempted"].append("/boot/limine.conf")
+        boot._journal_write(self.root, transaction, journal)
+        boot._safe_write(self.root, first, first_after)
+
+        second_external = "[Daemon]\nTheme=external\n"
+        second.write_text(second_external)
+        unrelated = esp / "EFI/Linux/external.efi"
+        unrelated.parent.mkdir(parents=True)
+        unrelated.write_bytes(b"external generation")
+
+        boot.run(BUNDLE, self.args("boot-recover"))
+        self.assertEqual(first.read_text(), BASE_LIMINE)
+        self.assertEqual(second.read_text(), second_external)
+        self.assertEqual(unrelated.read_bytes(), b"external generation")
+        self.assertFalse(state_path.exists())
+        self.assertFalse(transaction.exists())
+
     def test_restore_rebuilds_from_current_state_instead_of_saved_uki(self):
         boot.run(BUNDLE, self.args(plymouth=True))
         boot.run(BUNDLE, self.args("boot-confirm"))
@@ -390,9 +570,14 @@ class BootInstallerTests(unittest.TestCase):
         config = esp / "limine.conf"
         state_path = self.root / "var/lib/atlas-bundle/boot-state.json"
         new_state = {"version": 1, "components": ["limine"], "files": {}, "selectors": {}}
-        transaction, _ = boot._prepare_transaction(
+        transaction, journal = boot._prepare_transaction(
             self.root, esp, [(config, boot._file_value("attempted\n"))], state_path, new_state
         )
+        # Checkpoints written by releases before progress tracking conservatively
+        # restore the complete ESP because they cannot identify attempted paths.
+        for key in ("attempted", "state_attempted", "esp_command_started"):
+            journal.pop(key)
+        boot._journal_write(self.root, transaction, journal)
         config.write_text("attempted\n")
         generated = esp / "EFI/Linux/partial.efi"
         generated.parent.mkdir(parents=True)

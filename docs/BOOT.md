@@ -37,7 +37,14 @@ the kernels installed at that time. Before any boot config edit or rebuild, the
 installer checks backup capacity, copies the current ESP, and persists a private
 journal under `/var/lib/atlas-bundle/transactions/`. If a rebuild or enrollment
 step fails, the config, generated images, theme files, and selectors are rolled
-back together. If Limine config
+back together. Configuration and installation-state snapshots are checked again
+before writing; the ESP backup and live contents are compared at transaction
+boundaries. A detected concurrent edit stops installation. Before rebuilding,
+rollback undoes only ATLAS's attempted writes, preserving changes to untouched
+files. If a file already written by ATLAS has since been edited, that edit and
+the recovery checkpoint are retained for inspection.
+
+If Limine config
 enrollment is already enabled, the edited config is re-enrolled through the
 installed Limine tooling; Secure Boot signing and verification settings are
 left to that tooling and are never weakened.
@@ -97,5 +104,10 @@ detection, symlinks or special files in managed paths/the ESP, a missing
 `limine-mkinitcpio`, and hand-edited bundle-managed theme assets. Multi-ESP
 systems require `--esp`; the installer does not guess which copy firmware uses.
 Staged roots are supported for package tests and perform no subprocess calls.
-All non-dry boot operations are serialized by a private
-`/var/lib/atlas-bundle/boot.lock` file.
+All non-dry ATLAS boot operations are serialized by a private
+`/var/lib/atlas-bundle/boot.lock` file. Package managers and other administrative
+tools do not share that lock. Finish kernel/package updates and boot configuration
+edits before starting an ATLAS boot operation, and leave those tools idle until
+it completes. Snapshot checks cannot make independent writers atomic; rollback
+after an image rebuild or enrollment starts can require restoring the complete
+ESP backup.

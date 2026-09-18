@@ -478,6 +478,40 @@ A separate live command check enabled 4000 K from 6000 K, disabled to 6500 K,
 and restored 6000 K; brightness gamma and the schedule file were unchanged.
 The stationary computer has not been updated or retested in this pass.
 
+## Installer review follow-up — 2026-09-18
+
+Foot configuration handling now accepts an unnamed, explicit or reopened main
+section, including a file containing only other sections. Workspace installation
+adds its shell command in the correct section and repairs empty shell assignments;
+desktop-only installation still preserves a custom shell, and workspace
+installation still refuses an unrelated custom shell. Repeated installation
+preserves an existing workspace command and leaves other sections' keys alone.
+
+The focused installer suite passed 42 tests, including installation, unchanged
+repeat and exact restoration of an original unnamed-main Foot configuration.
+Foot's native `--check-config` accepted 12 layout/component combinations and
+three repaired empty-shell layouts, all in temporary homes.
+
+Boot transactions now compare the plan with the files being backed up, verify
+the ESP backup against live contents, and recheck target/state snapshots before
+writing. The journal records attempted writes so an interrupted installation
+can recover those paths while preserving edits to untouched paths. Existing
+journals without progress metadata retain their previous recovery behavior.
+
+All 35 focused boot tests passed. Temporary-root regressions cover edits during
+planning, backup and progress-journal writes; a later-target conflict after an
+earlier write; new and legacy interrupted checkpoints; and rebuild-failure
+rollback. Successful and failed command-progress journal writes also preserve
+external ESP edits without invoking the rebuild. The original overwrite
+reproduction now refuses the changed Limine
+configuration before writing. No live boot installation or reboot was performed
+for these changes.
+
+These are conflict checks, not a shared lock with package managers or other
+administrative tools. External writes must still be avoided during boot
+operations, especially after rebuild/enrollment starts and full ESP rollback
+may be required. See [boot installation and recovery](BOOT.md).
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:

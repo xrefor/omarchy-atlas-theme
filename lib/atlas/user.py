@@ -47,6 +47,28 @@ def profiles(home):
     return sorted(set(found))
 
 
+def foot_shell(text):
+    # Foot starts in main even without a header, and permits reopening sections.
+    ini = configparser.ConfigParser(interpolation=None, strict=False)
+    ini.read_string('[main]\n' + text)
+    return ini.get('main', 'shell', fallback='')
+
+
+def set_foot_shell(text, shell):
+    section='main'
+    lines=[]
+    replaced=False
+    for line in text.splitlines(keepends=True):
+        header=configparser.ConfigParser.SECTCRE.match(line.strip())
+        if header: section=header.group('header')
+        if section=='main' and re.match(r'\s*shell\s*=',line):
+            line='shell='+shell+'\n'
+            replaced=True
+        lines.append(line)
+    # The unnamed main section exists even in files starting with another section.
+    return ''.join(lines) if replaced else 'shell='+shell+'\n'+text
+
+
 def plan(root, home, components, colors, syncing=False, cli_groups=None):
     files={}
     app=root/'components/apps'
@@ -80,12 +102,10 @@ def plan(root, home, components, colors, syncing=False, cli_groups=None):
         tree(desktop/'terminals', '.config')
         # Terminal typography alone must not add the optional tmux workspace
         # or overwrite a recipient's existing shell command.
-        foot_existing=configparser.ConfigParser(interpolation=None,strict=False)
-        foot_existing.read_string(read(home,'.config/foot/foot.ini'))
-        foot_shell=foot_existing.get('main','shell',fallback='')
-        if foot_shell:
+        existing=foot_shell(read(home,'.config/foot/foot.ini'))
+        if existing:
             rel='.config/foot/foot.ini'
-            put(rel,get(rel).replace('[main]','[main]\nshell='+foot_shell,1))
+            put(rel,set_foot_shell(get(rel),existing))
         tree(desktop/'fontconfig', '.config/fontconfig')
         source(desktop/'shell.toml', '.config/omarchy/shell.toml')
         for version in ('3.0','4.0'):
@@ -198,14 +218,12 @@ end)''','--'))
             rel='.config/foot/foot.ini'
             foot=get(rel)
             if not foot: foot='[main]\ninclude=~/.local/state/omarchy/current/theme/foot.ini\n'
-            ini=configparser.ConfigParser(interpolation=None,strict=False)
-            ini.read_string(foot)
-            existing=ini.get('main','shell',fallback='')
+            existing=foot_shell(foot)
             session=str(home/'.local/bin/atlas-session')
             if existing and shlex.split(existing) != [session]:
                 raise ValueError('Foot already has a custom shell. Save/merge it before installing the ATLAS terminal workspace.')
-            if existing: foot=re.sub(r'(?m)^shell\s*=.*$',lambda _: 'shell='+shlex.quote(session),foot)
-            else: foot=foot.replace('[main]','[main]\nshell='+shlex.quote(session),1)
+            # Preserve an existing workspace command, including its formatting.
+            if not existing: foot=set_foot_shell(foot,shlex.quote(session))
             put(rel,foot)
             rel='.bashrc'
             put(rel,config.block(get(rel),'SHELL','''export PATH="$HOME/.local/bin:$PATH"

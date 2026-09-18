@@ -379,12 +379,10 @@ def _copy_payload(source: Path, logical_dest: Path, root: Path, component: str,
         )
 
 
-def _load_state(path: Path) -> dict:
-    if not path.exists():
+def _state_from_snapshot(item: dict) -> dict:
+    if item["kind"] == "absent":
         return {"version": 1, "components": [], "files": {}, "selectors": {}}
-    if path.is_symlink() or not path.is_file():
-        raise ValueError(f"Unsafe ATLAS boot state: {path}")
-    data = json.loads(path.read_text())
+    data = json.loads(_snapshot_bytes(item).decode())
     if data.get("version") != 1 or not isinstance(data.get("files"), dict):
         raise ValueError("Unsupported ATLAS boot state")
     data.setdefault("components", [])
@@ -531,6 +529,19 @@ def _validate_journal_paths(journal: dict) -> None:
         _validate_snapshot_value(change["after"], "completed change")
     _validate_snapshot_value(journal.get("state_before"), "pre-transaction state")
     _validate_snapshot_value(journal.get("state_after"), "completed state")
+    if "attempted" in journal:
+        paths = [change["path"] for change in journal["changes"]]
+        attempted = journal["attempted"]
+        if (not isinstance(attempted, list)
+                or not all(isinstance(path, str) for path in attempted)
+                or attempted != paths[:len(attempted)]):
+            raise ValueError("Invalid attempted boot transaction paths")
+        if not isinstance(journal.get("state_attempted"), bool) \
+                or not isinstance(journal.get("esp_command_started"), bool):
+            raise ValueError("Invalid boot transaction progress")
+        if journal.get("status") == "completed" \
+                and (attempted != paths or not journal["state_attempted"]):
+            raise ValueError("Completed boot transaction has incomplete progress")
 
 
 def _kernel_fingerprint(root: Path) -> dict[str, str]:
@@ -591,11 +602,24 @@ def _boot_id(root: Path) -> str | None:
 
 
 def _prepare_transaction(root: Path, esp: Path | None, changes: list[tuple[Path, dict]],
-                         state_path: Path, new_state: dict) -> tuple[Path, dict]:
+                         state_path: Path, new_state: dict,
+                         planned_before: dict[Path, dict] | None = None,
+                         planned_state: dict | None = None) -> tuple[Path, dict]:
     transaction_root = _transaction_root(root)
     transaction_root.mkdir(parents=True, exist_ok=True, mode=0o700)
     transaction_root.chmod(0o700)
     before = [(path, _snapshot(path)) for path, _ in changes]
+    if planned_before is not None:
+        for path, current in before:
+            if current != planned_before[path]:
+                raise ValueError(f"Managed boot path changed while planning: {_logical(root, path)}")
+    state_before = _snapshot(state_path)
+    if planned_state is not None and state_before != planned_state:
+        raise ValueError("Boot state changed while planning; refusing transaction")
+    esp_before = None
+    if esp is not None:
+        _preflight_tree(esp)
+        esp_before = _tree_manifest(esp)
     needed = _required_backup_bytes(esp, before)
     free = shutil.disk_usage(transaction_root).free
     reserve = max(64 * 1024 * 1024, needed // 10)
@@ -614,21 +638,28 @@ def _prepare_transaction(root: Path, esp: Path | None, changes: list[tuple[Path,
                 elif item.is_dir():
                     _fsync_directory(item)
             _fsync_directory(backup)
+            backup_manifest = _tree_manifest(backup)
+            _preflight_tree(esp)
+            if backup_manifest != esp_before or _tree_manifest(esp) != esp_before:
+                raise ValueError("ESP changed while its recovery backup was being prepared")
         journal = {
             "version": 1,
             "status": "prepared",
             "boot_id": _boot_id(root),
             "esp": _logical(root, esp) if esp is not None else None,
-            "esp_before": _tree_manifest(backup) if esp is not None else None,
+            "esp_before": esp_before,
             "kernel": _kernel_fingerprint(root) if esp is not None else None,
             "state_path": _logical(root, state_path),
-            "state_before": _snapshot(state_path),
+            "state_before": state_before,
             "state_after": _file_value(json.dumps(new_state, indent=2) + "\n", 0o600)
                 if new_state["components"] else {"kind": "absent"},
             "changes": [
                 {"path": _logical(root, path), "before": old, "after": after}
                 for (path, after), (_, old) in zip(changes, before)
             ],
+            "attempted": [],
+            "state_attempted": False,
+            "esp_command_started": False,
         }
         _journal_write(root, transaction, journal)
         _fsync_directory(transaction)
@@ -716,36 +747,148 @@ def _command(path: str) -> None:
     subprocess.run([path], check=True)
 
 
-def _text_change(path: Path, text: str) -> dict:
-    mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o644
-    return _file_value(text, mode)
+def _esp_manifest_after_changes(esp_logical: str, before: dict[str, str],
+                                changes: list[dict]) -> dict[str, str]:
+    result = dict(before)
+    prefix = Path(esp_logical)
+    for change in changes:
+        path = Path(change["path"])
+        if path == prefix or not path.is_relative_to(prefix):
+            continue
+        name = str(path.relative_to(prefix))
+        after = change["after"]
+        if after["kind"] == "absent":
+            result.pop(name, None)
+        else:
+            result[name] = hashlib.sha256(_snapshot_bytes(after)).hexdigest()
+    return result
+
+
+def _validate_esp_phase(esp: Path, expected: dict[str, str], message: str) -> None:
+    _preflight_tree(esp)
+    if _tree_manifest(esp) != expected:
+        raise ValueError(message)
+
+
+def _rollback_commit(root: Path, esp: Path | None, state_path: Path,
+                     transaction: Path, journal: dict,
+                     attempted_override: list[str] | None = None,
+                     state_attempted_override: bool | None = None,
+                     esp_command_started_override: bool | None = None) -> None:
+    """Undo only recorded writes unless an external boot command had started."""
+    changes = {item["path"]: item for item in journal["changes"]}
+    attempted = journal.get("attempted")
+    legacy = attempted is None
+    attempted = [item["path"] for item in journal["changes"]] if legacy else attempted
+    if attempted_override is not None:
+        attempted = attempted_override
+    conflicts = []
+
+    esp_command_started = legacy or journal.get("esp_command_started")
+    if esp_command_started_override is not None:
+        esp_command_started = esp_command_started_override
+    if esp is not None and esp_command_started:
+        _restore_tree(root, esp, transaction / "esp")
+
+    for logical in reversed(attempted):
+        path = _rooted(root, Path(logical))
+        if esp is not None and path.is_relative_to(esp) and esp_command_started:
+            continue
+        change = changes[logical]
+        current = _snapshot(path)
+        if current == change["after"]:
+            _safe_write(root, path, change["before"])
+        elif current != change["before"]:
+            conflicts.append(logical)
+
+    state_attempted = legacy or journal.get("state_attempted")
+    if state_attempted_override is not None:
+        state_attempted = state_attempted_override
+    if state_attempted:
+        current_state = _snapshot(state_path)
+        if current_state == journal["state_after"]:
+            _safe_write(root, state_path, journal["state_before"])
+        elif current_state != journal["state_before"]:
+            conflicts.append(journal["state_path"])
+    if conflicts:
+        raise ValueError("Concurrent edits preserved during rollback: " + ", ".join(conflicts))
 
 
 def _commit(root: Path, esp: Path | None, changes: list[tuple[Path, dict]],
-            state_path: Path, new_state: dict, rebuild=None, reenroll=None) -> None:
+            state_path: Path, new_state: dict, rebuild=None, reenroll=None,
+            planned_before: dict[Path, dict] | None = None,
+            planned_state: dict | None = None) -> None:
     """Commit changes and leave a durable first-boot recovery checkpoint."""
     state_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     state_path.parent.chmod(0o700)
-    transaction, journal = _prepare_transaction(root, esp, changes, state_path, new_state)
+    transaction, journal = _prepare_transaction(
+        root, esp, changes, state_path, new_state,
+        planned_before=planned_before, planned_state=planned_state,
+    )
+    rollback_attempted = []
+    state_write_attempted = False
+    esp_command_started = False
     try:
+        for change in journal["changes"]:
+            path = _rooted(root, Path(change["path"]))
+            if _snapshot(path) != change["before"]:
+                raise ValueError(f"Managed boot path changed before write: {change['path']}")
+        if _snapshot(state_path) != journal["state_before"]:
+            raise ValueError("Boot state changed before transaction write")
+        if esp is not None:
+            _validate_esp_phase(esp, journal["esp_before"],
+                                "ESP changed before transaction write")
+
         for path, item in changes:
+            logical = _logical(root, path)
+            change = next(entry for entry in journal["changes"] if entry["path"] == logical)
+            if _snapshot(path) != change["before"]:
+                raise ValueError(f"Managed boot path changed before write: {logical}")
+            journal["attempted"].append(logical)
+            _journal_write(root, transaction, journal)
+            if _snapshot(path) != change["before"]:
+                raise ValueError(f"Managed boot path changed before write: {logical}")
+            rollback_attempted.append(logical)
             _safe_write(root, path, item)
-        if rebuild is not None:
-            rebuild()
-        if reenroll is not None:
-            reenroll()
+        if esp is not None:
+            expected = _esp_manifest_after_changes(
+                journal["esp"], journal["esp_before"], journal["changes"]
+            )
+            _validate_esp_phase(esp, expected, "ESP changed during transaction writes")
+        if _snapshot(state_path) != journal["state_before"]:
+            raise ValueError("Boot state changed during transaction writes")
+        if rebuild is not None or reenroll is not None:
+            journal["esp_command_started"] = True
+            _journal_write(root, transaction, journal)
+            _validate_esp_phase(esp, expected, "ESP changed before boot rebuild command")
+            esp_command_started = True
+            if rebuild is not None:
+                rebuild()
+            if reenroll is not None:
+                reenroll()
+        if _snapshot(state_path) != journal["state_before"]:
+            raise ValueError("Boot state changed before transaction write")
+        journal["state_attempted"] = True
+        _journal_write(root, transaction, journal)
+        if _snapshot(state_path) != journal["state_before"]:
+            raise ValueError("Boot state changed before transaction write")
+        state_write_attempted = True
         _safe_write(root, state_path, journal["state_after"])
+        if esp is not None:
+            _preflight_tree(esp)
         journal["esp_after"] = _tree_manifest(esp) if esp is not None else None
         journal["status"] = "completed"
         _journal_write(root, transaction, journal)
     except BaseException:
         try:
-            for item in reversed(journal["changes"]):
-                _safe_write(root, _rooted(root, Path(item["path"])), item["before"])
-            _safe_write(root, state_path, journal["state_before"])
-            if esp is not None:
-                _restore_tree(root, esp, transaction / "esp")
+            _rollback_commit(
+                root, esp, state_path, transaction, journal,
+                attempted_override=rollback_attempted,
+                state_attempted_override=state_write_attempted,
+                esp_command_started_override=esp_command_started,
+            )
             shutil.rmtree(transaction)
+            _fsync_directory(_transaction_root(root))
         except BaseException as rollback_error:
             raise RuntimeError(
                 f"Boot rollback failed; pre-transaction data retained at {transaction}"
@@ -815,6 +958,11 @@ def _recover(root: Path, dry_run: bool) -> int:
         print("No ATLAS boot recovery checkpoint.")
         return 0
     journal = _load_journal(transaction)
+    legacy_progress = "attempted" not in journal
+    completed = journal.get("esp_after") is not None
+    attempted = ({change["path"] for change in journal["changes"]}
+                 if completed or legacy_progress else set(journal["attempted"]))
+    state_owned = completed or legacy_progress or journal.get("state_attempted", False)
     if journal.get("kernel") is not None and _kernel_fingerprint(root) != journal["kernel"]:
         raise ValueError("Kernel set changed since the checkpoint; refusing to restore older boot images")
     esp = _rooted(root, Path(journal["esp"])) if journal.get("esp") else None
@@ -825,8 +973,7 @@ def _recover(root: Path, dry_run: bool) -> int:
         backup = transaction / "esp"
         if _tree_manifest(backup) != journal["esp_before"]:
             raise ValueError("Recovery ESP backup does not match its journal")
-        completed_generation = journal.get("esp_after") is not None
-        if completed_generation:
+        if completed:
             current = _tree_manifest(esp)
             touched = {name for name in set(journal["esp_before"]) | set(journal["esp_after"])
                        if journal["esp_before"].get(name) != journal["esp_after"].get(name)}
@@ -835,11 +982,13 @@ def _recover(root: Path, dry_run: bool) -> int:
                     raise ValueError(f"ESP file changed after the completed transaction: {name}")
     state_path = _rooted(root, Path(journal["state_path"]))
     current_state = _snapshot(state_path)
-    if current_state not in (journal["state_before"], journal["state_after"]):
+    if state_owned and current_state not in (journal["state_before"], journal["state_after"]):
         raise ValueError("Boot state changed after the checkpoint; refusing recovery")
     recovery_changes = []
     for change in journal["changes"]:
         logical = change["path"]
+        if logical not in attempted:
+            continue
         path = _rooted(root, Path(logical))
         current = _snapshot(path)
         if not any(_guard_matches(path, logical, current, expected, journal.get("esp"))
@@ -856,12 +1005,15 @@ def _recover(root: Path, dry_run: bool) -> int:
         if _snapshot(path) != expected:
             raise ValueError(f"Managed boot path changed during recovery: {logical}")
         _safe_write(root, path, restored)
-    _safe_write(root, state_path, journal["state_before"])
+    if state_owned:
+        if _snapshot(state_path) != current_state:
+            raise ValueError("Boot state changed during recovery")
+        _safe_write(root, state_path, journal["state_before"])
     if esp is not None:
-        if journal.get("esp_after") is not None:
+        if completed:
             _restore_completed_tree(root, esp, transaction / "esp",
                                     journal["esp_before"], journal["esp_after"])
-        else:
+        elif legacy_progress or journal.get("esp_command_started"):
             _restore_tree(root, esp, transaction / "esp")
     shutil.rmtree(transaction)
     _fsync_directory(_transaction_root(root))
@@ -909,7 +1061,8 @@ def _operate(bundle_root: Path, args) -> int:
         raise PermissionError("Boot installation requires root. Re-run the explicit command with sudo.")
 
     state_path = _rooted(root, STATE_PATH)
-    state = _load_state(state_path)
+    state_before = _snapshot(state_path)
+    state = _state_from_snapshot(state_before)
     installing = action == "boot"
     active = selected if installing else selected & set(state["components"])
     if not active:
@@ -929,7 +1082,7 @@ def _operate(bundle_root: Path, args) -> int:
 
     values = _limine_values(bundle_root) if "limine" in active and installing else None
     desired: dict[str, tuple[dict, str]] = {}
-    selector_updates: dict[str, tuple[Path, str]] = {}
+    selector_updates: dict[str, tuple[Path, str, dict]] = {}
     new_state = json.loads(json.dumps(state))
     if esp_logical:
         new_state["esp"] = esp_logical
@@ -940,7 +1093,8 @@ def _operate(bundle_root: Path, args) -> int:
             conf = _rooted(root, PLYMOUTH_CONFIG)
             if conf.exists() and not conf.is_file():
                 raise ValueError("Plymouth selector must be a regular file")
-            old_text = conf.read_text() if conf.exists() else ""
+            old_snapshot = _snapshot(conf)
+            old_text = _snapshot_bytes(old_snapshot).decode()
             section_existed, old_value = _ini_value(old_text, "Daemon", "Theme")
             saved = new_state["selectors"].get("plymouth")
             if saved and old_value != saved.get("installed"):
@@ -952,7 +1106,9 @@ def _operate(bundle_root: Path, args) -> int:
                 }
             else:
                 saved["installed"] = "atlas"
-            selector_updates["plymouth"] = (conf, _set_ini_value(old_text, "Daemon", "Theme", "atlas"))
+            selector_updates["plymouth"] = (
+                conf, _set_ini_value(old_text, "Daemon", "Theme", "atlas"), old_snapshot,
+            )
         if "sddm" in active:
             _copy_payload(bundle_root / "components/boot/sddm", SDDM_DEST, root, "sddm", desired)
             selector = _rooted(root, SDDM_SELECTOR)
@@ -967,7 +1123,8 @@ def _operate(bundle_root: Path, args) -> int:
                 print(f"WARNING: SDDM theme selector {conflict} may override {SDDM_SELECTOR}")
         if "limine" in active:
             config_path = esp / "limine.conf"
-            old_text = config_path.read_text()
+            old_snapshot = _snapshot(config_path)
+            old_text = _snapshot_bytes(old_snapshot).decode()
             saved = new_state["selectors"].get("limine")
             current_values = _limine_current_values(old_text)
             if saved and current_values != saved.get("installed"):
@@ -979,11 +1136,14 @@ def _operate(bundle_root: Path, args) -> int:
                 }
             else:
                 saved["installed"] = installed_values
-            selector_updates["limine"] = (config_path, _edit_limine(old_text, values))
+            selector_updates["limine"] = (
+                config_path, _edit_limine(old_text, values), old_snapshot,
+            )
     else:
         if "plymouth" in active:
             conf = _rooted(root, PLYMOUTH_CONFIG)
-            current = conf.read_text() if conf.exists() else ""
+            current_snapshot = _snapshot(conf)
+            current = _snapshot_bytes(current_snapshot).decode()
             saved = state["selectors"].get("plymouth")
             if saved is None:
                 raise ValueError("Plymouth restoration metadata is missing")
@@ -993,18 +1153,24 @@ def _operate(bundle_root: Path, args) -> int:
                 conf,
                 _set_ini_value(current, "Daemon", "Theme", saved["value"],
                                remove_empty_created_section=not saved["section_existed"]),
+                current_snapshot,
             )
         if "limine" in active:
             config_path = esp / "limine.conf"
+            current_snapshot = _snapshot(config_path)
+            current = _snapshot_bytes(current_snapshot).decode()
             saved = state["selectors"].get("limine")
             if saved is None:
                 raise ValueError("Limine restoration metadata is missing")
-            if _limine_current_values(config_path.read_text()) != saved.get("installed"):
+            if _limine_current_values(current) != saved.get("installed"):
                 raise ValueError("Preserving a later edit to ATLAS Limine appearance")
-            selector_updates["limine"] = (config_path, _restore_limine(config_path.read_text(), saved["lines"]))
+            selector_updates["limine"] = (
+                config_path, _restore_limine(current, saved["lines"]), current_snapshot,
+            )
 
     # Resolve desired payload changes against the persistent original baseline.
     file_changes: list[tuple[Path, dict]] = []
+    planned_before: dict[Path, dict] = {}
     if installing:
         for logical, (item, component) in desired.items():
             path = _rooted(root, Path(logical))
@@ -1018,6 +1184,7 @@ def _operate(bundle_root: Path, args) -> int:
                 record["installed"] = item
             if current != item:
                 file_changes.append((path, item))
+                planned_before[path] = current
         new_state["components"] = sorted(set(new_state["components"]) | active)
     else:
         for logical, record in list(new_state["files"].items()):
@@ -1029,13 +1196,19 @@ def _operate(bundle_root: Path, args) -> int:
                 raise ValueError(f"Preserving a later edit to managed boot file: {logical}")
             if current != record["before"]:
                 file_changes.append((path, record["before"]))
+                planned_before[path] = current
             del new_state["files"][logical]
         new_state["components"] = sorted(set(new_state["components"]) - active)
         for component in active:
             new_state["selectors"].pop(component, None)
 
-    changes = [(path, _text_change(path, text)) for path, text in selector_updates.values()
-               if _snapshot(path) != _text_change(path, text)] + file_changes
+    changes = []
+    for path, text, before in selector_updates.values():
+        after = _file_value(text, before.get("mode", 0o644))
+        if before != after:
+            changes.append((path, after))
+            planned_before[path] = before
+    changes += file_changes
     for path, item in changes:
         verb = "REMOVE" if item["kind"] == "absent" else "WRITE "
         print(f"{verb} {_logical(root, path)}")
@@ -1064,7 +1237,8 @@ def _operate(bundle_root: Path, args) -> int:
     reenroll = (lambda: _command("/usr/bin/limine-enroll-config")) \
         if real_root and enrollment else None
     _commit(root, esp if need_esp else None, changes, state_path, new_state,
-            rebuild=rebuild, reenroll=reenroll)
+            rebuild=rebuild, reenroll=reenroll, planned_before=planned_before,
+            planned_state=state_before)
     if not real_root and "plymouth" in active:
         print("STAGED: skipped limine-mkinitcpio")
     if not real_root and enrollment:

@@ -1,7 +1,9 @@
 """Installer tests use temporary homes; no live desktop or boot changes."""
 import copy
+import configparser
 import json
 import os
+import shlex
 import subprocess
 from pathlib import Path
 import sys
@@ -285,6 +287,8 @@ class BundleTests(unittest.TestCase):
         with state.lock(self.home): state.transact(self.home,files,user.COMPONENTS)
     def test_all_components_install_idempotently_and_restore(self):
         self.write('.bashrc','# existing shell preferences\n')
+        foot_original='font=monospace:size=10\n[colors-dark]\nalpha=0.9\n'
+        self.write('.config/foot/foot.ini',foot_original)
         self.write('.local/bin/atlas-vpn', '# prior standalone VPN panel\n')
         self.write('.local/bin/atlas-codex', '# prior Codex launcher\n')
         codex_config = '[tui]\ntheme = "atlas-readable"\n'
@@ -318,6 +322,7 @@ class BundleTests(unittest.TestCase):
         records=state.load(self.home)['files']
         with state.lock(self.home): state.transact(self.home,{k:v['before'] for k,v in records.items()},restoring=True)
         self.assertEqual((self.home/'.bashrc').read_text(),'# existing shell preferences\n')
+        self.assertEqual((self.home/'.config/foot/foot.ini').read_text(),foot_original)
         self.assertEqual((self.home/'.local/bin/atlas-vpn').read_text(), '# prior standalone VPN panel\n')
         self.assertEqual((self.home/'.local/bin/atlas-codex').read_text(), '# prior Codex launcher\n')
         self.assertEqual((self.home/'.codex/config.toml').read_text(), codex_config)
@@ -419,6 +424,72 @@ class BundleTests(unittest.TestCase):
     def test_custom_terminal_shell_preserved(self):
         self.write('.config/foot/foot.ini','[main]\nshell=/bin/zsh\n')
         with self.assertRaisesRegex(ValueError,'custom shell'): self.plan({'apps'})
+    def test_foot_main_section_layouts(self):
+        layouts=(
+            'font=monospace:size=10\n[colors-dark]\nalpha=1.0\n',
+            '[main]\nfont=monospace:size=10\n[colors-dark]\nalpha=1.0\n',
+            '[colors-dark]\nalpha=1.0\n',
+            'font=monospace:size=10\n[colors-dark]\nalpha=1.0\n[main]\npad=4x4\n',
+        )
+        rel='.config/foot/foot.ini'
+        for original in layouts:
+            for components in ({'desktop'},{'apps'},user.COMPONENTS):
+                with self.subTest(original=original,components=sorted(components)):
+                    self.write(rel,original)
+                    desired=self.plan(components)
+                    installed=state.text_value(desired[rel])
+                    ini=configparser.ConfigParser(interpolation=None,strict=False)
+                    ini.read_string('[main]\n'+installed)
+                    if 'apps' in components:
+                        self.assertEqual(shlex.split(ini.get('main','shell')),
+                                         [str(self.home/'.local/bin/atlas-session')])
+                    else:
+                        self.assertFalse(ini.has_option('main','shell'))
+                    if components=={'apps'}:
+                        self.assertTrue(installed.endswith(original))
+                    self.write(rel,installed)
+                    self.assertEqual(self.plan(components)[rel],desired[rel])
+    def test_foot_custom_shell_in_unnamed_or_reopened_main_is_preserved(self):
+        for original in (
+            'shell=/bin/zsh -l\n[colors-dark]\nalpha=1.0\n',
+            'font=monospace:size=10\n[colors-dark]\nalpha=1.0\n[main]\nshell=/bin/zsh -l\n',
+            '[main]\nshell=/bin/bash\n[colors-dark]\nalpha=1.0\n[main]\nshell=/bin/zsh -l\n',
+        ):
+            with self.subTest(original=original):
+                self.write('.config/foot/foot.ini',original)
+                desired=self.plan({'desktop'})
+                ini=configparser.ConfigParser(interpolation=None,strict=False)
+                ini.read_string('[main]\n'+state.text_value(desired['.config/foot/foot.ini']))
+                self.assertEqual(ini.get('main','shell'),'/bin/zsh -l')
+                for components in ({'apps'},user.COMPONENTS):
+                    with self.assertRaisesRegex(ValueError,'custom shell'):
+                        self.plan(components)
+                self.assertEqual((self.home/'.config/foot/foot.ini').read_text(),original)
+    def test_existing_foot_workspace_preserves_other_section_shell_keys(self):
+        rel='.config/foot/foot.ini'
+        original=('font=monospace:size=10\n[text-bindings]\nshell=Control+Shift+s\n'
+                  '[main]\n  shell = '+shlex.quote(str(self.home/'.local/bin/atlas-session'))+'\n')
+        self.write(rel,original)
+        self.assertEqual(state.text_value(self.plan({'apps'})[rel]),original)
+    def test_empty_foot_main_shell_is_replaced(self):
+        rel='.config/foot/foot.ini'
+        for original in (
+            'shell=\n[text-bindings]\nshell=Control+Shift+s\n',
+            '[main]\nshell=\n[text-bindings]\nshell=Control+Shift+s\n',
+            '[main]\nshell=\n[text-bindings]\nshell=Control+Shift+s\n[main]\n  shell =\n',
+        ):
+            with self.subTest(original=original):
+                self.write(rel,original)
+                desired=self.plan({'apps'})
+                installed=state.text_value(desired[rel])
+                ini=configparser.ConfigParser(interpolation=None,strict=False)
+                ini.read_string('[main]\n'+installed)
+                self.assertEqual(shlex.split(ini.get('main','shell')),
+                                 [str(self.home/'.local/bin/atlas-session')])
+                self.assertEqual(ini.get('text-bindings','shell'),'Control+Shift+s')
+                self.assertNotIn('shell=\n',installed)
+                self.write(rel,installed)
+                self.assertEqual(self.plan({'apps'})[rel],desired[rel])
     def test_shell_merge_preserves_widgets_and_settings(self):
         original={'version':1,'idle':{'lock':123},'bar':{'position':'bottom','layout':{'left':[{'id':'custom.widget','value':42}],'right':[{'id':'atlas.monitor','size':7}]}},'disabledPlugins':['omarchy.monitor'],'plugins':['atlas.lock',{'id':'atlas.polkit'},{'id':'atlas.idle'}, {'id':'custom.service'}],'cloneSourceRestores':['atlas.lock','atlas.polkit','atlas.idle']}
         merged=user.merge_shell(self.home,copy.deepcopy(original),ROOT/'components/desktop')
