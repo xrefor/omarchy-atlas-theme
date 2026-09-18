@@ -462,6 +462,22 @@ database agent path when session metadata omits it; its three additional
 regressions cover missing, unknown and stale identity metadata. All 94 agent
 tests, including the disposable tmux lifecycle tests, passed after that fix.
 
+## Monitor Night Light compatibility — 2026-09-18
+
+The monitor panel previously tried to access a first-party service that Omarchy
+withholds from monitor clones, making its Night Light button silently do nothing.
+It now uses the public Night Light enable/disable IPC and reads actual status
+through the CLI. Explicit commands also handle a daytime schedule reporting
+6000 K, which the generic toggle otherwise changes to another daylight value.
+
+The native offscreen regression exercises production panel logic and process
+handlers with a restricted shell facade and fake commands. Popup geometry is
+stubbed because offscreen Quickshell has no PanelWindow backend. This checks
+state transitions and command handling, not physical mouse targeting/rendering.
+A separate live command check enabled 4000 K from 6000 K, disabled to 6500 K,
+and restored 6000 K; brightness gamma and the schedule file were unchanged.
+The stationary computer has not been updated or retested in this pass.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:

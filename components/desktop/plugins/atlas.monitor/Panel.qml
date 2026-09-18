@@ -27,9 +27,13 @@ Panel {
   property var displays: []
   property int enabledDisplayCount: 0
 
-  readonly property var nightlightService: bar && bar.shell
-    ? bar.shell.firstPartyServiceFor("omarchy.nightlight") : null
-  readonly property bool nightlightEnabled: nightlightService ? !!nightlightService.enabled : false
+  property bool nightlightEnabled: false
+  property bool nightlightStatusKnown: false
+  property bool nightlightRefreshQueued: false
+  property bool nightlightPending: false
+  property bool nightlightTargetEnabled: false
+  property int nightlightReadbacksLeft: 0
+  property bool nightlightError: false
 
   // Carry sub-notch trackpad deltas between wheel events.
   property real wheelAccumulator: 0
@@ -153,7 +157,25 @@ Panel {
   }
 
   function toggleNightlight() {
-    if (root.nightlightService) root.nightlightService.toggle()
+    if (nightlightPending || nightlightToggleProc.running) return
+    nightlightTargetEnabled = !nightlightEnabled
+    nightlightReadbacksLeft = 20
+    nightlightError = false
+    nightlightPending = true
+    // Explicit targets also handle the schedule's neutral 6000 K state, which
+    // the generic CLI toggle otherwise switches to 6500 K on its first click.
+    nightlightToggleProc.command = ["omarchy-shell", "nightlight",
+      nightlightTargetEnabled ? "enable" : "disable"]
+    nightlightToggleProc.running = true
+  }
+
+  function refreshNightlight() {
+    if (nightlightToggleProc.running) return
+    if (nightlightStatusProc.running) {
+      nightlightRefreshQueued = true
+      return
+    }
+    nightlightStatusProc.running = true
   }
 
   function activateCursor() {
@@ -245,6 +267,7 @@ Panel {
 
   function refresh() {
     if (!stateProc.running) stateProc.running = true
+    refreshNightlight()
   }
 
   function setBrightness(value) {
@@ -447,6 +470,52 @@ Panel {
     id: actionProc
     stdout: StdioCollector { waitForEnd: true }
     onRunningChanged: if (!running) root.refresh()
+  }
+
+  // Monitor clones receive a scoped shell API without the Night Light service.
+  // Use the public CLI and read back the actual state, including schedule changes.
+  Process {
+    id: nightlightStatusProc
+    command: ["omarchy", "toggle", "nightlight", "--status"]
+    stdout: StdioCollector { id: nightlightStatusOutput; waitForEnd: true }
+    onExited: function(exitCode, exitStatus) {
+      var state = Model.parseNightlightState(nightlightStatusOutput.text, exitCode)
+      root.nightlightStatusKnown = state !== null
+      if (state !== null) root.nightlightEnabled = state.enabled
+      if (root.nightlightPending && !nightlightToggleProc.running) {
+        if (state !== null && state.enabled === root.nightlightTargetEnabled) {
+          root.nightlightPending = false
+        } else if (--root.nightlightReadbacksLeft <= 0) {
+          root.nightlightPending = false
+          root.nightlightError = true
+        }
+      }
+      if (root.nightlightRefreshQueued) {
+        root.nightlightRefreshQueued = false
+        root.refreshNightlight()
+      }
+    }
+  }
+
+  Process {
+    id: nightlightToggleProc
+    onExited: function(exitCode, exitStatus) {
+      if (exitCode !== 0) {
+        root.nightlightPending = false
+        root.nightlightError = true
+      }
+      root.refreshNightlight()
+    }
+  }
+
+  // The service applies temperature asynchronously and may first start its
+  // daemon. Confirm real state promptly, with a bounded wait rather than an
+  // optimistic checked state or a permanent background poll.
+  Timer {
+    interval: 200
+    repeat: true
+    running: root.nightlightPending
+    onTriggered: root.refreshNightlight()
   }
 
   // Applies text size via the CLI, which rewrites the shell override file;
@@ -673,7 +742,10 @@ Panel {
             id: nightlightRow
             width: parent.width
             label: "Night Light"
-            description: root.nightlightEnabled ? "Warm" : "Off"
+            description: root.nightlightPending ? "Switching…"
+              : root.nightlightError ? "Could not change"
+              : root.nightlightStatusKnown ? (root.nightlightEnabled ? "Warm" : "Off")
+              : nightlightStatusProc.running ? "Checking…" : "Unavailable"
             checked: root.nightlightEnabled
             foreground: root.bar.foreground
             accent: Color.accent

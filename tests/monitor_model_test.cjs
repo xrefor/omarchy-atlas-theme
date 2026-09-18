@@ -3,6 +3,26 @@ const { test } = require('node:test');
 const model = require('../components/desktop/plugins/atlas.monitor/Model.js');
 const presets = Object.freeze(['1', '1.25', '1.6', '2', '3', '4']);
 
+test('night light accepts actual CLI state, including an absent daemon', () => {
+  for (const state of [{ enabled: true, temperature: 4000 },
+                       { enabled: false, temperature: 6000 },
+                       { enabled: false, temperature: 6500 },
+                       { enabled: false, temperature: null }]) {
+    assert.deepEqual(model.parseNightlightState(JSON.stringify(state) + '\n', 0), state);
+  }
+});
+
+test('night light rejects failed commands and malformed status instead of reporting Off', () => {
+  const valid = JSON.stringify({ enabled: true, temperature: 4000 });
+  for (const code of [1, -1, 127, undefined]) assert.equal(model.parseNightlightState(valid, code), null);
+  for (const raw of ['', '{', 'null', '[]', '{}', 'true',
+                     '{"enabled":"false","temperature":6500}',
+                     '{"enabled":false}', '{"enabled":false,"temperature":"6500"}',
+                     '{"enabled":false,"temperature":0}', '{"enabled":false,"temperature":1e999}']) {
+    assert.equal(model.parseNightlightState(raw, 0), null, raw);
+  }
+});
+
 test('brightness rounds input and stays in the usable 1–100 range', () => {
   for (const [value, expected] of [[0, 1], [-20, 1], [1000, 100], [45.4, 45], [45.5, 46], ['73', 73], [100, 100]]) {
     assert.equal(model.clampBrightness(value), expected);

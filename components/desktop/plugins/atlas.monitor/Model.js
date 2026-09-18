@@ -142,6 +142,19 @@ function parseDisplays(raw) {
   }
 }
 
+function parseNightlightState(raw, exitCode) {
+  if (exitCode !== 0) return null
+  var state
+  try { state = JSON.parse(raw) } catch (e) { return null }
+  if (!state || typeof state !== "object" || Array.isArray(state)
+      || typeof state.enabled !== "boolean") return null
+  // No running daemon is a valid Off state; the toggle command can start it.
+  if (state.temperature !== null
+      && (typeof state.temperature !== "number" || !isFinite(state.temperature)
+          || state.temperature <= 0)) return null
+  return { enabled: state.enabled, temperature: state.temperature }
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     clampBrightness: clampBrightness,
@@ -150,6 +163,7 @@ if (typeof module !== "undefined") {
     matchingScaleIndex: matchingScaleIndex,
     availableScales: availableScales,
     brightnessName: brightnessName,
-    parseDisplays: parseDisplays
+    parseDisplays: parseDisplays,
+    parseNightlightState: parseNightlightState
   }
 }

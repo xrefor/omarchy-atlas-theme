@@ -23,7 +23,15 @@ This bundle does not install or modify PAM policy, fingerprint enrollment, Polki
 Authorization messages are displayed as plain text. Markup in a message is shown
 literally and cannot change the label's formatting.
 
-The local `~/.local/bin/omarchy-brightness-display` hardware fallback is also excluded. `atlas.monitor` calls the stock command name, so supported DDC or backlight hardware works as Omarchy intends; machines without supported brightness control simply omit that row. Night Light still works through `omarchy.nightlight`.
+The local `~/.local/bin/omarchy-brightness-display` hardware fallback is also excluded. `atlas.monitor` calls the stock command name, so supported DDC or backlight hardware works as Omarchy intends; machines without supported brightness control simply omit that row.
+
+Night Light uses the public `omarchy-shell nightlight enable`/`disable` commands
+and `omarchy toggle nightlight --status` readback. Monitor clones cannot access
+the shell's private Night Light service directly. Explicit targets also allow
+enabling warmth from a schedule's neutral 6000 K state. The panel confirms the
+actual result, refreshes scheduled/external changes while open, and reports an
+unavailable status or failed change. It leaves brightness gamma and the
+night-light schedule unchanged.
 
 ## Compatibility preflight
 
