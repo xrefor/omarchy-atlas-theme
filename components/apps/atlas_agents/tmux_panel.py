@@ -8,6 +8,8 @@ import re
 import stat
 import subprocess
 
+from atlas_panel import sidebar_width
+
 
 def _private_directory(path):
     path = Path(path)
@@ -129,8 +131,9 @@ class Panels:
             command = [*self.command, '--snapshot', str(snapshot_path)]
             # Multiple command arguments make tmux exec directly; paths containing
             # shell syntax or #{formats} are passed literally to the viewer.
-            if int(width) >= 130:
-                pane = self._tmux('split-window', '-d', '-h', '-l', '48', '-t', self.origin,
+            panel_columns = sidebar_width(int(width))
+            if panel_columns is not None:
+                pane = self._tmux('split-window', '-d', '-h', '-l', str(panel_columns), '-t', self.origin,
                                   '-P', '-F', '#{pane_id}', '--', *command)
             else:
                 pane = self._tmux('new-window', '-d', '-t', session + ':', '-n', 'agents',

@@ -303,7 +303,10 @@ class BundleTests(unittest.TestCase):
         self.assertTrue(os.access(self.home/'.local/bin/atlas-agents', os.X_OK))
         self.assertTrue(os.access(self.home/'.local/bin/atlas-codex', os.X_OK))
         self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_codex/__main__.py').is_file())
+        self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_panel.py').is_file())
         self.assertEqual(json.loads((self.home/'.config/atlas/agents-palette.json').read_text())['accent'], self.colors['accent'])
+        self.assertEqual((self.home/'.config/atlas/vpn-palette.json').read_text(),
+                         (self.home/'.config/atlas/agents-palette.json').read_text())
         self.assertIn('atlas-vpn', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertTrue((self.home/'.config/atlas/atlas-prompt.py').is_file())
         self.assertTrue((self.home/'.codex/themes/atlas.tmTheme').is_file())
@@ -370,6 +373,13 @@ class BundleTests(unittest.TestCase):
                 result=subprocess.run(args,cwd=self.home,env=env,capture_output=True,text=True,timeout=10)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertIn(output,result.stdout)
+        # Loading the installed VPN command must find its sibling runtime module,
+        # without entering curses or contacting the service.
+        probe='import runpy,sys; runpy.run_path(sys.argv[1]); import atlas_panel; print(atlas_panel.__file__)'
+        result=subprocess.run([sys.executable,'-c',probe,str(self.home/'.local/bin/atlas-vpn')],
+                              cwd=self.home,env=env,capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertEqual(result.stdout.strip(),str(self.home/'.local/share/atlas/components/apps/atlas_panel.py'))
     def test_existing_app_preferences_are_merged(self):
         self.write('.config/lazygit/config.yml','git:\n  autoFetch: false\n')
         self.write('.config/spotify-player/app.toml','client_id = "recipient-app-id"\n')

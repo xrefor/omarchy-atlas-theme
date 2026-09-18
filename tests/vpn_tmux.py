@@ -1,6 +1,7 @@
 """Exercise the bundled UI with a fake CLI in an isolated tmux server."""
 import json
 import os
+import shutil
 from pathlib import Path
 import subprocess
 import tempfile
@@ -62,7 +63,10 @@ os.execv(%r, [%r, *args[1:]])
         declaration=f'{name} = {real_path!r}'
         assert source.count(declaration)==1, declaration
         source=source.replace(declaration, f'{name} = {str(fake_path)!r}')
-    panel=Path(d)/'atlas-vpn'
+    runtime=Path(d)/'components/apps'
+    (runtime/'bin').mkdir(parents=True)
+    shutil.copy2(panel_source.parents[1]/'atlas_panel.py', runtime/'atlas_panel.py')
+    panel=runtime/'bin/atlas-vpn'
     panel.write_text(source)
     panel.chmod(0o755)
     panel=str(panel)
@@ -94,6 +98,22 @@ for line in sys.stdin:
         vpn=tm('list-panes','-t','test:0','-F','#{pane_id} #{@atlas_vpn}').splitlines()[-1].split()[0]
         capture=lambda:tm('capture-pane','-p','-t',vpn)
         wait(lambda:'State: Disconnected' in capture())
+        assert tm('display-message','-p','-t',vpn,'#{pane_width}')=='60'
+        wait(lambda: (view := capture()) and all(hint in view for hint in
+             ('// N Y M', 'q close', 'Closing keeps VPN running')))
+        tm('resize-window','-t','test:0','-y','24')
+        tm('resize-pane','-t',vpn,'-x','48')
+        wait(lambda:tm('display-message','-p','-t',vpn,'#{pane_width}')=='48')
+        hints=('// N Y M', 'q close · c connect · d disconnect', 'm mode', 's settings', 'r refresh', 'i details', 'b setup', 'o app',
+               'Closing keeps VPN running')
+        wait(lambda: (view := capture()) and all(hint in view for hint in hints))
+        tm('send-keys','-t',vpn,'-N','50','j')
+        wait(lambda: (view := capture()) and 'SERVICE  active' not in view
+             and '// N Y M' in view and 'q close' in view)
+        tm('send-keys','-t',vpn,'-N','50','k')
+        wait(lambda:'SERVICE  active' in capture())
+        tm('resize-window','-t','test:0','-y','40')
+        tm('resize-pane','-t',vpn,'-x','60')
         tm('send-keys','-t',vpn,'c')
         wait(lambda:'State: Connected' in capture())
         tm('send-keys','-t',vpn,'m')

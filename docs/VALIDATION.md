@@ -423,6 +423,45 @@ restrictions prevented tmux checks. Validation on the reported stationary
 computer remains outstanding; the source change here does not update that
 installation.
 
+## Shared Agents and Nym panel styling — 2026-09-18
+
+Both panels use a shared presentation module for semantic colors, title/footer
+strips, content spacing, display-cell clipping and 48–60-column sidebar sizing.
+Nym reloads palette changes while open and no longer redefines terminal color
+slots. Its title and wrapped controls remain fixed while the content scrolls;
+short windows retain contextual exit/cancel hints.
+
+The complete checker's Python stage passed 267 tests, followed by the additional
+live-palette regression and an installed-launcher import check. Authentication,
+JavaScript models, Lua, native Neovim, plugin/QML validation and palette/template
+consistency passed. The new disposable tmux resize test initially sampled a
+partial redraw; its readiness checks now wait for complete frames. The corrected
+fixture covers 48-column resizing, scrolling with fixed headings/controls,
+settings and service actions using fake backends.
+
+Release checks in a disposable Git checkout included the new shared module and
+verified deterministic archives, payload hashes, extracted installation,
+unchanged repeat/sync/check and restoration. No live VPN connection, account or
+desktop configuration was changed. The sample-data layout preview is not
+physical-display validation; visual review on the stationary computer remains
+separate from these checks.
+
+The follow-up layout prefers 60-column sidebars, with a 48-column fallback when
+needed to preserve the main pane. Nym reflows service, startup, mode and gateway
+fields as groups, retaining long values on aligned continuation lines. Agent
+cards show a stable brief objective from an owned readable assignment, falling
+back to the readable task name when the assignment is unavailable. A bounded
+read of the current child session confirmed encrypted assignment bodies on the
+reference installation; no decryption or generated summarization is involved.
+Fixtures cover inherited-history exclusion, task reassignment, completion,
+configuration-message filtering and narrow/Unicode layouts.
+
+The full checker passed 281 Python tests and all integration checks for this
+refinement. Review then tightened assignment recipient matching to use the
+database agent path when session metadata omits it; its three additional
+regressions cover missing, unknown and stale identity metadata. All 94 agent
+tests, including the disposable tmux lifecycle tests, passed after that fix.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:

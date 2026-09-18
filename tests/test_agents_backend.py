@@ -256,6 +256,123 @@ class AgentsBackendTests(unittest.TestCase):
         self.assertNotIn('progress', row)
         self.assertNotIn('percentage', row)
 
+    def test_owned_task_stays_stable_through_progress_and_completion(self):
+        path = self.child(inherited=2, metadata={'forked_from_id': 'root'}, events=[
+            event('task_started', turn_id='parent'),
+            event('message', kind='response_item', role='user', content='Inherited parent objective'),
+            event('task_started', turn_id='own'),
+            event('message', kind='response_item', role='user', content=[
+                {'type': 'input_text', 'text': 'Unify Nym panel styling. Own the Nym renderer.'}]),
+            event('message', kind='response_item', role='assistant', phase='commentary',
+                  content='Editing background and footer colors'),
+            event('message', kind='response_item', role='assistant', phase='final_answer',
+                  content='Implemented Nym consolidation: - Shared colors and many more details'),
+            event('task_complete', turn_id='own'),
+        ])
+        row = self.reader(path).poll()
+        self.assertEqual(row['task'], 'Unify Nym panel styling')
+        self.assertEqual(row['status'], 'completed')
+        self.assertTrue(row['activity'].startswith('Implemented Nym consolidation'))
+        self.assertNotIn('Inherited', json.dumps(row))
+
+    def test_new_task_envelope_and_followup_respect_recipient_and_turn(self):
+        def assignment(description, recipient='/root/child', **extra):
+            return event('agent_message', kind='response_item', author='/root', recipient=recipient,
+                         content=[{'type': 'input_text', 'text':
+                                   'Message Type: NEW_TASK\nTask name: /root/child\nSender: /root\nPayload:\n' + description}], **extra)
+        path = self.child(metadata={'agent_path': '/root/child'}, events=[
+            event('task_started', turn_id='one'),
+            assignment('Wrong recipient objective', recipient='/root/other'),
+            assignment('Review panel sizing.'),
+            assignment('Mid-turn message must not replace task'),
+            event('task_complete', turn_id='one'),
+        ])
+        reader = self.reader(path)
+        self.assertEqual(reader.poll()['task'], 'Review panel sizing')
+        self.append(path, event('task_started', turn_id='two'),
+                    assignment('Wrong turn objective', internal_chat_message_metadata_passthrough={'turn_id': 'one'}),
+                    assignment('Validate narrow layouts. Preserve others edits.'))
+        self.assertEqual(reader.poll()['task'], 'Validate narrow layouts')
+
+    def test_encrypted_assignment_uses_humanized_name_without_envelope(self):
+        path = self.child(identifier='nym_panel_styling', metadata={'agent_path': '/root/nym_panel_styling'}, events=[
+            event('task_started', turn_id='own'),
+            event('agent_message', kind='response_item', author='/root', recipient='/root/nym_panel_styling',
+                  content=[{'type': 'input_text', 'text':
+                            'Message Type: NEW_TASK\nTask name: /root/nym_panel_styling\nSender: /root\nPayload:\n'},
+                           {'type': 'encrypted_content', 'encrypted_content': 'opaque private data'}]),
+        ])
+        row = self.reader(path, 'nym_panel_styling').poll()
+        self.assertEqual(row['task'], 'Nym panel styling')
+        self.assertNotIn('Payload', row['task'])
+        self.assertNotIn('private', json.dumps(row))
+
+    def test_legacy_user_assignment_and_encrypted_followup_replace_old_task(self):
+        path = self.child(metadata={'agent_path': '/root/child'}, events=[
+            event('task_started', turn_id='one'),
+            event('user_message', message='Review Nym panel spacing.'),
+        ])
+        reader = self.reader(path)
+        self.assertEqual(reader.poll()['task'], 'Review Nym panel spacing')
+        self.append(path, event('task_started', turn_id='two'),
+                    event('agent_message', kind='response_item', content=[
+                        {'type': 'input_text', 'text': 'Message Type: MESSAGE\nPayload:\nProgress question'}]))
+        self.assertEqual(reader.poll()['task'], 'Review Nym panel spacing')
+        self.append(path, event('agent_message', kind='response_item', recipient='/root/child', content=[
+            {'type': 'input_text', 'text': 'Message Type: NEW_TASK\nPayload:\n'},
+            {'type': 'encrypted_content', 'encrypted_content': 'unavailable followup'}]))
+        self.assertEqual(reader.poll()['task'], 'Child')
+
+    def test_observer_uses_database_agent_path_to_filter_assignments(self):
+        def assignment(recipient, text):
+            return event('agent_message', kind='response_item', recipient=recipient,
+                         content=[{'type': 'input_text', 'text':
+                                   f'Message Type: NEW_TASK\nTask name: {recipient}\nPayload:\n{text}'}])
+        path = self.child(events=[event('task_started', turn_id='one'),
+                                  assignment('/root/other', 'Wrong agent objective')])
+        observer = backend.Observer('root', self.home)
+        self.assertEqual(observer.poll()['agents'][0]['task'], 'Child')
+        self.append(path, assignment('/root/child', 'Review assigned panel'))
+        self.assertEqual(observer.poll()['agents'][0]['task'], 'Review assigned panel')
+
+    def test_unknown_agent_path_does_not_accept_arbitrary_task_recipient(self):
+        path = self.child(events=[
+            event('task_started', turn_id='one'),
+            event('agent_message', kind='response_item', recipient='/root/other', content=[
+                {'type': 'input_text', 'text': 'Message Type: NEW_TASK\nTask name: /root/other\nPayload:\nWrong agent objective'}]),
+        ])
+        self.assertEqual(self.reader(path).poll()['task'], 'Child')
+
+    def test_database_agent_path_takes_precedence_over_session_metadata(self):
+        path = self.child(metadata={'agent_path': '/root/stale'}, events=[
+            event('task_started', turn_id='one'),
+            event('agent_message', kind='response_item', recipient='/root/child', content=[
+                {'type': 'input_text', 'text': 'Message Type: NEW_TASK\nTask name: /root/child\nPayload:\nReview current task'}]),
+        ])
+        self.assertEqual(backend.Observer('root', self.home).poll()['agents'][0]['task'], 'Review current task')
+
+    def test_setup_boilerplate_and_command_output_are_not_task_descriptions(self):
+        path = self.child(events=[
+            event('task_started', turn_id='own'),
+            event('message', kind='response_item', role='user', content='# AGENTS.md instructions\nprivate configuration'),
+            event('message', kind='response_item', role='user', content='<environment_context>private environment</environment_context>'),
+            event('function_call_output', kind='response_item', output='private raw command output'),
+            event('message', kind='response_item', role='developer', content='private developer instructions'),
+            event('message', kind='response_item', role='user', content='Objective: Check panel resizing. More scope details.'),
+        ])
+        row = self.reader(path).poll()
+        self.assertEqual(row['task'], 'Check panel resizing')
+        self.assertNotIn('private', json.dumps(row))
+
+    def test_task_description_is_concise_and_does_not_cut_words(self):
+        self.assertEqual(backend.task_description('Please review layout. Then run focused tests.'), 'review layout')
+        self.assertEqual(backend.task_description('You are a worker. Private scope details.'), '')
+        summary = backend.task_description('Review ' + 'narrow layouts ' * 30)
+        self.assertLessEqual(len(summary), 96)
+        self.assertTrue(summary.endswith(('narrow…', 'layouts…')))
+        self.assertNotIn('encrypted', backend.task_description([
+            {'type': 'encrypted_content', 'text': 'encrypted body'}]))
+
     def test_database_error_keeps_last_snapshot_marked_disconnected(self):
         self.child(events=[event('task_started', turn_id='one')])
         observer = backend.Observer('root', self.home)

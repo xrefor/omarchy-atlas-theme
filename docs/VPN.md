@@ -8,8 +8,10 @@ latency. See Nym's [explanation of the two modes](https://support.nym.com/hc/en-
 ATLAS provides an optional themed terminal panel for the service.
 
 The `apps` component installs `~/.local/bin/atlas-vpn` and binds **Ctrl+Space,
-then N** in tmux. It opens a side pane in wide terminals and a window in narrow
-ones. Repeat the shortcut to close it, or run `atlas-vpn` directly.
+then N** in tmux. Like the Agents panel, it prefers a 60-column side pane when
+the originating pane has at least 141 columns. It uses 48 columns for origins
+of 130–140 columns, or a separate window below that. Manual resizing remains
+available. Repeat the shortcut to close it, or run `atlas-vpn` directly.
 
 Requires Python with curses. Tunnel controls require a running NymVPN daemon
 with a matching `nym-vpnc` CLI; service setup is available even without the CLI.
@@ -75,9 +77,15 @@ delays to Auto. Extreme values can substantially affect latency and bandwidth.
 
 ## Theme lifecycle
 
-The panel uses the shared generated `~/.config/atlas/vpn-palette.json`, read on
-opening, with an ATLAS fallback. `atlas-theme sync` updates that palette along
-with other application colors. Reopen the panel to see new colors.
+The panel uses the generated `~/.config/atlas/vpn-palette.json`, with the same
+semantic colors and ATLAS fallback as Agents. `atlas-theme sync` updates both
+palettes along with other application colors; open panels reload them. Terminal
+color slots are not redefined. Both panels share a background, title strip,
+content inset, separators and pinned keyboard-hint footer. Nym's controls wrap
+to fit the pane, and its title remains visible while the content scrolls.
+Status fields move as complete label/value groups when resized; long individual
+values use aligned continuation lines. Dashboard shortcuts appear in the footer
+instead of being repeated inside those fields.
 
 The normal bundle installer tracks the panel, palette and shortcut for restore,
 including any pre-existing standalone panel. No Nym binaries, logs, accounts,

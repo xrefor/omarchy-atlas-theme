@@ -2,7 +2,8 @@
 
 The local adapter is intentionally small and version-sensitive. Unknown schemas
 fail visibly; it never treats database recency or an open spawn edge as liveness.
-Only public assistant messages, plans and execution lifecycle labels reach the UI.
+Only task descriptions, public assistant messages, plans and lifecycle labels
+reach the UI. Encrypted assignments are never decoded by this observer.
 """
 import contextlib
 import datetime
@@ -46,6 +47,51 @@ def message_text(content):
         return short_text(' '.join(x.get('text', '') for x in content
                                   if isinstance(x, dict) and isinstance(x.get('text'), str)))
     return ''
+
+
+def task_name(value):
+    """A readable, honest fallback when the assignment is not locally available."""
+    name = short_text(re.sub(r'[_-]+', ' ', value or ''), 96)
+    return name[:1].upper() + name[1:] if name else 'Agent task'
+
+
+def task_description(content):
+    """Extract a brief opening objective, never assistant prose or encrypted text."""
+    if isinstance(content, list):
+        content = '\n'.join(item['text'] for item in content if isinstance(item, dict)
+                            and item.get('type') in ('input_text', 'text')
+                            and isinstance(item.get('text'), str))
+    if not isinstance(content, str):
+        return ''
+    text = content[:4096].strip()
+    if text.startswith('Message Type:'):
+        if not text.startswith('Message Type: NEW_TASK\n'):
+            return ''
+        _, separator, text = text.partition('\nPayload:\n')
+        if not separator:
+            return ''
+        text = text.strip()
+    # Setup/configuration messages and quoted/code material are not objectives.
+    if not text or text.startswith(('<', '#', '```', '>', '$ ', '[')):
+        return ''
+    text = text.splitlines()[0]
+    text = re.sub(r'^(?:Task|Objective|Goal):\s*', '', text, flags=re.I)
+    text = re.sub(r'^Please\s+', '', text, flags=re.I)
+    text = re.split(r'(?<=[.!?])\s+|;\s+', text, maxsplit=1)[0]
+    if re.match(r'(?:You are|You own|Your (?:role|instructions)|AGENTS\.md)\b', text, re.I):
+        return ''
+    text = short_text(text, 4096).strip(' *`')
+    words = text.split()
+    # Stop at whole words; the ellipsis explicitly marks a shortened objective.
+    selected = []
+    for word in words[:14]:
+        if len(' '.join([*selected, word])) > 95:
+            break
+        selected.append(word)
+    if not selected:
+        return ''
+    description = ' '.join(selected).rstrip('.:')
+    return description + ('…' if len(selected) < len(words) else '')
 
 
 def safe_rollout(home, path):
@@ -128,8 +174,11 @@ class Rollout:
         self.buffer = b''
         self.dropping = False
         self.turn_id = None
+        self.task_assigned = False
+        self.agent_path = record.get('agent_path') or meta.get('agent_path')
+        self.fallback_task = task_name(record.get('name'))
         self.record = dict(record, status='starting', activity='Waiting for first update',
-                           task='', plan=[], started_at=record['created_at'],
+                           task=self.fallback_task, plan=[], started_at=record['created_at'],
                            updated_at=record['created_at'], finished_at=None)
 
     def plan(self, value):
@@ -151,12 +200,33 @@ class Rollout:
         row = self.record
         if kind == 'event_msg' and detail == 'task_started':
             self.turn_id = payload.get('turn_id')
+            self.task_assigned = False
             row.update(status='running', activity='Working', plan=[], finished_at=None,
                        started_at=timestamp(payload.get('started_at'), stamp), updated_at=stamp)
             return
         # Ignore copied conversation history and events for another turn.
-        if self.turn_id is None or (payload.get('turn_id') and payload['turn_id'] != self.turn_id):
+        metadata = payload.get('internal_chat_message_metadata_passthrough')
+        turn_id = payload.get('turn_id') or (metadata.get('turn_id') if isinstance(metadata, dict) else None)
+        if self.turn_id is None or (turn_id and turn_id != self.turn_id):
             return
+        # Only the first owned assignment in a turn defines its stable task.
+        # NEW_TASK envelopes may contain only an encrypted body: use the slug.
+        content = None
+        assignment = False
+        if kind == 'response_item' and detail == 'agent_message':
+            content = payload.get('content')
+            assignment = bool(self.agent_path and payload.get('recipient') == self.agent_path
+                              and message_text(content).startswith('Message Type: NEW_TASK '))
+        elif (kind == 'response_item' and detail == 'message' and payload.get('role') == 'user'
+              and not payload.get('phase')):
+            content = payload.get('content')
+        elif kind == 'event_msg' and detail == 'user_message':
+            content = payload.get('message')
+        if not self.task_assigned and content is not None:
+            description = task_description(content) if detail != 'agent_message' or assignment else ''
+            if description or assignment:
+                row.update(task=description or self.fallback_task, updated_at=stamp)
+                self.task_assigned = True
         if kind == 'event_msg':
             if detail == 'task_complete':
                 row.update(status='completed', finished_at=timestamp(payload.get('completed_at'), stamp), updated_at=stamp)
@@ -268,7 +338,7 @@ class Observer:
                     raise ValueError('This Codex history format is not supported by the local observer')
                 name = short_text((data['agent_path'] or '').rsplit('/', 1)[-1] or data['agent_nickname'] or data['id'][:8], 80)
                 record = {'id': data['id'], 'name': name, 'role': short_text(data['agent_role'], 40),
-                          'created_at': data['created_at']}
+                          'agent_path': data['agent_path'], 'created_at': data['created_at']}
                 reader = self.readers.get(data['id'])
                 path = safe_rollout(self.home, data['rollout_path'])
                 if reader is None or reader.path != path:

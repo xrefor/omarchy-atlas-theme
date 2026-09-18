@@ -1,26 +1,16 @@
 """Read-only, palette-aware terminal dashboard for the current Codex agents."""
 import curses
-import json
 import math
-from pathlib import Path
 import re
 import time
 import unicodedata
 
+from atlas_panel import (
+    DEFAULT_PALETTE, cell_width, clip, color_index as _color_index,
+    draw_bar, layout, put as _put, read_palette, styles as _styles, title,
+)
 
-DEFAULT_PALETTE = {
-    'background': '#100e0c',
-    'lighter_background': '#1c1814',
-    'foreground': '#d6cfc4',
-    'dark_foreground': '#6e675c',
-    'bright_foreground': '#f2ebe0',
-    'secondary': '#a69b8c',
-    'muted': '#3a342c',
-    'accent': '#ff5a12',
-    'green': '#8a9a4a',
-    'yellow': '#f0a202',
-    'red': '#c22e16',
-}
+
 STATUS = {
     'starting': ('◌', 'STARTING', 'accent'),
     'running': ('●', 'RUNNING', 'accent'),
@@ -33,26 +23,9 @@ STATUS = {
 }
 _ANSI = re.compile(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\|$)|'
                    r'\x1b\[[0-?]*[ -/]*[@-~]|\x1b[@-_]')
-_HEX = re.compile(r'#[0-9a-fA-F]{6}\Z')
 _MAX_AGENTS = 200
 _MAX_TEXT = 4096
 _COMPLETION_GRACE_SECONDS = 30
-
-
-def read_palette(path=None):
-    """Read active semantic colors; missing or invalid roles use ATLAS defaults."""
-    colors = DEFAULT_PALETTE.copy()
-    path = Path(path) if path is not None else Path.home() / '.config/atlas/agents-palette.json'
-    try:
-        if path.stat().st_size > 65536:
-            return colors
-        value = json.loads(path.read_text())
-    except (OSError, ValueError):
-        return colors
-    if isinstance(value, dict):
-        colors.update({key: value[key].lower() for key in colors
-                       if isinstance(value.get(key), str) and _HEX.fullmatch(value[key])})
-    return colors
 
 
 def clean(value):
@@ -63,31 +36,8 @@ def clean(value):
                             or character in '\n\r\t').split())
 
 
-def cell_width(text):
-    return sum(0 if unicodedata.combining(character) else
-               2 if unicodedata.east_asian_width(character) in ('W', 'F') else 1
-               for character in text)
-
-
-def clip(text, width):
-    """Clip by display cells, keeping wide glyphs intact and marking truncation."""
-    if width <= 0:
-        return ''
-    if cell_width(text) <= width:
-        return text
-    result, used = [], 0
-    for character in text:
-        size = cell_width(character)
-        if used + size > width - 1:
-            break
-        if size or result:
-            result.append(character)
-            used += size
-    return ''.join(result) + '…'
-
-
 def _wrapped(text, width, limit=2):
-    """Wrap a short activity to a bounded number of lines without dropping words."""
+    """Wrap a short description to a bounded number of terminal-cell lines."""
     text = clean(text)
     if not text or width <= 0:
         return []
@@ -150,9 +100,10 @@ def _agent_rows(agent, width, now):
     agent_role = clean(agent.get('role'))
     if agent_role:
         lines.append((f'  {agent_role}', 'secondary'))
-    activity = agent.get('activity') or agent.get('task') or 'Waiting for an activity update…'
+    fallback = re.sub(r'[_-]+', ' ', clean(agent.get('name')))
+    task = agent.get('task') or (fallback[:1].upper() + fallback[1:]) or 'Agent task'
     lines.extend(('  ' + line, 'foreground') for line in
-                 _wrapped(activity, max(0, width - 2), 2))
+                 _wrapped(task, max(0, width - 2), 2))
     plan = agent.get('plan')
     if isinstance(plan, list) and plan:
         valid = [item for item in plan if isinstance(item, dict)]
@@ -188,7 +139,7 @@ def dashboard(snapshot, width, now=None, *, show_completed=False):
     summary = ' · '.join(f'{counts[key]} {key}' for key in
                          ('running', 'waiting', 'completed', 'interrupted', 'error', 'unknown')
                          if counts.get(key))
-    lines = [('// A G E N T S' if width >= 14 else '// AGENTS', 'accent'),
+    lines = [(title('agents', width), 'accent'),
              (summary or ('No active agents' if history else 'No agents yet'), 'secondary'),
              ('─' * width, 'muted'), ('', 'foreground')]
     if snapshot.get('error'):
@@ -202,7 +153,7 @@ def dashboard(snapshot, width, now=None, *, show_completed=False):
         lines.extend((line, 'foreground') for line in
                      _wrapped('Spawned agents will appear here.', width, 2))
         lines.extend((line, 'secondary') for line in
-                     _wrapped('Activity and reported plan steps update automatically.', width, 3))
+                     _wrapped('Task status and reported plan steps update automatically.', width, 3))
     for agent in agents:
         lines.extend(_agent_rows(agent, width, now))
     if history:
@@ -215,77 +166,6 @@ def dashboard(snapshot, width, now=None, *, show_completed=False):
     if len(raw_agents) > _MAX_AGENTS:
         lines.append((f'{len(raw_agents) - _MAX_AGENTS} more agents omitted', 'secondary'))
     return [(clip(text, width), role) for text, role in lines]
-
-
-def _rgb(value):
-    return tuple(int(value[index:index + 2], 16) for index in (1, 3, 5))
-
-
-def _indexed_rgb(index):
-    if index >= 232:
-        return (8 + (index - 232) * 10,) * 3
-    steps = (0, 95, 135, 175, 215, 255)
-    value = index - 16
-    return steps[value // 36], steps[(value // 6) % 6], steps[value % 6]
-
-
-def _color_index(value):
-    rgb = _rgb(value)
-    count = getattr(curses, 'COLORS', 0)
-    if count >= 16777216 and getattr(curses, 'has_extended_color_support', lambda: False)():
-        return rgb[0] << 16 | rgb[1] << 8 | rgb[2]
-    if count >= 256:
-        candidates = [(index, _indexed_rgb(index)) for index in range(16, 256)]
-    else:
-        candidates = []
-        for index in range(min(count, 16)):
-            try:
-                channels = curses.color_content(index)
-                candidates.append((index, tuple(channel * 255 // 1000 for channel in channels)))
-            except curses.error:
-                pass
-        if not candidates:
-            return -1
-    return min(candidates, key=lambda item: sum((a - b) ** 2 for a, b in zip(rgb, item[1])))[0]
-
-
-def _styles(palette):
-    styles = {key: curses.A_NORMAL for key in palette}
-    styles['header'] = curses.A_NORMAL
-    styles['header_prefix'] = curses.A_NORMAL
-    styles['footer'] = curses.A_NORMAL
-    try:
-        if not curses.has_colors():
-            return styles
-        curses.start_color()
-        try:
-            curses.use_default_colors()
-        except curses.error:
-            pass
-        background = _color_index(palette['background'])
-        pairs = [(key, value, background) for key, value in palette.items()]
-        pairs += [('header', palette['accent'], _color_index(palette['lighter_background'])),
-                  ('header_prefix', palette['dark_foreground'], _color_index(palette['lighter_background'])),
-                  ('footer', palette['secondary'], _color_index(palette['lighter_background']))]
-        for pair, (key, value, backing) in enumerate(pairs, 1):
-            if pair >= getattr(curses, 'COLOR_PAIRS', 0):
-                break
-            try:
-                curses.init_pair(pair, _color_index(value), backing)
-                styles[key] = curses.color_pair(pair)
-            except (curses.error, ValueError, OverflowError):
-                continue
-    except curses.error:
-        pass
-    return styles
-
-
-def _put(screen, row, text, style, width):
-    try:
-        screen.addstr(row, 0, clip(text, width), style)
-    except (curses.error, UnicodeError):
-        # Resizes and terminals without the glyph can make an individual draw fail.
-        pass
 
 
 def _screen(screen, get_snapshot, palette_path, on_refresh):
@@ -316,7 +196,7 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
             screen.bkgd(' ', styles['foreground'])
             previous_palette = palette
         height, columns = screen.getmaxyx()
-        width = max(0, columns - 1)
+        left, width = layout(columns)
         rows = dashboard(snapshot, width, now, show_completed=show_completed)
         fixed = min(4, max(0, height - 1))
         available = max(0, height - fixed - 1)
@@ -325,20 +205,21 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
         screen.erase()
         for row, (line, role) in enumerate(rows[:fixed]):
             if row == 0:
-                _put(screen, row, line.ljust(width), styles['header'], width)
-                _put(screen, row, line[:2], styles['header_prefix'], width)
+                draw_bar(screen, row, line, styles['header'], columns,
+                         prefix_style=styles['header_prefix'])
             else:
-                _put(screen, row, line, styles[role], width)
+                _put(screen, row, line, styles[role], columns, left=left)
         for row, (line, role) in enumerate(body[offset:offset + available], fixed):
-            _put(screen, row, line, styles[role], width)
+            _put(screen, row, line, styles[role], columns, left=left)
         if height:
             footer = ('↑↓/jk scroll · h history · r refresh · q close' if width >= 44 else
+                      '↑↓ scroll · h history · r refresh · q close' if width >= 41 else
                       '↑↓ scroll · h history · r · q close' if width >= 34 else
                       '↑↓ · h history · r · q' if width >= 23 else
                       'h history · q close' if width >= 19 else 'q close')
             if len(body) > available and width >= 48:
                 footer += f'  {offset + 1}/{max(1, len(body) - available + 1)}'
-            _put(screen, height - 1, footer.ljust(width), styles['footer'], width)
+            draw_bar(screen, height - 1, footer, styles['footer'], columns)
         screen.refresh()
         key = screen.getch()
         if key in (ord('q'), ord('Q'), 27):

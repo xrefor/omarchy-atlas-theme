@@ -21,6 +21,12 @@ kind icons and editing modes retain their semantic colors.
 Yazi's Enter key enters directories and retains the ordinary file opener,
 including multi-selection. Right-arrow navigation remains available.
 
+Agents and Nym share terminal panel styling: title and footer strips, content
+spacing, semantic colors and sidebar sizing. Both reload palette changes while
+open. Extending the surrounding tmux layout conventions to other tools, and
+coordinating logo sizing across boot, login, lock and wallpaper, remain separate
+follow-up work.
+
 Integration checks cover startup, repeated palette changes, switching away from
 Aether, and returning to it. Demonstrations keep the normal 9 pt typography.
 

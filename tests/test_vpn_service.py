@@ -137,7 +137,8 @@ class ServiceTests(unittest.TestCase):
             backend.events.put(('error', 'Nym session ended'))
         with patch.object(vpn, 'read_service', return_value=initial), \
                 patch.object(vpn, 'find_cli', return_value=binary), \
-                patch.object(vpn, 'palette'), \
+                patch.object(vpn, 'styles', return_value=dict.fromkeys(
+                    [*vpn.ROW_ROLES.values(), 'header', 'header_prefix', 'footer'], 0)), \
                 patch.multiple(vpn.curses, curs_set=Mock(), color_pair=Mock(return_value=0),
                                def_prog_mode=Mock(), endwin=Mock(), reset_prog_mode=Mock()), \
                 patch.object(vpn, 'Backend', return_value=backend) as factory, \

@@ -3,23 +3,32 @@
 The apps component includes a read-only Codex agent dashboard. In the ATLAS Bash
 workspace, launch `codex` normally: a panel opens when the conversation has an
 active child agent. It lists nested agents from that conversation, with running,
-waiting, completed, interrupted or error status, elapsed time and recent public
-activity. Active agents appear before completed results. Successful agents stay
+waiting, completed, interrupted or error status, elapsed time and a concise task
+description. The description stays stable through progress updates and completion.
+Active agents appear before completed results. Successful agents stay
 in the main list for 30 seconds after completion, then move into a collapsed
 **Recently completed** section. Press **h** to show or hide those results.
 Waiting, interrupted and failed agents remain visible; a resumed agent returns
 to the main list automatically. Entries without a valid completion time also
 stay visible.
 
-Press **Ctrl+Space → a** to show or hide it. The panel uses 48 columns beside the
-originating pane when there is room; on narrow terminals it opens a separate
+Press **Ctrl+Space → a** to show or hide it. Like the Nym panel, it prefers a
+60-column sidebar when the originating pane has at least 141 columns, with a
+48-column fallback for origins of 130–140 columns. Manual resizing remains
+available. Below 130 columns it opens a separate
 `agents` window. Automatic opening keeps focus where you were typing. Use normal
 tmux navigation to select it. **↑/↓** or **j/k** scroll, **h** toggles completed
 history, **r** refreshes the view, and **q** closes it. Dismissed panels stay
 closed for that Codex launch, unless you reopen them manually. Closing a panel
 never interrupts an agent.
 
-Reported plans show completed step counts when available. Activity and elapsed
+Descriptions use a short opening objective from the agent's own readable task
+assignment. When that text is unavailable or encrypted, the panel displays a
+readable form of the task name, such as `nym_panel_style` → “Nym panel style”.
+It does not generate summaries or replace the objective with a completion report.
+A new owned assignment can update the description when the agent is reused.
+
+Reported plans show completed step counts when available. Task labels and elapsed
 time do not imply a completion percentage. The panel closes when its Codex
 session exits or its originating tmux pane closes. Completed results remain
 available through the manual toggle from the originating pane after the CLI
@@ -33,6 +42,10 @@ from `~/.config/atlas/agents-palette.json`, generated alongside the other app
 themes. Theme synchronization updates this file; an open panel reloads it.
 Terminals with 256-color support use the nearest available colors without
 redefining terminal palette slots.
+
+Agents and Nym share the same title strip, content inset, separators and pinned
+keyboard-hint footer. The panel title stays visible while its content scrolls;
+each panel keeps its own status information and controls.
 
 The managed Bash configuration adds a `codex` function only when no custom
 function or alias already exists. When interface coloring is active, `atlas-codex`
@@ -60,7 +73,7 @@ its paginated-history JSONL lifecycle records. It reads the local `state_*.sqlit
 database in read-only mode and incrementally reads child session files. It
 accepts non-forked legacy and paginated child sessions that omit
 `subagent_history_start_ordinal`, waiting for a `task_started` event before
-displaying activity. Forked sessions still require that boundary so copied
+reading assignments or activity. Forked sessions still require that boundary so copied
 parent lifecycle events are skipped.
 
 It identifies the root by the CLI process's open session file and follows only
@@ -76,13 +89,14 @@ Unsupported schemas, missing records and disconnections produce an unavailable
 or stale indicator. Database spawn-edge state alone is not treated as execution
 status. Remote Codex sessions are outside this adapter's scope.
 
-Only public assistant updates, execution lifecycle labels and reported plan
-steps are displayed. Reasoning content, shell output, authentication files and
+Only brief task descriptions, execution lifecycle labels and reported plan
+counts are displayed. Reasoning content, shell output, authentication files and
 tool arguments are not displayed. The observer starts no agent turns and sends
 no approvals or other commands to Codex. A lightweight observer exists only
 while its CLI process is alive, identified by PID and process start time.
 
 Snapshots and locks are private to the user under `$XDG_RUNTIME_DIR/atlas-agents`
 (or `/tmp/atlas-agents-UID` when no private runtime directory exists). Snapshots
-contain the short public activity shown in the panel. The installer journals
+contain the task description and bounded public activity retained by the observer.
+The panel displays the task description. The installer journals
 the command, Bash integration and palette for normal ATLAS restoration.

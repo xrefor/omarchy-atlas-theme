@@ -3,12 +3,14 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+import sys
 import tomllib
 import unittest
 from unittest.mock import Mock, patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'components/apps'))
 spec = importlib.util.spec_from_file_location('agents_ui', ROOT / 'components/apps/atlas_agents/ui.py')
 ui = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ui)
@@ -18,7 +20,8 @@ class AgentsUiTests(unittest.TestCase):
     def snapshot(self, **agent):
         return {'connected': True, 'agents': [dict(
             id='agent-id', name='palette-review', status='running', started_at=100,
-            updated_at=180, activity='Checking the active theme palette', **agent)]}
+            updated_at=180, task='Review the active theme palette',
+            activity='Checking the active theme palette', **agent)]}
 
     def test_reported_status_progress_and_duration(self):
         snapshot = self.snapshot(plan=[{'step': 'Read theme', 'status': 'completed'},
@@ -31,7 +34,7 @@ class AgentsUiTests(unittest.TestCase):
         self.assertNotIn('%', text)
         self.assertIn(('  RUNNING · 1m 25s', 'accent'), rows)
 
-    def test_completed_elapsed_freezes_and_retains_result(self):
+    def test_completed_elapsed_freezes_and_retains_task(self):
         snapshot = self.snapshot()
         snapshot['agents'][0].update(status='completed', finished_at=185,
                                      activity='Palette and readability checks passed')
@@ -39,7 +42,8 @@ class AgentsUiTests(unittest.TestCase):
         after = ui.dashboard(snapshot, 48, now=10000, show_completed=True)
         self.assertIn(('  COMPLETED · 1m 25s', 'green'), before)
         self.assertIn(('  COMPLETED · 1m 25s', 'green'), after)
-        self.assertIn('checks passed', '\n'.join(line for line, _ in after))
+        self.assertIn('Review the active theme palette', '\n'.join(line for line, _ in after))
+        self.assertNotIn('checks passed', '\n'.join(line for line, _ in after))
 
     def test_successful_completion_moves_to_history_after_thirty_seconds(self):
         snapshot = self.snapshot()
@@ -113,10 +117,26 @@ class AgentsUiTests(unittest.TestCase):
             rows = ui.dashboard(self.snapshot(plan=plan), 48, now=200)
             self.assertNotIn('Plan:', '\n'.join(line for line, _ in rows))
 
+    def test_missing_task_uses_readable_name_instead_of_latest_prose(self):
+        snapshot = self.snapshot()
+        snapshot['agents'][0].update(task='', name='nym_panel-styling',
+                                     activity='Implemented Nym consolidation: - Shared colors')
+        text = '\n'.join(line for line, _ in ui.dashboard(snapshot, 60, now=200))
+        self.assertIn('Nym panel styling', text)
+        self.assertNotIn('Implemented', text)
+
+    def test_task_wrapping_aligns_continuations_and_preserves_unicode(self):
+        snapshot = self.snapshot()
+        snapshot['agents'][0]['task'] = 'Review 界面 spacing and cafe\u0301 controls'
+        rows = ui.dashboard(snapshot, 24, now=200)
+        description = [line for line, role in rows if role == 'foreground' and line.startswith('  ')]
+        self.assertEqual(description, ['  Review 界面 spacing', '  and cafe\u0301 controls'])
+        self.assertTrue(all(ui.cell_width(line) <= 24 for line in description))
+
     def test_tiny_and_wide_character_layout_remains_in_bounds(self):
         snapshot = self.snapshot()
         snapshot['agents'][0].update(name='界面 e\u0301 ' * 20,
-                                     activity='🔍 分析 ' * 100)
+                                     task='🔍 分析 ' * 100)
         for width in (0, 1, 2, 3, 8, 24, 48, 120):
             with self.subTest(width=width):
                 rows = ui.dashboard(snapshot, width, now=200)
@@ -127,16 +147,16 @@ class AgentsUiTests(unittest.TestCase):
         snapshot = self.snapshot()
         snapshot['agents'][0].update(
             name='\x1b]2;hostile title\x07review\x1b[31m\x1b[0m',
-            activity='OK\x00\x1b]52;c;hidden\x1b\\\u202e\u2066\n\tchecking')
+            task='OK\x00\x1b]52;c;hidden\x1b\\\u202e\u2066\n\tchecking')
         text = '\n'.join(line for line, _ in ui.dashboard(snapshot, 60, now=200))
         self.assertIn('review', text)
         self.assertIn('OK checking', text)
         for forbidden in ('\x1b', '\x00', '\x07', '\u202e', '\u2066', 'hostile title', 'hidden'):
             self.assertNotIn(forbidden, text)
 
-    def test_huge_agent_list_and_activity_are_bounded(self):
+    def test_huge_agent_list_and_task_are_bounded(self):
         snapshot = self.snapshot()
-        snapshot['agents'][0]['activity'] = 'very long update ' * 20000
+        snapshot['agents'][0]['task'] = 'very long task ' * 20000
         snapshot['agents'] *= 500
         rows = ui.dashboard(snapshot, 48, now=200)
         self.assertLess(len(rows), 1500)
@@ -207,6 +227,60 @@ class AgentsUiTests(unittest.TestCase):
         self.assertEqual(get_snapshot.call_count, 2)
         self.assertEqual(screen.refresh.call_count, 3)
 
+    def test_sidebar_padding_and_fixed_bars_survive_scrolling(self):
+        screen = Mock()
+        screen.getmaxyx.return_value = (8, 48)
+        screen.getch.side_effect = [ord('j'), ord('q')]
+        frames = []
+        def save_frame():
+            frames.append([call.args for call in screen.addstr.call_args_list])
+            screen.addstr.reset_mock()
+        screen.refresh.side_effect = save_frame
+        styles = dict.fromkeys(ui.DEFAULT_PALETTE, 0)
+        styles.update(header=1, header_prefix=2, footer=3)
+        with patch.object(ui.curses, 'curs_set'), \
+             patch.object(ui, 'read_palette', return_value=ui.DEFAULT_PALETTE), \
+             patch.object(ui, '_styles', return_value=styles):
+            ui._screen(screen, Mock(return_value=self.snapshot()), None, None)
+        for frame in frames:
+            self.assertIn((0, 0, ' ' * 47, 1), frame)
+            self.assertIn((0, 2, '// A G E N T S', 1), frame)
+            self.assertIn((0, 2, '//', 2), frame)
+            self.assertIn((7, 0, ' ' * 47, 3), frame)
+            self.assertIn((7, 2, '↑↓ scroll · h history · r refresh · q close', 3), frame)
+            self.assertTrue(all(column == 2 for row, column, _, _ in frame if 1 <= row < 7))
+            self.assertTrue(all(column + ui.cell_width(text) <= 47
+                                for _, column, text, _ in frame))
+        self.assertEqual([call for call in frames[0] if call[0] < 4],
+                         [call for call in frames[1] if call[0] < 4])
+        self.assertNotEqual([call for call in frames[0] if 4 <= call[0] < 7],
+                            [call for call in frames[1] if 4 <= call[0] < 7])
+
+    def test_resize_preserves_draw_bounds_and_exit(self):
+        screen = Mock()
+        dimensions = iter([(12, 60), (8, 48), (5, 24), (2, 3), (1, 1)])
+        current = (0, 0)
+        def resize():
+            nonlocal current
+            current = next(dimensions)
+            return current
+        def draw(row, column, text, style):
+            height, columns = current
+            self.assertLess(row, height)
+            self.assertGreaterEqual(column, 0)
+            self.assertLessEqual(column + ui.cell_width(text), columns - 1)
+        screen.getmaxyx.side_effect = resize
+        screen.addstr.side_effect = draw
+        screen.getch.side_effect = [ui.curses.KEY_RESIZE] * 4 + [ord('q')]
+        snapshot = self.snapshot()
+        snapshot['agents'][0]['name'] = '界面 e\u0301 ' * 20
+        with patch.object(ui.curses, 'curs_set'), \
+             patch.object(ui, 'read_palette', return_value=ui.DEFAULT_PALETTE), \
+             patch.object(ui, '_styles', return_value=dict.fromkeys(
+                 [*ui.DEFAULT_PALETTE, 'header', 'header_prefix', 'footer'], 0)):
+            ui._screen(screen, Mock(return_value=snapshot), None, None)
+        self.assertEqual(screen.refresh.call_count, 5)
+
     def test_history_keyboard_toggle_recovers_results(self):
         screen = Mock()
         screen.getmaxyx.return_value = (12, 60)
@@ -225,7 +299,8 @@ class AgentsUiTests(unittest.TestCase):
         self.assertEqual([call.kwargs['show_completed'] for call in dashboard.call_args_list],
                          [False, False, True, False])
         rendered = [call.args[2] for call in screen.addstr.call_args_list]
-        self.assertIn('  Recovered result', rendered)
+        self.assertIn('  Review the active theme palette', rendered)
+        self.assertNotIn('  Recovered result', rendered)
         self.assertIn('▾ Recently completed (1) · h hide', rendered)
         on_refresh.assert_not_called()
 

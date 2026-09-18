@@ -13,6 +13,7 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'components/apps'))
 SPEC = importlib.util.spec_from_file_location(
     'atlas_agents_tmux_test', ROOT / 'components/apps/atlas_agents/tmux_panel.py')
 panels = importlib.util.module_from_spec(SPEC)
@@ -92,7 +93,7 @@ time.sleep(90)
     def test_wide_open_preserves_focus_reuses_panel_and_passes_literal_paths(self):
         pane = self.manager.open('thread-one', str(self.snapshot))
         self.assertEqual(self.tm('display-message', '-p', '#{pane_id}'), self.origin)
-        self.assertEqual(self.tm('display-message', '-p', '-t', pane, '#{pane_width}'), '48')
+        self.assertEqual(self.tm('display-message', '-p', '-t', pane, '#{pane_width}'), '60')
         self.assertEqual(self.manager.open('thread-one', str(self.snapshot)), pane)
         self.assertEqual(self.manager.existing(), [pane])
         self.wait(lambda: self.snapshot.with_suffix('.seen').exists())
@@ -100,12 +101,23 @@ time.sleep(90)
         self.assertEqual(argv, [str(self.viewer), '--snapshot', str(self.snapshot)])
         replacement = self.manager.open('thread-two', str(self.snapshot))
         self.assertNotEqual(pane, replacement)
+        self.assertEqual(self.tm('display-message', '-p', '-t', replacement, '#{pane_width}'), '60')
         self.assertEqual(self.tm('display-message', '-p', '-t', replacement, '#{window_id}'),
                          self.tm('display-message', '-p', '-t', self.origin, '#{window_id}'))
         self.assertEqual(self.tm('display-message', '-p', '#{pane_id}'), self.origin)
         self.assertTrue(self.manager.dismiss())
         self.assertFalse(self.manager.close())
         self.assertTrue(self.snapshot.exists())
+
+    def test_sidebar_size_tracks_available_columns_with_readable_limits(self):
+        for columns, expected in ((130, 48), (140, 48), (141, 60), (150, 60), (240, 60)):
+            with self.subTest(columns=columns):
+                self.tm('resize-window', '-t', 'test:0', '-x', str(columns), '-y', '35')
+                pane = self.manager.open('thread-one', str(self.snapshot))
+                self.assertEqual(int(self.tm('display-message', '-p', '-t', pane,
+                                              '#{pane_width}')), expected)
+                self.assertEqual(self.tm('display-message', '-p', '#{pane_id}'), self.origin)
+                self.manager.close()
 
     def test_narrow_window_opens_detached_and_cleanup_keeps_other_panes(self):
         self.tm('resize-window', '-t', 'test:0', '-x', '100', '-y', '35')
