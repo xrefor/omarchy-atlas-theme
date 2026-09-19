@@ -161,7 +161,7 @@ Item {
     MouseArea {
       anchors.fill: parent
       hoverEnabled: true
-      enabled: !root.screensaverActive
+      enabled: !root.screensaverActive && !root.terminalStyle
       onClicked: { root.wakeRequested(); root.forcePasswordFocus() }
       onPositionChanged: root.wakeRequested()
     }
@@ -300,7 +300,7 @@ Item {
         anchors.leftMargin: root.terminalStyle ? 29 + root.capsReserve : 18 + root.fingerprintReserve + root.capsReserve
         verticalAlignment: TextInput.AlignVCenter
         horizontalAlignment: root.terminalStyle ? TextInput.AlignLeft : TextInput.AlignHCenter
-        activeFocusOnPress: true
+        activeFocusOnPress: !root.terminalStyle
         clip: true
         enabled: root.inputEnabled && !root.authenticatingPassword && !root.screensaverActive
         readOnly: root.authenticatingPassword
@@ -408,5 +408,17 @@ Item {
       font.italic: true
       horizontalAlignment: Text.AlignHCenter
     }
+  }
+
+  // Terminal is keyboard-only. Cover the field as well as the background so
+  // pointer input cannot move the caret, select text, or trigger wake actions.
+  MouseArea {
+    anchors.fill: parent
+    z: 100
+    enabled: root.terminalStyle
+    hoverEnabled: true
+    cursorShape: Qt.BlankCursor
+    acceptedButtons: Qt.AllButtons
+    onWheel: function(wheel) { wheel.accepted = true }
   }
 }

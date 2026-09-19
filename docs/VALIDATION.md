@@ -582,6 +582,17 @@ New desktop installations default to 100% opacity; existing choices survive
 updates. Tests cover fresh installation, existing/main-config rules, all presets,
 restoration and the unchanged Zen Browser 100% exception.
 
+## Terminal lock pointer follow-up — 2026-09-19
+
+Terminal lock now hides the mouse pointer across the entire view and absorbs
+mouse buttons and scrolling. Native offscreen Quickshell checks passed 16
+assertions covering pointer targeting, click/double-click/drag/wheel suppression,
+unchanged password/caret/focus, keyboard editing/submission and Classic mouse
+behavior. Styling and Matrix rendering were stubbed; the blank cursor was
+checked on the actual hovered MouseArea. This did not exercise a live compositor
+cursor, session lock or PAM authentication. QML lint and all six lock-style
+preference tests also passed.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:

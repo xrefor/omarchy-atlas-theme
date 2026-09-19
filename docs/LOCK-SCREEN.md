@@ -7,7 +7,8 @@ session-lock service:
   password field. This remains the default for new installations.
 - **Terminal**: a centered ATLAS logo, a borderless 9 pt IBM Plex Mono prompt,
   a grey `>` blinking every 1.2 seconds, asterisk masking and a thin orange
-  caret. It opens directly to password input.
+  caret. It opens directly to password input. The mouse pointer stays hidden,
+  and mouse movement, buttons and scrolling do not interact with the prompt.
 
 Choose **ATLAS → Lock screen → Terminal / Classic**, or run:
 
