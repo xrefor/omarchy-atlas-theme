@@ -593,6 +593,47 @@ checked on the actual hovered MouseArea. This did not exercise a live compositor
 cursor, session lock or PAM authentication. QML lint and all six lock-style
 preference tests also passed.
 
+## EVE Frontier intelligence panel — 2026-09-20
+
+Forty focused backend, UI and tmux tests passed, together with the installer
+command-smoke and install/restore integration tests. Python compilation and
+`git diff --check` also passed. Coverage includes exact character/profile and
+OwnerCap types, on-chain published-package/type-origin linkage, Character-specific
+history namespaces, complete capability pagination, chain mismatch hard stops,
+per-object failure isolation, explicit last-known values, local history,
+provenance rendering, watched objects and read-only GraphQL documents.
+The final portable repository run passed 351 tests with two documented native
+monitor-only skips; isolated tmux, authentication, model, installer, syntax and
+structured-configuration checks also passed.
+
+Read-only probes against the public Sui Testnet GraphQL service validated the
+live response shapes used for chain/checkpoint, direct address-owned Move
+objects, top-level objects through `asMoveObject`, exact package objects through
+`asMovePackage`, `typeOrigins`, balances and top-level coin metadata. The package probe used
+the package currently linked by the official Frontier Resources documentation.
+The probes used the zero address and no private keys, transactions or mutations.
+They validate the public schema and package modules, not a real player's account,
+assets, EVE balance or the authoritative production environment designation.
+
+## Local panel suite — 2026-09-23
+
+Eighty focused tests passed across the shared panel frame and the System,
+Projects, Maintain and EVE Frontier backend, UI and tmux modules. System coverage
+includes sampled counters, unavailable kernel sources, process presentation and
+narrow/wide tmux behavior. Projects coverage includes nested worktrees, detached
+heads, local ahead/behind state, rename parsing, strict command time/output bounds
+and explicit non-repository states. Maintain coverage includes kernel selection,
+failed units, timers, locally known upgrades, bounded pacman-log parsing and
+missing-command behavior; its command fixtures verify that collection does not
+refresh package databases or invoke mutating operations.
+
+The tests also exercise exact originating-pane ownership, duplicate suppression,
+literal panel commands, 60/48-column sidebars, narrow-terminal windows, bounded
+rendering and the shared four-row pinned-header contract. They use controlled
+fixtures and disposable tmux state; they do not establish accuracy for every
+kernel driver, physical sensor, repository topology, package-manager state or
+live Frontier endpoint.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:

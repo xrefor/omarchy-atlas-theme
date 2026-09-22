@@ -1,6 +1,13 @@
 # Ember Seam
 
-Generated for ATLAS on September 9, 2026 using the built-in image generation tool, with no reference images. File: `backgrounds/atlas-ember-seam.png`. Native output: 1672 × 941 pixels. The prompt requested a 4K-style 16:9 wallpaper; the tool returned this smaller native size, which has not been upscaled.
+## Historical source-generation record
+
+The prompt below records the first Ember Seam generated for ATLAS on September
+9, 2026, with no reference images. That source was a native 1672 × 941 image and
+was not upscaled. It is not the exact prompt or provenance record for the current
+`backgrounds/atlas-ember-seam.png`: Ember Seam was rerendered and resized for the
+3440 × 1440 distribution on September 18. See the [showcase media
+notes](media/README.md) for the known current processing record.
 
 ## Final generation prompt
 

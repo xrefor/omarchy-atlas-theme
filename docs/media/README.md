@@ -2,10 +2,15 @@
 
 ## Responsive wallpaper previews
 
-`previews/` contains WebP derivatives of the original `backgrounds/*.png` files.
-The website uses 160/320-pixel thumbnail candidates and 640/1080/2160-pixel hero
-candidates, capped at each original's native width. The seven smaller originals
-therefore use 1672 pixels for their largest preview. PNG downloads are unchanged.
+`previews/` contains WebP derivatives of the `backgrounds/*.png` files.
+All eight PNG downloads are **3440 × 1440**. The website uses 160/320-pixel
+thumbnail candidates and 640/1080/2160-pixel hero candidates.
+
+On **2026-09-18**, seven wallpapers were rebuilt with AI image generation for
+finer detail, then resized from the generator's approximately **1938 × 812**
+output to exactly **3440 × 1440** using ImageMagick Lanczos resizing. These are
+upscaled AI rerenders, not native 3440 × 1440 generations. ATLAS Boot retains
+its existing 3440 × 1440 artwork.
 
 Regenerate them with `python3 tools/build_previews.py` (Pillow with WebP support).
 The generator uses Lanczos resizing and WebP quality 85; the current assets were

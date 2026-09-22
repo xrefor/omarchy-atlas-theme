@@ -44,6 +44,21 @@ Using it requires local Codex CLI 0.154.0, Linux `/proc`, tmux and Python's
 standard-library curses/SQLite modules. Codex is not required to install ATLAS.
 The observer does not add an API key, SDK dependency or Codex hook.
 
+## Local ATLAS panels
+
+The apps component includes the read-only [System panel](SYSTEM-PANEL.md). It
+uses Python's standard library and Linux's existing `/proc` and `/sys`
+interfaces; it adds no package, privileged helper, network request or
+background service. tmux is used only to host the sidebar. btop remains a
+separate full-screen tool and is not used to collect System-panel metrics.
+
+The [Projects and Maintain panels](PANELS.md) use the same Python/tmux runtime.
+Projects calls the installed Git command only against the originating pane's
+local directory; it never fetches. Maintain reads systemd, the local pacman sync
+database, the installed kernel modules and a bounded tail of the pacman log. It
+never refreshes package databases, invokes sudo or changes a unit. These panels
+add no package beyond the normal Omarchy tools they report on.
+
 The same component includes the [Codex interface-color adapter](CLI.md#codex-interface-colors).
 It uses Linux pseudo-terminals and Python's standard library; no additional
 package or Codex modification is required. Its color mapping is based on the
@@ -56,6 +71,14 @@ The apps component includes `atlas-vpn`; using it requires a working NymVPN
 daemon, a matching `nym-vpnc` CLI on PATH or in `~/.local/bin`, and Nym
 authentication/account setup. Tested with 2026.12.2. Neither binary nor account
 data is bundled. See [VPN.md](VPN.md). Nym is not required to install ATLAS.
+
+## Optional EVE Frontier panel
+
+The apps component includes the read-only [EVE Frontier intelligence panel](FRONTIER.md).
+It uses Python's standard library, tmux and a user-configured public Sui GraphQL
+endpoint. No EVE account login, wallet extension, private key or additional SDK
+is required. EVE Frontier and network access are not required to install ATLAS;
+offline tests use fake transports and contain no account data.
 
 ## Building and validating the source
 

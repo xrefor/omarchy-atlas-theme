@@ -29,9 +29,13 @@ and restores the prior layout. Images remain bounded, now at 800×800 pixels.
 
 Agents and Nym share terminal panel styling: title and footer strips, content
 spacing, semantic colors and sidebar sizing. Both reload palette changes while
-open. Extending the surrounding tmux layout conventions to other tools, and
-coordinating logo sizing across boot, login, lock and wallpaper, remain separate
-follow-up work.
+open. System, Projects and Maintain extend those conventions to dependency-light
+local views using a shared pinned-frame renderer, exact tmux-pane ownership and
+bounded read-only collectors. A carefully observational Aegis exposure panel is
+the next candidate; shared tmux hosting should be extracted before that further
+expansion.
+Coordinating logo sizing across boot, login, lock and wallpaper remains a
+separate follow-up.
 
 Integration checks cover startup, repeated palette changes, switching away from
 Aether, and returning to it. Demonstrations keep the normal 9 pt typography.
@@ -64,12 +68,13 @@ Opacity presets preserve fullscreen and app-specific exceptions, survive bundle
 updates, and roll back on failed compositor validation. Restoration previews
 affected files and preserves later manual edits.
 
-## 4. Project workspaces — proposed
+## 4. Project workspaces — panel implemented; workspace creation proposed
 
-A small project chooser could resume a named tmux session in its directory, with
-shell, editor and files tabs. Monitoring and VPN panels would remain optional.
-Restore layout and location without automatically re-executing previous shell
-commands. Keep this optional so a new terminal can behave as it does today.
+The Projects panel now reports the exact originating pane's repository, working
+tree, local divergence, commits and worktrees. A later chooser could resume a
+named tmux session in its directory, with shell, editor and files tabs. Restore
+layout and location without automatically re-executing previous shell commands.
+Keep this optional so a new terminal can behave as it does today.
 
 Continue the [release validation checklist](VALIDATION.md) throughout, including
 the remaining hardware, authentication, boot and update/restore checks.

@@ -9,8 +9,9 @@
 ATLAS brings carbon surfaces, warm ivory text and signal orange to Omarchy.
 Readable code colors, square windows and coordinated application styling carry
 the palette through the desktop. Its terminal workspace adds tabs, visual file
-browsing and compact panels for Codex agents and NymVPN, with matching lock
-screens and optional boot and login styling.
+browsing and compact panels for system health, Codex agents, NymVPN and EVE
+Frontier intelligence, with matching lock screens and optional boot and login
+styling.
 
 **[Explore ATLAS ↗](https://xrefor.github.io/atlas-showcase/)** · [Install](#install) · [Screenshots](#screenshots) · [Reference](#reference)
 
@@ -47,10 +48,22 @@ Spotify Player and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
 
 ### Panels alongside your work
 
-Both panels use the active Omarchy palette. They open beside your work on wide
-terminals and in a separate tmux window when space is limited. The panels and
-shortcuts are included in the apps component; their external applications are
-needed to use the integrations.
+ATLAS includes a compact, read-only **System** panel for CPU, memory, storage,
+network, thermal and process activity. It reads Linux's existing `/proc` and
+`/sys` interfaces, adds no package or background service, and opens with
+**Ctrl+Space → o**. **Ctrl+Space → m** continues to open btop for deeper
+full-screen inspection.
+
+Two more local panels use the same frame and tmux behavior. **Projects**
+(**Ctrl+Space → g**) follows the Git repository in the originating pane without
+fetching, while **Maintain** (**Ctrl+Space → u**) shows kernels, failed units,
+timers, locally known upgrades and package transactions without changing the
+machine. See the [panel suite guide](docs/PANELS.md).
+
+The panels use the active Omarchy palette. They open beside your work on wide
+terminals and in a separate tmux window when space is limited. Their shortcuts
+are included in the apps component; external-service panels remain dormant
+until their own application is installed or configured.
 
 | Codex agents | NymVPN |
 | --- | --- |
@@ -63,6 +76,12 @@ Closing a panel leaves agents and the VPN running. The agent observer is a local
 version-sensitive integration; Nym setup and account management remain in Nym's
 own tools. See [agent panel behavior](docs/AGENT-PANEL.md) and
 [NymVPN setup and controls](docs/VPN.md).
+
+The optional **EVE Frontier intelligence panel** follows public on-chain state
+for a configured Sui address without signing transactions or storing wallet
+keys. It separates contract facts from local change detection and exposes the
+evidence behind each conclusion. **Ctrl+Space → e** toggles it. See
+[configuration, data semantics and limits](docs/FRONTIER.md).
 
 ### Two lock-screen styles
 
@@ -164,15 +183,19 @@ supported layouts, enrollment handling and interrupted transactions.
 
 Open **Omarchy → ATLAS**, or run `atlas-settings`, for wallpapers, opacity,
 lock styles, Neovim comment brightness, shortcuts, diagnostics and restoration.
-In tmux, **Ctrl+Space** then **f**, **m** or **s** opens files, monitoring or music;
+In tmux, **Ctrl+Space** then **f**, **m**, **o**, **g**, **u**, **s** or **e**
+opens files, btop, System, Projects, Maintain, music or EVE Frontier intelligence;
 **Alt+1 / Alt+2 / …** switches tabs. In Yazi, **M** or **g m** opens Drives.
 
 | Guide | What it covers |
 | --- | --- |
 | [Settings](docs/SETTINGS.md) | Appearance choices, editor behavior and managed configuration |
 | [Dependencies](docs/DEPENDENCIES.md) | Required tools and optional application integrations |
+| [Panel suite](docs/PANELS.md) | System, Projects and Maintain data, shortcuts and guarantees |
+| [System panel](docs/SYSTEM-PANEL.md) | Local metrics, process view, data sources and controls |
 | [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
 | [NymVPN panel](docs/VPN.md) | Dependencies, service setup and tunnel controls |
+| [EVE Frontier panel](docs/FRONTIER.md) | Public-address configuration, evidence semantics and controls |
 | [Lock screen](docs/LOCK-SCREEN.md) · [Authentication](docs/AUTH.md) | Classic and Terminal styles, idle and authentication behavior |
 | [Boot](docs/BOOT.md) | Installation, recovery and removal of boot/login styling |
 | [CLI coverage](docs/CLI.md) | Command colors and optional tool integrations |

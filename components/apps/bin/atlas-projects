@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Open the ATLAS Projects panel from a checkout or installed runtime."""
+from pathlib import Path
+import sys
+
+source = Path(__file__).resolve().parents[1]
+if not (source / 'atlas_projects').is_dir():
+    source = Path.home() / '.local/share/atlas/components/apps'
+sys.path.insert(0, str(source))
+
+from atlas_projects.__main__ import main
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

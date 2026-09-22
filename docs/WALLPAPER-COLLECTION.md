@@ -1,6 +1,14 @@
 # ATLAS wallpaper collection
 
-Generated with the built-in image generation tool on September 9, 2026. Ember Seam was supplied as a style reference for each new wallpaper. All three native outputs are 1672 × 941 pixels. No upscaling or postprocessing was applied.
+## Historical source-generation record
+
+The prompts below record the first ATLAS Vault, Thermal Horizon and Cinder Array
+images generated on September 9, 2026, using Ember Seam as a style reference.
+Those three native outputs were 1672 × 941 and received no upscaling or
+postprocessing. They are not the exact prompts or provenance record for the
+current files: all three were rerendered and resized for the 3440 × 1440
+distribution on September 18. See the [showcase media notes](media/README.md) for
+the known current processing record.
 
 ## atlas-vault
 

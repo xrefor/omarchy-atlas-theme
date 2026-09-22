@@ -154,6 +154,35 @@ def draw_bar(screen, row, text, style, columns, prefix_style=None):
         put(screen, row, clip('//', width), prefix_style, columns, left)
 
 
+def draw_panel_frame(screen, rows, panel_styles, offset, footer):
+    """Draw the shared pinned header, scrolling body and footer strip.
+
+    The first four rows are the panel header contract used by Agents and Nym.
+    Returns the clamped offset, visible body rows, total body rows and content
+    width so panel-specific input handling can remain local.
+    """
+    height, columns = screen.getmaxyx()
+    left, width = layout(columns)
+    fixed = min(4, max(0, height - 1))
+    available = max(0, height - fixed - (1 if height else 0))
+    body = rows[4:]
+    offset = min(max(0, offset), max(0, len(body) - available))
+    screen.erase()
+    for row, (line, role) in enumerate(rows[:fixed]):
+        if row == 0:
+            draw_bar(screen, row, line, panel_styles['header'], columns,
+                     prefix_style=panel_styles['header_prefix'])
+        else:
+            put(screen, row, line, panel_styles.get(role, panel_styles['foreground']),
+                columns, left=left)
+    for row, (line, role) in enumerate(body[offset:offset + available], fixed):
+        put(screen, row, line, panel_styles.get(role, panel_styles['foreground']),
+            columns, left=left)
+    if height:
+        draw_bar(screen, height - 1, footer, panel_styles['footer'], columns)
+    return offset, available, len(body), width
+
+
 def title(name, width):
     """Use the same spaced title and compact fallback in every panel."""
     name = name.upper()

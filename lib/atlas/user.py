@@ -191,7 +191,7 @@ end)''','--'))
         panel_palette=json.dumps({key: colors[key] for key in
             ('background','lighter_background','foreground','dark_foreground','bright_foreground',
              'secondary','muted','accent','green','yellow','red')})+'\n'
-        for panel in ('vpn','agents'):
+        for panel in ('vpn','agents','frontier','system','projects','maintain'):
             put(f'.config/atlas/{panel}-palette.json',panel_palette)
         revision=hashlib.sha256(json.dumps(colors,sort_keys=True).encode()).hexdigest()[:20]
         put('.config/atlas/revision',revision+'\n')

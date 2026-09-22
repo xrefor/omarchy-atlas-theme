@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""Run the bundled ATLAS Frontier panel from source or an installed runtime."""
+from pathlib import Path
+import sys
+
+
+source = Path(__file__).resolve()
+checkout = source.parents[1]
+installed = source.parents[1] / 'share/atlas/components/apps'
+runtime = checkout if (checkout / 'atlas_frontier').is_dir() else installed
+sys.path.insert(0, str(runtime))
+
+from atlas_frontier.__main__ import main
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
