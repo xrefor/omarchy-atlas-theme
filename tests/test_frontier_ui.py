@@ -17,7 +17,7 @@ SNAPSHOT = {
     'checkpoint': '18492731',
     'retrieved_at': 1_000,
     'wallet': '0x' + '12' * 32,
-    'character': {'name': 'Xrefor', 'tribe_id': 1842,
+    'character': {'name': 'Demo Pilot', 'tribe_id': 42,
                   'address': '0x' + '12' * 32, 'verified': True},
     'capabilities_count': 2,
     'balance': {'status': 'unavailable', 'reason': 'coin type not configured'},

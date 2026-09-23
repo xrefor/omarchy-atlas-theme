@@ -47,7 +47,7 @@
 
 <section class="content" id="panels" aria-labelledby="panels-title">
 <p class="eyebrow">02 / Alongside your work</p><h2 id="panels-title">Useful panels, close at hand.</h2>
-<p class="section-intro">The panel suite follows the active Omarchy palette. Panels open beside your work on wide terminals, or in a separate tmux window when space is limited. Projects shows local Git state and checks the upstream only when requested; service integrations remain optional.</p>
+<p class="section-intro">The panel suite follows the active Omarchy palette. Panels open beside your work on wide terminals, or in a separate tmux window when space is limited. Git Status shows local Git state and checks the upstream only when requested; service integrations remain optional.</p>
 <p class="capture-note"><strong>Local context.</strong> <code>Ctrl+Space → g</code> follows the originating Git repository, showing changed files, local ahead/behind counts, commits and worktrees. It does not fetch, so remote-tracking information reflects the last fetch performed elsewhere. <code>Ctrl+Space → m</code> opens btop for system monitoring.</p>
 <div class="screens">
 <figure id="agents"><a href="docs/media/atlas-agents.png"><img src="docs/media/atlas-agents.png" alt="ATLAS Codex agent panel showing demonstration tasks and lifecycle statuses" loading="lazy"></a><figcaption><strong>Codex agents</strong>A read-only view of the current local Codex CLI conversation's child agents: tasks, status, elapsed time and reported plan progress. It opens automatically without taking focus. <code>Ctrl+Space → a</code> toggles it.</figcaption></figure>
@@ -55,7 +55,7 @@
 </div>
 <p class="capture-note"><strong>Demonstration data.</strong> These captures show the native panel interfaces with sample agent tasks and VPN status. Closing either panel leaves agents and the VPN running. The Codex observer is a version-sensitive local integration; Nym account setup remains in Nym's tools.</p>
 <p class="capture-note"><strong>EVE Frontier.</strong> The optional read-only intelligence panel follows public on-chain state for a configured Sui address without signing transactions or storing wallet keys. <code>Ctrl+Space → e</code> toggles it.</p>
-<div class="demo-links"><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/PANELS.md">Projects panel ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/FRONTIER.md">EVE Frontier panel ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/AGENT-PANEL.md">Agent panel behavior ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VPN.md">NymVPN setup and controls ↗</a></div>
+<div class="demo-links"><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/PANELS.md">Git Status panel ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/FRONTIER.md">EVE Frontier panel ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/AGENT-PANEL.md">Agent panel behavior ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VPN.md">NymVPN setup and controls ↗</a></div>
 </section>
 
 <section class="content" id="lock-screens" aria-labelledby="lock-title">
@@ -200,7 +200,7 @@ local installer above.</p>
 <td>Automatically shows spawned agents, concise task descriptions, lifecycle status, elapsed time and reported progress in the active palette</td>
 </tr>
 <tr>
-<td>Projects panel</td>
+<td>Git Status panel</td>
 <td>Git handoff status: uncommitted changes, unpushed commits and upstream changes, with explicit remote checks and no background service</td>
 </tr>
 <tr>
@@ -276,7 +276,7 @@ root launcher is distributed. See <a href="https://github.com/xrefor/omarchy-atl
 </tr>
 <tr>
 <td>Ctrl+Space, then G</td>
-<td>Projects panel for the originating Git working tree</td>
+<td>Git Status panel for the originating Git working tree</td>
 </tr>
 <tr>
 <td>Ctrl+Space, then S</td>

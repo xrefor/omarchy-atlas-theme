@@ -1,4 +1,4 @@
-"""Projects panel rendering and ATLAS layout invariants."""
+"""Git Status panel rendering and ATLAS layout invariants."""
 from pathlib import Path
 import sys
 import signal
@@ -39,17 +39,17 @@ SNAPSHOT = {
 class ProjectsUiTests(unittest.TestCase):
     def test_overview_shows_repository_status_and_changed_files(self):
         text = '\n'.join(line for line, _ in ui.dashboard(SNAPSHOT, 55, page=1))
-        self.assertIn('// P R O J E C T S', text)
+        self.assertIn('// G I T   S T A T U S', text)
         self.assertRegex(text, r'Ahead of upstream\s+2')
         self.assertRegex(text, r'Upstream changes\s+1')
         self.assertIn('cached refs', text)
         self.assertIn('staged.txt', text)
         self.assertIn('new file.txt', text)
 
-    def test_history_keeps_projects_header_and_shows_local_sources(self):
+    def test_history_keeps_git_status_header_and_shows_local_sources(self):
         rows = ui.dashboard(SNAPSHOT, 60, page=2)
         text = '\n'.join(line for line, _ in rows)
-        self.assertEqual(rows[0][0], '// P R O J E C T S')
+        self.assertEqual(rows[0][0], '// G I T   S T A T U S')
         self.assertIn('HISTORY', rows[1][0])
         self.assertIn('/work/review', text)
         self.assertIn('Keep project facts local', text)

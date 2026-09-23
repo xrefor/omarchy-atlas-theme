@@ -1,4 +1,4 @@
-"""Command-line entry point for the ATLAS Projects handoff panel."""
+"""Command-line entry point for the ATLAS Git Status handoff panel."""
 import argparse
 import json
 import os
@@ -25,7 +25,7 @@ def tmux(*arguments):
 def origin_pane(value=None):
     pane = value or os.environ.get('TMUX_PANE', '')
     if not os.environ.get('TMUX'):
-        raise ValueError('The Projects panel toggle requires tmux; run atlas-projects show --path PATH instead')
+        raise ValueError('The Git Status panel toggle requires tmux; run atlas-projects show --path PATH instead')
     actual, owner = tmux('display-message', '-p', '-t', pane,
                          '#{pane_id}\t#{@atlas_projects_origin}').split('\t', 1)
     return owner or actual
@@ -49,15 +49,15 @@ def toggle(args):
 
 def parser():
     result = argparse.ArgumentParser(prog='atlas-projects',
-        description='Git handoff panel for ATLAS; remote checks are explicit')
+        description='Git Status panel for ATLAS; remote checks are explicit')
     commands = result.add_subparsers(dest='action', required=True)
-    display = commands.add_parser('show', help='open a project panel in this terminal')
+    display = commands.add_parser('show', help='open the Git Status panel in this terminal')
     display.add_argument('--path', required=True, help='project path to inspect')
     display.set_defaults(function=show)
     once = commands.add_parser('snapshot', help='print one normalized project snapshot')
     once.add_argument('--path', required=True, help='project path to inspect')
     once.set_defaults(function=snapshot)
-    panel = commands.add_parser('toggle', help='toggle the project panel for a tmux pane')
+    panel = commands.add_parser('toggle', help='toggle the Git Status panel for a tmux pane')
     panel.add_argument('--pane', help='originating tmux pane ID (defaults to TMUX_PANE)')
     panel.set_defaults(function=toggle)
     return result

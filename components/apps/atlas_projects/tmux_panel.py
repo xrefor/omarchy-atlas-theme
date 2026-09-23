@@ -1,4 +1,4 @@
-"""Detached Projects panel owned by one exact originating tmux pane."""
+"""Detached Git Status panel owned by one exact originating tmux pane."""
 from contextlib import contextmanager
 import fcntl
 import hashlib
@@ -17,7 +17,7 @@ def _private_directory(path):
     info = path.lstat()
     if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
             or stat.S_IMODE(info.st_mode) != 0o700):
-        raise OSError(f'ATLAS Projects runtime directory must be owned and private: {path}')
+        raise OSError(f'ATLAS Git Status runtime directory must be owned and private: {path}')
     return path
 
 
@@ -58,13 +58,13 @@ class Panel:
             info = os.fstat(directory)
             if (not stat.S_ISDIR(info.st_mode) or info.st_uid != os.getuid()
                     or stat.S_IMODE(info.st_mode) != 0o700):
-                raise OSError('ATLAS Projects runtime directory is no longer private')
+                raise OSError('ATLAS Git Status runtime directory is no longer private')
             descriptor = os.open(self.lock_name, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
                                  0o600, dir_fd=directory)
             info = os.fstat(descriptor)
             if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
                     or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
-                raise OSError('ATLAS Projects panel lock must be owned and private')
+                raise OSError('ATLAS Git Status panel lock must be owned and private')
             fcntl.flock(descriptor, fcntl.LOCK_EX)
             yield
         finally:
@@ -122,7 +122,7 @@ class Panel:
             command = [*self.command, '--path', current_path]
             columns = sidebar_width(int(width))
             if columns is None:
-                pane = self._tmux('new-window', '-d', '-t', session + ':', '-n', 'projects',
+                pane = self._tmux('new-window', '-d', '-t', session + ':', '-n', 'git-status',
                                   '-P', '-F', '#{pane_id}', '--', *command)
             else:
                 pane = self._tmux('split-window', '-d', '-h', '-l', str(columns), '-t', self.origin,

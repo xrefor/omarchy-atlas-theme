@@ -1,4 +1,4 @@
-"""Projects panel tmux ownership and literal project-path execution."""
+"""Git Status panel tmux ownership and literal project-path execution."""
 import os
 from pathlib import Path
 import tempfile
@@ -65,7 +65,7 @@ class ProjectsTmuxTests(unittest.TestCase):
         narrow = self.panel('129')
         narrow.open()
         window = next(call for call in narrow.calls if call[0] == 'new-window')
-        self.assertIn('projects', window)
+        self.assertIn('git-status', window)
 
     def test_toggle_closes_only_exact_owned_panel(self):
         panel = self.panel()

@@ -44,9 +44,9 @@ Using it requires local Codex CLI 0.154.0, Linux `/proc`, tmux and Python's
 standard-library curses/SQLite modules. Codex is not required to install ATLAS.
 The observer does not add an API key, SDK dependency or Codex hook.
 
-## Projects panel
+## Git Status panel
 
-The apps component includes the [Projects panel](PANELS.md). It uses
+The apps component includes the [Git Status panel](PANELS.md). It uses
 Python's standard library and the installed Git command against the originating
 pane's local directory. Remote checks use Git's configured authentication and
 run only when requested with **f**; no background service is added. tmux hosts

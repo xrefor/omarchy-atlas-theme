@@ -48,11 +48,11 @@ Spotify Player and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
 
 ### Panels alongside your work
 
-The **Projects** panel (**Ctrl+Space → g**) shows uncommitted changes,
+The **Git Status** panel (**Ctrl+Space → g**) shows uncommitted changes,
 unpushed commits and upstream changes for the repository selected when it opens.
 Press **f** to check its configured upstream and see when the remote was last
 checked; normal refresh stays local. It never commits, pushes or merges your
-work. See the [Projects guide](docs/PANELS.md).
+work. See the [Git Status guide](docs/PANELS.md).
 **Ctrl+Space → m** opens btop for system monitoring.
 
 The panels use the active Omarchy palette. They open beside your work on wide
@@ -179,14 +179,14 @@ supported layouts, enrollment handling and interrupted transactions.
 Open **Omarchy → ATLAS**, or run `atlas-settings`, for wallpapers, opacity,
 lock styles, Neovim comment brightness, shortcuts, diagnostics and restoration.
 In tmux, **Ctrl+Space** then **f**, **m**, **g**, **s** or **e**
-opens files, btop, Projects, music or EVE Frontier intelligence;
+opens files, btop, Git Status, music or EVE Frontier intelligence;
 **Alt+1 / Alt+2 / …** switches tabs. In Yazi, **M** or **g m** opens Drives.
 
 | Guide | What it covers |
 | --- | --- |
 | [Settings](docs/SETTINGS.md) | Appearance choices, editor behavior and managed configuration |
 | [Dependencies](docs/DEPENDENCIES.md) | Required tools and optional application integrations |
-| [Projects panel](docs/PANELS.md) | Local Git data, shortcuts and collection boundaries |
+| [Git Status panel](docs/PANELS.md) | Local Git data, shortcuts and collection boundaries |
 | [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
 | [NymVPN panel](docs/VPN.md) | Dependencies, service setup and tunnel controls |
 | [EVE Frontier panel](docs/FRONTIER.md) | Public-address configuration, evidence semantics and controls |

@@ -56,7 +56,7 @@ def overview(snapshot, width):
     name = clean(snapshot.get('repo_name') or 'PROJECT')
     discovery = snapshot.get('discovery_state', 'unavailable')
     state = _branch(snapshot) if snapshot.get('is_git') else discovery.upper()
-    rows = [(title('projects', width), 'accent'),
+    rows = [(title('git status', width), 'accent'),
             (_pair(name, state, width), 'secondary'),
             ('─' * width, 'muted'), ('', 'foreground')]
     rows.append((_pair('Path', snapshot.get('path') or 'UNAVAILABLE', width), 'foreground'))
@@ -145,7 +145,7 @@ def overview(snapshot, width):
 
 def history(snapshot, width):
     name = clean(snapshot.get('repo_name') or 'PROJECT')
-    rows = [(title('projects', width), 'accent'),
+    rows = [(title('git status', width), 'accent'),
             (_pair('HISTORY', name, width), 'secondary'),
             ('─' * width, 'muted'), ('', 'foreground')]
     if not snapshot.get('is_git'):

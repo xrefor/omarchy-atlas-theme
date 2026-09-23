@@ -1,1 +1,1 @@
-"""Read-only local project panel for ATLAS."""
+"""Git Status panel for ATLAS with explicit remote checks."""
