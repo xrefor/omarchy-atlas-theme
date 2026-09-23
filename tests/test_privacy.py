@@ -15,7 +15,7 @@ PATTERNS={
 
 class PrivacyTests(unittest.TestCase):
     def test_tracked_text_has_no_personal_identifiers(self):
-        if (ROOT/'.git').is_dir():
+        if (ROOT/'.git').exists():
             output=subprocess.check_output(['git','-C',str(ROOT),'ls-files','-z'])
             files=[Path(raw.decode()) for raw in output.split(b'\0') if raw]
         else:

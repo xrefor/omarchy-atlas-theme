@@ -9,7 +9,7 @@
 ATLAS brings carbon surfaces, warm ivory text and signal orange to Omarchy.
 Readable code colors, square windows and coordinated application styling carry
 the palette through the desktop. Its terminal workspace adds tabs, visual file
-browsing and compact panels for system health, Codex agents, NymVPN and EVE
+browsing and compact panels for Git project context, Codex agents, NymVPN and EVE
 Frontier intelligence, with matching lock screens and optional boot and login
 styling.
 
@@ -48,17 +48,12 @@ Spotify Player and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
 
 ### Panels alongside your work
 
-ATLAS includes a compact, read-only **System** panel for CPU, memory, storage,
-network, thermal and process activity. It reads Linux's existing `/proc` and
-`/sys` interfaces, adds no package or background service, and opens with
-**Ctrl+Space → o**. **Ctrl+Space → m** continues to open btop for deeper
-full-screen inspection.
-
-Two more local panels use the same frame and tmux behavior. **Projects**
-(**Ctrl+Space → g**) follows the Git repository in the originating pane without
-fetching, while **Maintain** (**Ctrl+Space → u**) shows kernels, failed units,
-timers, locally known upgrades and package transactions without changing the
-machine. See the [panel suite guide](docs/PANELS.md).
+The **Projects** panel (**Ctrl+Space → g**) shows uncommitted changes,
+unpushed commits and upstream changes for the repository selected when it opens.
+Press **f** to check its configured upstream and see when the remote was last
+checked; normal refresh stays local. It never commits, pushes or merges your
+work. See the [Projects guide](docs/PANELS.md).
+**Ctrl+Space → m** opens btop for system monitoring.
 
 The panels use the active Omarchy palette. They open beside your work on wide
 terminals and in a separate tmux window when space is limited. Their shortcuts
@@ -183,16 +178,15 @@ supported layouts, enrollment handling and interrupted transactions.
 
 Open **Omarchy → ATLAS**, or run `atlas-settings`, for wallpapers, opacity,
 lock styles, Neovim comment brightness, shortcuts, diagnostics and restoration.
-In tmux, **Ctrl+Space** then **f**, **m**, **o**, **g**, **u**, **s** or **e**
-opens files, btop, System, Projects, Maintain, music or EVE Frontier intelligence;
+In tmux, **Ctrl+Space** then **f**, **m**, **g**, **s** or **e**
+opens files, btop, Projects, music or EVE Frontier intelligence;
 **Alt+1 / Alt+2 / …** switches tabs. In Yazi, **M** or **g m** opens Drives.
 
 | Guide | What it covers |
 | --- | --- |
 | [Settings](docs/SETTINGS.md) | Appearance choices, editor behavior and managed configuration |
 | [Dependencies](docs/DEPENDENCIES.md) | Required tools and optional application integrations |
-| [Panel suite](docs/PANELS.md) | System, Projects and Maintain data, shortcuts and guarantees |
-| [System panel](docs/SYSTEM-PANEL.md) | Local metrics, process view, data sources and controls |
+| [Projects panel](docs/PANELS.md) | Local Git data, shortcuts and collection boundaries |
 | [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
 | [NymVPN panel](docs/VPN.md) | Dependencies, service setup and tunnel controls |
 | [EVE Frontier panel](docs/FRONTIER.md) | Public-address configuration, evidence semantics and controls |

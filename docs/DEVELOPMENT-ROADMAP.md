@@ -29,10 +29,10 @@ and restores the prior layout. Images remain bounded, now at 800×800 pixels.
 
 Agents and Nym share terminal panel styling: title and footer strips, content
 spacing, semantic colors and sidebar sizing. Both reload palette changes while
-open. System, Projects and Maintain extend those conventions to dependency-light
-local views using a shared pinned-frame renderer, exact tmux-pane ownership and
-bounded read-only collectors. A carefully observational Aegis exposure panel is
-the next candidate; shared tmux hosting should be extracted before that further
+open. Projects extends those conventions to a local Git view using a shared
+pinned-frame renderer, exact tmux-pane ownership, bounded local collection and
+explicit upstream checks. A carefully observational Aegis exposure panel is the
+next candidate; shared tmux hosting should be extracted before that further
 expansion.
 Coordinating logo sizing across boot, login, lock and wallpaper remains a
 separate follow-up.
@@ -70,8 +70,10 @@ affected files and preserves later manual edits.
 
 ## 4. Project workspaces — panel implemented; workspace creation proposed
 
-The Projects panel now reports the exact originating pane's repository, working
-tree, local divergence, commits and worktrees. A later chooser could resume a
+The Projects panel reports the repository selected from the originating pane,
+uncommitted changes, unpushed commits, upstream changes and remote-check freshness.
+Local refresh is automatic; fetching the configured upstream is explicit.
+History and worktrees remain secondary views. A later chooser could resume a
 named tmux session in its directory, with shell, editor and files tabs. Restore
 layout and location without automatically re-executing previous shell commands.
 Keep this optional so a new terminal can behave as it does today.

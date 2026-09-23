@@ -1,39 +1,69 @@
-# ATLAS local panel suite
+# ATLAS Projects panel
 
-System, Projects and Maintain are read-only terminal panels included in the apps
-component. They share the Nym and Agents presentation contract: a palette-aware
-title strip, four pinned header rows, scrolling content, semantic colors, an
-adaptive keyboard footer, a 60- or 48-column sidebar and a separate tmux window
-when the originating pane is narrow. Closing a panel stops its collector and
-does not stop, restart or modify anything it reports on.
+Projects answers what remains before handing this checkout over to another
+machine: uncommitted changes, unpushed commits, upstream changes and when the
+remote was last checked. It is included in the apps component.
 
-| Shortcut | Panel | Local data |
-| --- | --- | --- |
-| **Ctrl+Space → o** | System | CPU, memory, root storage, load, network rates, thermals, battery and sampled process activity |
-| **Ctrl+Space → g** | Projects | Originating directory, Git state, changed files, local ahead/behind counts, commits and worktrees |
-| **Ctrl+Space → u** | Maintain | Running/installed kernel, failed system and user units, timers, local package-database upgrades and pacman transactions |
-| **Ctrl+Space → m** | btop | Existing full-screen monitor; retained separately for deeper inspection |
+**Ctrl+Space → g** toggles Projects for the originating pane's directory. The
+directory is captured when the panel opens; close and reopen it after changing
+repositories. A wide terminal gets a sidebar; a narrow one gets a separate tmux
+window. **Ctrl+Space → m** opens btop for system monitoring.
 
-Every panel supports **↑/↓** or **j/k**, Page Up/Page Down, Home/End, **r** to
-refresh and **q** or Escape to close. Number keys select its pages. Toggling a
-panel while it has focus resolves its exact originating pane, so it closes the
-owned panel instead of nesting another one.
+## Controls
 
-## Collection boundaries
+| Key | Action |
+| --- | --- |
+| **1** | Handoff overview and changed files |
+| **2** | Local commits and worktree paths |
+| **f** | Check the configured upstream remote |
+| **r** | Refresh local state without contacting the remote |
+| **↑/↓**, **j/k**, Page Up/Down, Home/End | Scroll |
+| **q**, Escape | Close |
 
-System reads bounded Linux `/proc` and `/sys` data and the local filesystem API.
-The process page uses sampled CPU counter deltas and the kernel's short process
-name; command arguments are not displayed because they can contain secrets.
+Local data refreshes every two seconds. Toggling Projects while it has focus
+closes its owned panel. Run it outside tmux with
+`atlas-projects show --path PATH`. The `snapshot --path PATH` command prints a
+single local observation and does not contact a remote.
 
-Projects runs bounded, time-limited Git commands with optional locks, pagers and
-lazy fetching disabled. It reads no file contents and makes no network request.
-A directory outside Git remains a useful, explicit empty state.
+## Reading the handoff view
 
-Maintain uses bounded, time-limited local commands and log reads. `pacman -Qu`
-compares only the existing local sync database; the panel never runs
-`checkupdates`, refreshes a database, invokes sudo, updates packages or changes a
-systemd unit. Missing tools and partial observations remain visible as
-unavailable rather than becoming healthy zeroes.
+- Uncommitted changes include staged, unstaged and untracked files. Conflicts
+  need attention before a handoff. A file can be both staged and unstaged;
+  the changed-file total counts that file once.
+- Unpushed and upstream counts compare this branch with its upstream ref. Until
+  a successful remote check, these are cached local facts. If both counts are
+  nonzero, the histories have diverged; Projects does not reconcile them.
+- The remote-check outcome and timestamp describe a check made by this open
+  panel, not a promise that the remote has remained unchanged. Reopening starts
+  with no verified remote check. Changing the branch or tracking identity
+  invalidates the previous check.
+- Missing upstreams, detached HEAD, failed queries and unavailable comparisons
+  remain explicit. A failed query must not appear as a clean working tree or an
+  empty history.
 
-Run a panel without tmux using `atlas-system show`,
-`atlas-projects show --path PATH`, or `atlas-maintain show`.
+A clean checkout with no commits ahead or behind was aligned with its upstream
+at the last successful check. Projects does not inspect ignored files, validate
+builds or CI, verify backups, or see another machine's uncommitted work. Worktree
+history lists paths and branches, not each worktree's uncommitted changes.
+
+## Remote checks
+
+Pressing **f** fetches only the configured upstream branch into its remote-tracking
+ref. This downloads Git objects and updates that ref; it does not modify working
+files, stage changes, commit, push, merge, switch branches, prune refs or fetch
+submodules. Ordinary refresh never fetches. Repeated keypresses while a check is
+running do not start overlapping fetches, and navigation and closing remain
+available.
+
+Checks use the repository's existing remote configuration and Git credentials.
+Terminal credential prompts are disabled; if authentication is needed, use
+Git in a terminal, then retry. OpenSSH configuration and explicit SSH identity
+arguments are preserved with batch mode enabled. Custom SSH commands must be
+an executable plus arguments; shell pipelines and other SSH variants are
+reported as unavailable. A timeout or failed check is shown as a failure,
+even if an earlier successful timestamp exists. Remote checks and their
+freshness are scoped to the selected branch and upstream.
+
+Collection uses bounded output and time limits. Local queries disable optional
+Git locks and lazy fetching. No persistent collector, account configuration or
+background service is installed.

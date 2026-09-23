@@ -44,20 +44,14 @@ Using it requires local Codex CLI 0.154.0, Linux `/proc`, tmux and Python's
 standard-library curses/SQLite modules. Codex is not required to install ATLAS.
 The observer does not add an API key, SDK dependency or Codex hook.
 
-## Local ATLAS panels
+## Projects panel
 
-The apps component includes the read-only [System panel](SYSTEM-PANEL.md). It
-uses Python's standard library and Linux's existing `/proc` and `/sys`
-interfaces; it adds no package, privileged helper, network request or
-background service. tmux is used only to host the sidebar. btop remains a
-separate full-screen tool and is not used to collect System-panel metrics.
-
-The [Projects and Maintain panels](PANELS.md) use the same Python/tmux runtime.
-Projects calls the installed Git command only against the originating pane's
-local directory; it never fetches. Maintain reads systemd, the local pacman sync
-database, the installed kernel modules and a bounded tail of the pacman log. It
-never refreshes package databases, invokes sudo or changes a unit. These panels
-add no package beyond the normal Omarchy tools they report on.
+The apps component includes the [Projects panel](PANELS.md). It uses
+Python's standard library and the installed Git command against the originating
+pane's local directory. Remote checks use Git's configured authentication and
+run only when requested with **f**; no background service is added. tmux hosts
+the sidebar. No package beyond the normal Omarchy tools is required. btop remains
+a separate system monitor available with **Ctrl+Space → m**.
 
 The same component includes the [Codex interface-color adapter](CLI.md#codex-interface-colors).
 It uses Linux pseudo-terminals and Python's standard library; no additional

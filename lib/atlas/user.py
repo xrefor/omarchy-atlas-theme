@@ -12,6 +12,18 @@ from . import config, lock_style, palette, readability, settings, state
 COMPONENTS = {'theme', 'desktop', 'apps', 'shell', 'cli'}
 
 
+def retired_panel_file(rel):
+    """Match only payload paths owned by the removed System/Maintain panels."""
+    for panel in ('system', 'maintain'):
+        if rel in (f'.local/bin/atlas-{panel}',
+                   f'.config/atlas/{panel}-palette.json',
+                   f'.local/share/atlas/components/apps/bin/atlas-{panel}'):
+            return True
+        if rel.startswith(f'.local/share/atlas/components/apps/atlas_{panel}/'):
+            return True
+    return False
+
+
 def read(home, rel):
     path = state.target(home, rel)
     if path.is_symlink() and not path.resolve().is_relative_to(home):
@@ -191,7 +203,7 @@ end)''','--'))
         panel_palette=json.dumps({key: colors[key] for key in
             ('background','lighter_background','foreground','dark_foreground','bright_foreground',
              'secondary','muted','accent','green','yellow','red')})+'\n'
-        for panel in ('vpn','agents','frontier','system','projects','maintain'):
+        for panel in ('vpn','agents','frontier','projects'):
             put(f'.config/atlas/{panel}-palette.json',panel_palette)
         revision=hashlib.sha256(json.dumps(colors,sort_keys=True).encode()).hexdigest()[:20]
         put('.config/atlas/revision',revision+'\n')
@@ -291,6 +303,13 @@ o.bind("SUPER + SHIFT + ALT + M", "Music / Spotify player", { tui = "spotify_pla
         put(settings.MENU_PATH, config.menu_extension(get(settings.MENU_PATH), settings.menu_entries()))
         if 'apps' in components:
             put('.config/omarchy/hooks/theme-set.d/atlas-system','#!/bin/sh\nexec "$HOME/.local/bin/atlas-theme" sync\n',0o755)
+    if 'apps' in components and not syncing:
+        # Retire only journaled payloads, restoring anything predating ATLAS.
+        # Keeping these records preserves normal drift protection and recovery
+        # until the user performs a complete uninstall.
+        for rel, record in state.load(home)['files'].items():
+            if retired_panel_file(rel):
+                files[rel] = record['before']
     return files
 
 
@@ -311,7 +330,8 @@ def shell_palette(colors):
 def validate(files):
     import yaml
     for rel,item in files.items():
-        if item['kind']!='file': continue
+        # Retirement restores original content, which need not be valid config.
+        if item['kind']!='file' or retired_panel_file(rel): continue
         if rel.endswith('.toml'): tomllib.loads(state.text_value(item))
         if rel.endswith(('.yml','.yaml')): yaml.safe_load(state.text_value(item))
         if rel.endswith('.json'): json.loads(state.text_value(item))

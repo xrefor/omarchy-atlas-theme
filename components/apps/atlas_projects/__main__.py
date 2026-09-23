@@ -1,4 +1,4 @@
-"""Command-line entry point for the read-only ATLAS Projects panel."""
+"""Command-line entry point for the ATLAS Projects handoff panel."""
 import argparse
 import json
 import os
@@ -49,7 +49,7 @@ def toggle(args):
 
 def parser():
     result = argparse.ArgumentParser(prog='atlas-projects',
-        description='Read-only local project panel for ATLAS')
+        description='Git handoff panel for ATLAS; remote checks are explicit')
     commands = result.add_subparsers(dest='action', required=True)
     display = commands.add_parser('show', help='open a project panel in this terminal')
     display.add_argument('--path', required=True, help='project path to inspect')

@@ -331,33 +331,31 @@ class BundleTests(unittest.TestCase):
         self.assertTrue((self.home/'.local/bin/atlas-info').is_file())
         self.assertTrue(os.access(self.home/'.local/bin/atlas-vpn', os.X_OK))
         self.assertTrue(os.access(self.home/'.local/bin/atlas-frontier', os.X_OK))
-        self.assertTrue(os.access(self.home/'.local/bin/atlas-system', os.X_OK))
+        self.assertEqual((self.home/'.local/bin/atlas-system').read_text(), '# prior system panel\n')
         self.assertTrue(os.access(self.home/'.local/bin/atlas-projects', os.X_OK))
-        self.assertTrue(os.access(self.home/'.local/bin/atlas-maintain', os.X_OK))
+        self.assertEqual((self.home/'.local/bin/atlas-maintain').read_text(), '# prior maintain panel\n')
         self.assertTrue(os.access(self.home/'.local/bin/atlas-agents', os.X_OK))
         self.assertTrue(os.access(self.home/'.local/bin/atlas-codex', os.X_OK))
         self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_codex/__main__.py').is_file())
         self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_frontier/ui.py').is_file())
-        self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_system/ui.py').is_file())
+        self.assertFalse((self.home/'.local/share/atlas/components/apps/atlas_system').exists())
         self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_projects/ui.py').is_file())
-        self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_maintain/ui.py').is_file())
+        self.assertFalse((self.home/'.local/share/atlas/components/apps/atlas_maintain').exists())
         self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_panel.py').is_file())
         self.assertEqual(json.loads((self.home/'.config/atlas/agents-palette.json').read_text())['accent'], self.colors['accent'])
         self.assertEqual((self.home/'.config/atlas/vpn-palette.json').read_text(),
                          (self.home/'.config/atlas/agents-palette.json').read_text())
         self.assertEqual((self.home/'.config/atlas/frontier-palette.json').read_text(),
                          (self.home/'.config/atlas/agents-palette.json').read_text())
-        self.assertEqual((self.home/'.config/atlas/system-palette.json').read_text(),
-                         (self.home/'.config/atlas/agents-palette.json').read_text())
+        self.assertFalse((self.home/'.config/atlas/system-palette.json').exists())
         self.assertEqual((self.home/'.config/atlas/projects-palette.json').read_text(),
                          (self.home/'.config/atlas/agents-palette.json').read_text())
-        self.assertEqual((self.home/'.config/atlas/maintain-palette.json').read_text(),
-                         (self.home/'.config/atlas/agents-palette.json').read_text())
+        self.assertFalse((self.home/'.config/atlas/maintain-palette.json').exists())
         self.assertIn('atlas-vpn', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertIn('atlas-frontier', (self.home/'.config/atlas/workspace.conf').read_text())
-        self.assertIn('atlas-system', (self.home/'.config/atlas/workspace.conf').read_text())
+        self.assertNotIn('atlas-system', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertIn('atlas-projects', (self.home/'.config/atlas/workspace.conf').read_text())
-        self.assertIn('atlas-maintain', (self.home/'.config/atlas/workspace.conf').read_text())
+        self.assertNotIn('atlas-maintain', (self.home/'.config/atlas/workspace.conf').read_text())
         self.assertTrue((self.home/'.config/atlas/atlas-prompt.py').is_file())
         self.assertTrue((self.home/'.codex/themes/atlas.tmTheme').is_file())
         self.assertTrue((self.home/'.codex/themes/atlas-readable.tmTheme').is_file())
@@ -465,15 +463,13 @@ class BundleTests(unittest.TestCase):
             'atlas-agents':'usage:',
             'atlas-codex':'usage:',
             'atlas-frontier':'usage:',
-            'atlas-system':'usage:',
             'atlas-projects':'usage:',
-            'atlas-maintain':'usage:',
         }
         for name,output in expected.items():
             with self.subTest(command=name):
                 command=self.home/'.local/bin'/name
                 self.assertTrue(os.access(command,os.X_OK),name+' is not executable')
-                args=[str(command)]+(['--help'] if name in ('atlas-theme','atlas-agents','atlas-codex','atlas-frontier','atlas-system','atlas-projects','atlas-maintain') else [])
+                args=[str(command)]+(['--help'] if name in ('atlas-theme','atlas-agents','atlas-codex','atlas-frontier','atlas-projects') else [])
                 result=subprocess.run(args,cwd=self.home,env=env,capture_output=True,text=True,timeout=10)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertIn(output,result.stdout)
@@ -619,6 +615,50 @@ class BundleTests(unittest.TestCase):
         shell['disabledPlugins']=names
         merged=user.merge_shell(self.home,copy.deepcopy(shell),ROOT/'components/desktop')
         self.assertTrue(set(names).issubset(merged['disabledPlugins']))
+    def test_apps_upgrade_retires_only_managed_panels_and_restores_originals(self):
+        original = '.config/atlas/system-palette.json'
+        self.write(original, 'original non-JSON content\n')
+        retired = {
+            '.local/bin/atlas-system': state.value('old launcher', 0o755),
+            '.local/bin/atlas-maintain': state.value('old launcher', 0o755),
+            original: state.value('{}\n'),
+            '.config/atlas/maintain-palette.json': state.value('{}\n'),
+            '.local/share/atlas/components/apps/bin/atlas-system': state.value('old launcher'),
+            '.local/share/atlas/components/apps/bin/atlas-maintain': state.value('old launcher'),
+            '.local/share/atlas/components/apps/atlas_system/ui.py': state.value('# old runtime'),
+            '.local/share/atlas/components/apps/atlas_maintain/ui.py': state.value('# old runtime'),
+        }
+        self.apply(retired)
+        unmanaged = '.local/share/atlas/components/apps/atlas_system/local.py'
+        self.write(unmanaged, '# personal file\n')
+        for plan in (self.plan({'apps'}, syncing=True), self.plan({'theme'})):
+            self.assertTrue(all(rel not in plan for rel in retired))
+        desired = self.plan({'apps'})
+        user.validate(desired)
+        before = {rel: state.snapshot(self.home/rel) for rel in retired}
+        with state.lock(self.home):
+            state.transact(self.home, desired, dry=True)
+        self.assertEqual(before, {rel: state.snapshot(self.home/rel) for rel in retired})
+        self.apply(desired)
+        for rel in retired:
+            if rel == original:
+                self.assertEqual((self.home/rel).read_text(), 'original non-JSON content\n')
+            else:
+                self.assertFalse((self.home/rel).exists(), rel)
+        self.assertEqual((self.home/unmanaged).read_text(), '# personal file\n')
+        with patch.object(state, 'write', side_effect=AssertionError('Repeated upgrade wrote a file')):
+            self.apply(self.plan({'apps'}))
+
+    def test_apps_upgrade_preserves_edited_retired_panel_and_aborts(self):
+        rel = '.local/bin/atlas-system'
+        self.apply({rel: state.value('old launcher', 0o755)})
+        self.write(rel, '# local edit\n')
+        desired = self.plan({'apps'})
+        with self.assertRaisesRegex(ValueError, 'Preserving a later edit'):
+            self.apply(desired)
+        self.assertEqual((self.home/rel).read_text(), '# local edit\n')
+        self.assertFalse((self.home/'.config/atlas/projects-palette.json').exists())
+
     def test_palette_change_updates_apps_without_replacing_runtime(self):
         before=self.plan({'apps'})
         colors=dict(self.colors,accent='#123456',accent_strip='123456',accent_sgr='18;52;86')
