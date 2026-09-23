@@ -9,9 +9,8 @@
 ATLAS brings carbon surfaces, warm ivory text and signal orange to Omarchy.
 Readable code colors, square windows and coordinated application styling carry
 the palette through the desktop. Its terminal workspace adds tabs, visual file
-browsing and compact panels for Git project context, Codex agents, NymVPN and EVE
-Frontier intelligence, with matching lock screens and optional boot and login
-styling.
+browsing and compact panels for Git project context, Codex agents and NymVPN,
+with matching lock screens and optional boot and login styling.
 
 **[Explore ATLAS ↗](https://xrefor.github.io/atlas-showcase/)** · [Install](#install) · [Screenshots](#screenshots) · [Reference](#reference)
 
@@ -71,12 +70,6 @@ Closing a panel leaves agents and the VPN running. The agent observer is a local
 version-sensitive integration; Nym setup and account management remain in Nym's
 own tools. See [agent panel behavior](docs/AGENT-PANEL.md) and
 [NymVPN setup and controls](docs/VPN.md).
-
-The optional **EVE Frontier intelligence panel** follows public on-chain state
-for a configured Sui address without signing transactions or storing wallet
-keys. It separates contract facts from local change detection and exposes the
-evidence behind each conclusion. **Ctrl+Space → e** toggles it. See
-[configuration, data semantics and limits](docs/FRONTIER.md).
 
 ### Two lock-screen styles
 
@@ -178,8 +171,8 @@ supported layouts, enrollment handling and interrupted transactions.
 
 Open **Omarchy → ATLAS**, or run `atlas-settings`, for wallpapers, opacity,
 lock styles, Neovim comment brightness, shortcuts, diagnostics and restoration.
-In tmux, **Ctrl+Space** then **f**, **m**, **g**, **s** or **e**
-opens files, btop, Git Status, music or EVE Frontier intelligence;
+In tmux, **Ctrl+Space** then **f**, **m**, **g** or **s**
+opens files, btop, Git Status or music;
 **Alt+1 / Alt+2 / …** switches tabs. In Yazi, **M** or **g m** opens Drives.
 
 | Guide | What it covers |
@@ -189,7 +182,6 @@ opens files, btop, Git Status, music or EVE Frontier intelligence;
 | [Git Status panel](docs/PANELS.md) | Local Git data, shortcuts and collection boundaries |
 | [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
 | [NymVPN panel](docs/VPN.md) | Dependencies, service setup and tunnel controls |
-| [EVE Frontier panel](docs/FRONTIER.md) | Public-address configuration, evidence semantics and controls |
 | [Lock screen](docs/LOCK-SCREEN.md) · [Authentication](docs/AUTH.md) | Classic and Terminal styles, idle and authentication behavior |
 | [Boot](docs/BOOT.md) | Installation, recovery and removal of boot/login styling |
 | [CLI coverage](docs/CLI.md) | Command colors and optional tool integrations |

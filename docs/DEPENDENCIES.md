@@ -66,14 +66,6 @@ daemon, a matching `nym-vpnc` CLI on PATH or in `~/.local/bin`, and Nym
 authentication/account setup. Tested with 2026.12.2. Neither binary nor account
 data is bundled. See [VPN.md](VPN.md). Nym is not required to install ATLAS.
 
-## Optional EVE Frontier panel
-
-The apps component includes the read-only [EVE Frontier intelligence panel](FRONTIER.md).
-It uses Python's standard library, tmux and a user-configured public Sui GraphQL
-endpoint. No EVE account login, wallet extension, private key or additional SDK
-is required. EVE Frontier and network access are not required to install ATLAS;
-offline tests use fake transports and contain no account data.
-
 ## Building and validating the source
 
 Rendering SVG artwork requires `rsvg-convert`. Portable tests use Python 3.11+,

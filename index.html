@@ -23,7 +23,7 @@
 <div class="hero-top"><img class="wordmark" src="assets/atlas.svg" alt="ATLAS" width="200"><div class="release"><strong>1.0.0-rc7</strong>Theme and workspace for Omarchy</div></div>
 <h1 id="whole-title">Carbon. Ivory. Signal.</h1>
 <p class="lead">One palette for the desktop and the work you do in it.</p>
-<p class="intro">ATLAS brings readable code colors, square windows and coordinated application styling to Omarchy. Its terminal workspace adds tabs, visual file browsing and compact panels for local Git project context, Codex agents, NymVPN and EVE Frontier intelligence, with matching lock screens and optional boot and login styling.</p>
+<p class="intro">ATLAS brings readable code colors, square windows and coordinated application styling to Omarchy. Its terminal workspace adds tabs, visual file browsing and compact panels for local Git project context, Codex agents and NymVPN, with matching lock screens and optional boot and login styling.</p>
 <div class="actions"><a class="button" href="#install">Install ATLAS <span aria-hidden="true">↗</span></a><a href="#screenshots">Explore the workspace ↓</a></div>
 <figure class="desktop-art"><a href="docs/media/atlas-desktop.png"><img src="docs/media/atlas-desktop.png" alt="The ATLAS desktop with a coordinated terminal workspace" fetchpriority="high"></a><figcaption class="caption"><strong>The everyday ATLAS workspace</strong><span>IBM PLEX / FINE BORDERS / QUIET SURFACES</span></figcaption></figure>
 <p class="capture-note">New installations default to <strong>100% window opacity</strong>. Change it through <strong>Omarchy → ATLAS → Window opacity</strong>, or run <code>atlas-settings</code>. Updates preserve your existing opacity choice.</p>
@@ -54,8 +54,7 @@
 <figure id="nymvpn"><a href="docs/media/atlas-terminal.png"><img src="docs/media/atlas-terminal.png" alt="ATLAS NymVPN panel showing demonstration tunnel data beside the terminal workspace" loading="lazy"></a><figcaption><strong>NymVPN</strong>Tunnel status, dVPN or Mixnet mode selection and Nym settings, within the workspace. Requires a NymVPN account, daemon and matching CLI. <code>Ctrl+Space → n</code> toggles it.</figcaption></figure>
 </div>
 <p class="capture-note"><strong>Demonstration data.</strong> These captures show the native panel interfaces with sample agent tasks and VPN status. Closing either panel leaves agents and the VPN running. The Codex observer is a version-sensitive local integration; Nym account setup remains in Nym's tools.</p>
-<p class="capture-note"><strong>EVE Frontier.</strong> The optional read-only intelligence panel follows public on-chain state for a configured Sui address without signing transactions or storing wallet keys. <code>Ctrl+Space → e</code> toggles it.</p>
-<div class="demo-links"><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/PANELS.md">Git Status panel ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/FRONTIER.md">EVE Frontier panel ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/AGENT-PANEL.md">Agent panel behavior ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VPN.md">NymVPN setup and controls ↗</a></div>
+<div class="demo-links"><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/PANELS.md">Git Status panel ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/AGENT-PANEL.md">Agent panel behavior ↗</a><a href="https://github.com/xrefor/omarchy-atlas-theme/blob/main/docs/VPN.md">NymVPN setup and controls ↗</a></div>
 </section>
 
 <section class="content" id="lock-screens" aria-labelledby="lock-title">
@@ -204,10 +203,6 @@ local installer above.</p>
 <td>Git handoff status: uncommitted changes, unpushed commits and upstream changes, with explicit remote checks and no background service</td>
 </tr>
 <tr>
-<td>EVE Frontier panel</td>
-<td>Optional read-only intelligence from a configured public Sui endpoint and address; no signing or private-key storage</td>
-</tr>
-<tr>
 <td>tmux / Starship</td>
 <td>Persistent ATLAS header, tabs, full directory path and compact Git status</td>
 </tr>
@@ -289,10 +284,6 @@ root launcher is distributed. See <a href="https://github.com/xrefor/omarchy-atl
 <tr>
 <td>Ctrl+Space, then A</td>
 <td>Codex agent panel; automatically opens when an observed session spawns agents</td>
-</tr>
-<tr>
-<td>Ctrl+Space, then E</td>
-<td>EVE Frontier intelligence panel (requires public endpoint and address configuration)</td>
 </tr>
 <tr>
 <td>Ctrl+Space, then I</td>

@@ -18,9 +18,6 @@
   [Nym Technologies SA](https://nym.com/trust-center) in Switzerland. ATLAS
   supplies the optional terminal panel; Nym's VPN software and network are
   separate from the theme.
-- [EVE Frontier](https://evefrontier.com/) and its public builder documentation:
-  external game and Sui data consumed by the optional read-only intelligence
-  panel. ATLAS bundles no CCP artwork, game client, account data or credentials.
 - IBM Plex, Nerd Fonts, Yaru, Omarchy applications and security tools are external
   dependencies and remain under their respective licenses.
 
