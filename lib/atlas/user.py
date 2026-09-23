@@ -195,6 +195,7 @@ end)''','--'))
         put('.config/spotify-player/theme.toml', config.toml(spotify))
         merge_yaml('.config/lazygit/config.yml',template('lazygit.yml'))
         merge_yaml('.config/lazydocker/config.yml',template('lazydocker.yml'))
+        merge_toml('.config/discordo/config.toml',tomllib.loads(template('discordo.toml')))
         prof=profiles(home)
         for path in prof:
             put(path+'/chrome/atlas.css',template('zen.css'))

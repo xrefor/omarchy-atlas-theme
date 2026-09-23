@@ -14,6 +14,9 @@
   for internal devices, mounted siblings, busy unmounts and optical media.
 - [Aether](https://github.com/bjarneo/aether.nvim): editor theme dependency
   referenced by configuration; its implementation is not bundled.
+- [Discordo](https://github.com/ayntgl/discordo): external terminal Discord
+  client supported by the source-only ATLAS configuration theme. No Discordo
+  code, binary or account data is bundled.
 - [NymVPN](https://nym.com/): the decentralized VPN developed by
   [Nym Technologies SA](https://nym.com/trust-center) in Switzerland. ATLAS
   supplies the optional terminal panel; Nym's VPN software and network are

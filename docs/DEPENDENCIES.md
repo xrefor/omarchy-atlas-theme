@@ -23,8 +23,10 @@ Run `python3 lib/atlas/optional.py` in a terminal to revisit the choices.
 
 - IBM Plex fonts (`ttf-ibm-plex`), a JetBrainsMono Nerd Font fallback, and Yaru icons.
   Fonts are external dependencies; no font binaries are redistributed.
-- `spotify-player`, `lazygit`, `lazydocker`, and Zen Browser for their corresponding
-  application integrations. Missing optional applications can be installed later.
+- `spotify-player`, `lazygit`, `lazydocker`, Discordo, and Zen Browser for their
+  corresponding application integrations. Missing optional applications can be
+  installed later. Discordo is not offered or installed by ATLAS; only its
+  [configuration theme](DISCORDO.md) is included.
 - The Yazi drive menu uses `udisks2`, `lsblk`, `findmnt`, and Polkit. Omarchy's
   existing udiskie automount service is reused when installed.
 - Network skins require their real commands: `nmap`, `iputils`, `iproute2`, `bind`,

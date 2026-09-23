@@ -43,7 +43,7 @@ The agent and VPN panels show demonstration data.*
 The tmux workspace keeps files, monitoring and music within reach, with a
 persistent header, tabs and a Starship prompt. Terminal preferences cover Foot,
 Ghostty, Kitty and Alacritty; app styling also includes btop, LazyGit, Lazydocker,
-Spotify Player and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
+Spotify Player, Discordo and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
 
 ### Panels alongside your work
 
@@ -179,6 +179,7 @@ opens files, btop, Git Status or music;
 | --- | --- |
 | [Settings](docs/SETTINGS.md) | Appearance choices, editor behavior and managed configuration |
 | [Dependencies](docs/DEPENDENCIES.md) | Required tools and optional application integrations |
+| [Discordo](docs/DISCORDO.md) | Source-only terminal Discord theme and configuration boundaries |
 | [Git Status panel](docs/PANELS.md) | Local Git data, shortcuts and collection boundaries |
 | [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
 | [NymVPN panel](docs/VPN.md) | Dependencies, service setup and tunnel controls |
