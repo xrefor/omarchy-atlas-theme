@@ -611,6 +611,94 @@ rendering and the shared four-row pinned-header contract. They use controlled
 fixtures and disposable tmux state; they do not establish accuracy for every
 kernel driver, physical sensor, repository topology or package-manager state.
 
+## Ports & Services panel — 2026-09-24
+
+The Python suite passed 373 tests, including 23 Ports & Services cases covering
+numeric socket parsing, IPv4/IPv6, multiple owners, systemd cgroup attribution,
+missing permissions and commands, partial results, cancellation and collection
+limits. UI fixtures cover shared headers/footers, palette roles, Unicode filters,
+scrolling and short/narrow terminals. Disposable tmux checks exercise 60/48-column
+sidebars, narrow-window fallback, duplicate suppression, filtering, page switching,
+pinned controls and closing only the owned pane. Git Status uses the same tmux
+lifecycle implementation and its existing behavior tests passed.
+
+A live unprivileged check identified temporary loopback TCP and UDP sockets and
+their owning PID. The installed command also collected local socket information,
+and the live tmux key table and expanded shortcut hints were checked. These checks
+do not establish external reachability, firewall policy or visibility into other
+network namespaces. Ownership and service names remain unavailable when the
+current user cannot inspect them during ordinary live collection. The optional
+sudo snapshot added below is a separate explicit action.
+
+Release checks included the new runtime and launcher, byte-identical builds,
+extracted installation, unchanged repeat/sync/check and restoration. The showcase
+builder validated its local assets and anchors. Native terminal tests used
+controlled data; no new desktop screenshots or physical-display review was made.
+
+## Socket accounts and optional sudo details — 2026-09-24
+
+The Python suite passed 397 tests. The 47 Ports & Services tests include local
+passwd lookup, extended socket UID parsing, omitted root UIDs, unknown accounts,
+and process names that resemble metadata. The live unprivileged collector
+resolved accounts for all 17 observed sockets, including 12 with hidden PIDs.
+
+A specialist security review checked the one-shot privilege boundary. Tests
+verify fixed protected system executable paths and arguments, inherited terminal
+input/error streams, bounded stdout and timeout cleanup, cancellation, and no
+shell, askpass, password pipe or privileged panel process. The live collector
+finishes before the sudo prompt; successful results remain frozen until an
+explicit refresh or return to ordinary polling.
+
+A disposable tmux fixture used a fake sudo command with terminal echo disabled
+to exercise success, cancellation, restoration of curses, frozen snapshots and
+return to live collection. It did not invoke real sudo or use a real password.
+Real sudo/PAM authentication remains an on-device manual check. System executable
+ownership was verified outside the test sandbox, whose UID mapping otherwise
+hides root ownership. Source/archive checksum checks include the new module.
+
+## Live administrator port details — 2026-09-24
+
+The Python suite passed 406 tests, including 56 Ports & Services cases. Admin
+mode now refreshes using the same foreground panel session: explicit activation
+runs the fixed system sudo/ss command, and subsequent queries use `sudo -n -N`.
+Tests verify no background prompts, no credential renewal or revocation on
+refresh/exit, bounded output/time, cancellation and return to ordinary data on
+access failure. Session generations and UI result invalidation prevent late
+privileged results from reappearing after leaving admin mode.
+
+The native disposable tmux fixture used simulated sudo to show changing admin
+port data across refreshes, credential expiry without another prompt, the
+persistent expiry notice, explicit return to user mode and prompt cancellation.
+A specialist security review found no remaining actionable privilege or
+concurrency issue. Real sudo cache timing remains governed by local policy and
+was not changed or exercised by the automated fixtures. The installed session
+was checked to start in ordinary unprivileged mode.
+
+## Ports & Services graphical authorization update
+
+The panel now requests desktop Polkit authorization when opened; `show --user`
+skips it and `snapshot` remains unprivileged. One isolated system Python reader
+serves fixed, bounded `ss` queries for up to five minutes. The reader accepts only
+snapshot/quit control bytes and exits on EOF, idle timeout or lifetime expiry.
+The panel and socket parser remain unprivileged. No password file, askpass bridge,
+shell command or authorization-policy change is introduced.
+
+Focused fixtures exercise one graphical launch across live refreshes, rejected
+and cancelled authorization, malformed/oversized/incomplete responses, query and
+authorization deadlines, EOF cleanup, and pending-prompt termination. The exact
+reader literal is exercised as the test user; real Polkit authentication and
+password entry remain a manual check. Native disposable tmux tests cover automatic
+authorization, fallback, live updates, retries and closing. The authentication
+label centers over the password field in both password and fingerprint layouts;
+QML lint and an offscreen Qt geometry check passed.
+The integrated Python suite passed all 406 tests. A specialist security review
+found no remaining actionable privilege or cancellation defect.
+The shared authentication label also handles arbitrary multiline messages: it
+normalizes line separators, wraps within the field width, and elides after three
+lines. An offscreen Qt check of the actual label block passed short, multiline,
+long unbroken, and Unicode/markup cases without overlap. No application-specific
+message rule is needed.
+
 ## Before promoting the candidate to a stable release
 
 Use a separate supported Omarchy installation or VM with a recoverable snapshot:

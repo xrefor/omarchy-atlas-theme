@@ -67,6 +67,20 @@ daemon, a matching `nym-vpnc` CLI on PATH or in `~/.local/bin`, and Nym
 authentication/account setup. Tested with 2026.12.2. Neither binary nor account
 data is bundled. See [VPN.md](VPN.md). Nym is not required to install ATLAS.
 
+## Ports & Services panel
+
+The apps component includes the [Ports & Services panel](PORTS.md). It uses
+`ss` from `iproute2`, Linux `/proc`, tmux and Python's standard-library curses
+module. Ordinary collection runs without elevated privileges; some process details
+and systemd units may therefore be unavailable. Account names use local
+`/etc/passwd`, with numeric UIDs as a fallback. Opening the panel requests live
+administrator details through desktop Polkit authorization; cancellation or
+failure falls back to ordinary user details. A working desktop authentication
+agent, `pkexec` from Polkit, `/usr/bin/python3`, and permission under the
+system's existing policy are required for administrator details. Use `atlas-ports show --user` to skip the initial request.
+The panel interface remains unprivileged. Missing tools or failed collection
+are reported in the panel. No network probe is added.
+
 ## Building and validating the source
 
 Rendering SVG artwork requires `rsvg-convert`. Portable tests use Python 3.11+,

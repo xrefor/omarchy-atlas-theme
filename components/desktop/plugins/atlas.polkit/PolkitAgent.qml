@@ -409,9 +409,10 @@ Item {
     }
 
     BorderSurface {
-      width: Math.min(justificationText.implicitWidth + Style.space(24), panel.width - Style.gapsOut * 2)
-      height: Style.space(28)
-      anchors.horizontalCenter: tile.horizontalCenter
+      width: Math.min(root.fieldWidth, panel.width - Style.gapsOut * 2)
+      height: justificationText.implicitHeight + Style.space(16)
+      // The field is nested in promptRow; exclude its leading lock icon.
+      x: tile.x + promptRow.x + field.x + (field.width - width) / 2
       anchors.bottom: tile.top
       anchors.bottomMargin: Style.space(10)
       radius: root.cornerRadius
@@ -421,17 +422,22 @@ Item {
 
       Text {
         id: justificationText
-        anchors.fill: parent
+        clip: true
+        maximumLineCount: 3
+        wrapMode: Text.Wrap
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
         anchors.leftMargin: Style.space(12)
         anchors.rightMargin: Style.space(12)
-        text: root.authorizationLabel(root.currentMessage)
+        text: root.authorizationLabel(root.currentMessage).replace(/[\r\n\u2028\u2029]+/g, " ")
         textFormat: Text.PlainText
         color: root.foreground
         font.family: root.fontFamily
         font.pixelSize: Style.font.bodySmall
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        elide: Text.ElideMiddle
+        elide: Text.ElideRight
       }
     }
   }

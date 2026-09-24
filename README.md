@@ -9,7 +9,7 @@
 ATLAS brings carbon surfaces, warm ivory text and signal orange to Omarchy.
 Readable code colors, square windows and coordinated application styling carry
 the palette through the desktop. Its terminal workspace adds tabs, visual file
-browsing and compact panels for Git project context, Codex agents and NymVPN,
+browsing and compact panels for Git project context, local ports, Codex agents and NymVPN,
 with matching lock screens and optional boot and login styling.
 
 **[Explore ATLAS ↗](https://xrefor.github.io/atlas-showcase/)** · [Install](#install) · [Screenshots](#screenshots) · [Reference](#reference)
@@ -40,7 +40,7 @@ The agent and VPN panels show demonstration data.*
 | [![Code in Neovim with the ATLAS syntax palette](docs/media/atlas-editor.png)](docs/media/atlas-editor.png) | [![Yazi file browsing with an ATLAS code preview](docs/media/atlas-files.png)](docs/media/atlas-files.png) |
 | Readable comments and hints; distinct colors for functions, strings, types and control flow. Completion icons follow those same roles. | Matching code-preview colors, quiet directory names and a clear focused row. Filenames get half the width; **T** expands the preview. |
 
-The tmux workspace keeps files, Git Status, agents, VPN and music within reach, with a
+The tmux workspace keeps files, Git Status, ports, agents, VPN and music within reach, with a
 persistent header, tabs and a Starship prompt. Terminal preferences cover Foot,
 Ghostty, Kitty and Alacritty; app styling also includes btop, LazyGit, Lazydocker,
 Spotify Player, Discordo and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
@@ -52,6 +52,14 @@ unpushed commits and upstream changes for the repository selected when it opens.
 Press **f** to check its configured upstream and see when the remote was last
 checked; normal refresh stays local. It never commits, pushes or merges your
 work. See the [Git Status guide](docs/PANELS.md).
+
+The **Ports & Services** panel (**Ctrl+Space → p**) shows local listening ports,
+their processes and PIDs, and associated systemd units when available. Switch
+between TCP and UDP or filter by port, address, account, process or service.
+Collection is read-only. Opening requests live administrator details through
+the desktop Polkit popup; cancelling keeps ordinary user details. Press **a**
+to retry authorization or **r** to return to ordinary user updates.
+Both views refresh every two seconds. See the [Ports & Services guide](docs/PORTS.md).
 
 The panels use the active Omarchy palette. They open beside your work on wide
 terminals and in a separate tmux window when space is limited. Their shortcuts
@@ -170,8 +178,8 @@ supported layouts, enrollment handling and interrupted transactions.
 
 Open **Omarchy → ATLAS**, or run `atlas-settings`, for wallpapers, opacity,
 lock styles, Neovim comment brightness, shortcuts, diagnostics and restoration.
-In tmux, **Ctrl+Space** then **f**, **g**, **a**, **n** or **s**
-opens files, Git Status, agents, VPN or music;
+In tmux, **Ctrl+Space** then **f**, **g**, **p**, **a**, **n** or **s**
+opens Files, Git Status, Ports & Services, Agents, NymVPN or music;
 **Alt+1 / Alt+2 / …** switches tabs. In Yazi, **M** or **g m** opens Drives.
 
 | Guide | What it covers |
@@ -180,6 +188,7 @@ opens files, Git Status, agents, VPN or music;
 | [Dependencies](docs/DEPENDENCIES.md) | Required tools and optional application integrations |
 | [Discordo](docs/DISCORDO.md) | Source-only terminal Discord theme and configuration boundaries |
 | [Git Status panel](docs/PANELS.md) | Local Git data, shortcuts and collection boundaries |
+| [Ports & Services panel](docs/PORTS.md) | Local listeners, process ownership, filtering and visibility limits |
 | [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
 | [NymVPN panel](docs/VPN.md) | Dependencies, service setup and tunnel controls |
 | [Lock screen](docs/LOCK-SCREEN.md) · [Authentication](docs/AUTH.md) | Classic and Terminal styles, idle and authentication behavior |

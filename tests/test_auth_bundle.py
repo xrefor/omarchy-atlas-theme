@@ -56,10 +56,11 @@ def test_polkit_authorization_label_renders_untrusted_message_as_plain_text():
     qml = (PLUGINS / "atlas.polkit" / "PolkitAgent.qml").read_text()
     label = qml[qml.index("id: justificationText") :]
     label = label[: label.index("\n      }")]
-    assert (
-        "text: root.authorizationLabel(root.currentMessage)\n"
-        "        textFormat: Text.PlainText"
-    ) in label
+    assert 'text: root.authorizationLabel(root.currentMessage).replace(' in label
+    assert 'textFormat: Text.PlainText' in label
+    assert 'maximumLineCount: 3' in label
+    assert 'wrapMode: Text.Wrap' in label
+    assert 'clip: true' in label
 
 
 def test_monitor_does_not_bundle_the_local_hardware_fallback():
