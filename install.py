@@ -28,7 +28,7 @@ def preflight(root, home, components, offline=False):
             raise ValueError('An active legacy application-theme hook would conflict with ATLAS. Restore/disable it before installing; see docs/MIGRATION.md')
     needed=['omarchy','omarchy-theme-color']
     if 'apps' in components:
-        needed+=['bash','tmux','starship','foot','btop']
+        needed+=['bash','tmux','starship','foot','btop','alacritty','hyprctl','jq']
     if 'shell' in components:
         needed+=['bash','omarchy-shell','omarchy-system-lock','omarchy-system-wake','omarchy-monitor-state',
                  'omarchy-display-text-size','omarchy-hyprland-monitor-scaling','omarchy-brightness-display',

@@ -5,6 +5,7 @@ import json
 import os
 import plistlib
 import shlex
+import stat
 import subprocess
 from pathlib import Path
 import sys
@@ -338,7 +339,9 @@ class BundleTests(unittest.TestCase):
         self.assertEqual((self.home/'.local/bin/atlas-maintain').read_text(), '# prior maintain panel\n')
         self.assertTrue(os.access(self.home/'.local/bin/atlas-agents', os.X_OK))
         self.assertTrue(os.access(self.home/'.local/bin/atlas-codex', os.X_OK))
+        self.assertTrue(os.access(self.home/'.local/bin/ghostline', os.X_OK))
         self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_codex/__main__.py').is_file())
+        self.assertTrue((self.home/'.local/share/atlas/components/apps/ghostline/ghostline_director.py').is_file())
         self.assertFalse((self.home/'.local/share/atlas/components/apps/atlas_system').exists())
         self.assertTrue((self.home/'.local/share/atlas/components/apps/atlas_projects/ui.py').is_file())
         self.assertFalse((self.home/'.local/share/atlas/components/apps/atlas_maintain').exists())
@@ -452,8 +455,30 @@ class BundleTests(unittest.TestCase):
             stub=stub_bin/name
             stub.write_text('#!/bin/sh\nprintf "%s\\n" "'+name+'" "$@"\n')
             stub.chmod(0o755)
+        hyprctl=stub_bin/'hyprctl'
+        hyprctl.write_text('''#!/bin/sh
+clients='[{"address":"0x1","pid":101,"class":"atlas-ghostline-core","mapped":true,"pinned":false,"workspace":{"id":2}},{"address":"0x2","pid":102,"class":"unrelated","mapped":true,"pinned":false,"workspace":{"id":2}},{"address":"0x3","pid":103,"class":"atlas-ghostline-access","mapped":true,"pinned":false,"workspace":{"id":3}},{"address":"0x4","pid":104,"class":"atlas-ghostline-overlay-pinned","mapped":true,"pinned":true,"workspace":{"id":2}},{"address":"0x5","pid":105,"class":"atlas-ghostline-overlay-hidden","mapped":false,"pinned":false,"workspace":{"id":2}}]'
+if [ "$1" = "-j" ] && [ "$2" = "clients" ]; then
+  if [ -e "$GHOSTLINE_TEST_CLOSED" ]; then
+    printf '%s\n' "$clients" | jq 'map(select(.address != "0x1"))'
+  else
+    printf '%s\n' "$clients"
+  fi
+elif [ "$1" = "dispatch" ]; then
+  printf '%s\n' "$2" >>"$GHOSTLINE_TEST_LOG"
+  : >"$GHOSTLINE_TEST_CLOSED"
+else
+  printf '[]\n'
+fi
+''')
+        hyprctl.chmod(0o755)
+        runtime=self.home/'run'
+        runtime.mkdir(mode=0o700)
+        dispatch_log=self.home/'ghostline-dispatch.log'
+        closed_marker=self.home/'ghostline-closed'
         env=dict(os.environ,HOME=str(self.home),PATH=str(stub_bin)+os.pathsep+os.environ['PATH'],
-                 TERM='xterm-256color',PYTHONDONTWRITEBYTECODE='1')
+                 XDG_RUNTIME_DIR=str(runtime),GHOSTLINE_TEST_LOG=str(dispatch_log),
+                 GHOSTLINE_TEST_CLOSED=str(closed_marker),TERM='xterm-256color',PYTHONDONTWRITEBYTECODE='1')
         env.pop('TMUX',None)
         expected={
             'atlas-files':'omarchy\nlaunch\nterminal\nyazi\n',
@@ -464,15 +489,30 @@ class BundleTests(unittest.TestCase):
             'atlas-codex':'usage:',
             'atlas-projects':'usage:',
             'atlas-ports':'usage:',
+            'ghostline':'Usage: ghostline [start|stop]',
         }
         for name,output in expected.items():
             with self.subTest(command=name):
                 command=self.home/'.local/bin'/name
                 self.assertTrue(os.access(command,os.X_OK),name+' is not executable')
-                args=[str(command)]+(['--help'] if name in ('atlas-theme','atlas-agents','atlas-codex','atlas-projects','atlas-ports') else [])
+                args=[str(command)]+(['--help'] if name in ('atlas-theme','atlas-agents','atlas-codex','atlas-projects','atlas-ports','ghostline') else [])
                 result=subprocess.run(args,cwd=self.home,env=env,capture_output=True,text=True,timeout=10)
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertIn(output,result.stdout)
+        for action in ('stop','kill'):
+            with self.subTest(ghostline_action=action):
+                dispatch_log.unlink(missing_ok=True)
+                closed_marker.unlink(missing_ok=True)
+                result=subprocess.run([self.home/'.local/bin/ghostline',action],cwd=self.home,env=env,
+                                      capture_output=True,text=True,timeout=10)
+                self.assertEqual(result.returncode,0,result.stderr)
+                self.assertIn('ATLAS GHOSTLINE stopped.',result.stdout)
+                dispatches=dispatch_log.read_text().splitlines()
+                self.assertEqual(len(dispatches),1)
+                self.assertIn('address:0x1',dispatches[0])
+                for preserved in ('0x2','0x3','0x4','0x5'):
+                    self.assertNotIn('address:'+preserved,dispatches[0])
+        self.assertEqual(stat.S_IMODE((runtime/'atlas-ghostline').stat().st_mode),0o700)
         # Loading the installed VPN command must find its sibling runtime module,
         # without entering curses or contacting the service.
         probe='import runpy,sys; runpy.run_path(sys.argv[1]); import atlas_panel; print(atlas_panel.__file__)'

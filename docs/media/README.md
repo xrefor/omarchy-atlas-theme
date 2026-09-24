@@ -24,6 +24,15 @@ previews for its wallpaper thumbnails, which link to the original PNG downloads.
 Normal site builds use the committed previews and need only the Python standard
 library.
 
+## GHOSTLINE concept artwork · 2026-09-22
+
+`atlas-ghostline.png` came from the original local GHOSTLINE design pass. It is
+concept artwork, not a capture of the shipped six-terminal implementation. The
+version label, network addresses, processes, event data and “live” labels inside
+the composition are fictional display content; they do not describe a real
+system, operation or network capture. The README and GHOSTLINE guide label it as
+concept artwork wherever it is shown.
+
 ## Current README and website · 2026-09-18
 
 The current overview and workspace stills were captured on **2026-09-18** using

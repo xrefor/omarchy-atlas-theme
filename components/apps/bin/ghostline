@@ -1,0 +1,2 @@
+#!/bin/sh
+exec "$HOME/.local/share/atlas/components/apps/ghostline/launch.sh" "$@"

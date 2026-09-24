@@ -10,7 +10,9 @@ ATLAS brings carbon surfaces, warm ivory text and signal orange to Omarchy.
 Readable code colors, square windows and coordinated application styling carry
 the palette through the desktop. Its terminal workspace adds tabs, visual file
 browsing and compact panels for Git project context, local ports, Codex agents and NymVPN,
-with matching lock screens and optional boot and login styling.
+with matching lock screens and optional boot and login styling. The bundled
+GHOSTLINE display turns a dedicated workspace into a six-panel animated
+operations wall.
 
 **[Explore ATLAS ↗](https://xrefor.github.io/atlas-showcase/)** · [Install](#install) · [Screenshots](#screenshots) · [Reference](#reference)
 
@@ -77,6 +79,18 @@ Closing a panel leaves agents and the VPN running. The agent observer is a local
 version-sensitive integration; Nym setup and account management remain in Nym's
 own tools. See [agent panel behavior](docs/AGENT-PANEL.md) and
 [NymVPN setup and controls](docs/VPN.md).
+
+### GHOSTLINE operations wall
+
+[![ATLAS GHOSTLINE concept artwork](docs/media/atlas-ghostline.png)](docs/media/atlas-ghostline.png)
+
+*Concept artwork from the original GHOSTLINE design pass; simulated content,
+not a capture of the current six-terminal implementation.*
+
+The apps component installs `ghostline`, which takes over workspace 2 and starts
+the coordinated six-panel display. Stop it with `ghostline stop` or the
+backwards-compatible `ghostline kill`. Closing the last main panel also stops
+the director and its active overlays. See the [GHOSTLINE guide](docs/GHOSTLINE.md).
 
 ### Two lock-screen styles
 

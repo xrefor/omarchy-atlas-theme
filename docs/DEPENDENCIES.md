@@ -15,7 +15,8 @@ Run `python3 lib/atlas/optional.py` in a terminal to revisit the choices.
 - Omarchy with semantic `colors.toml`, `omarchy-theme-color`, Lua Hyprland config,
   Quickshell shell plugins, and the normal theme-set hooks.
 - The `shell` component requires the command and PAM checks in [AUTH.md](AUTH.md).
-- The `apps` component requires Bash, Foot, tmux, Starship and btop. Yazi is
+- The `apps` component requires Bash, Foot, Alacritty, tmux, Starship, btop,
+  Hyprland's `hyprctl`, and `jq`. Yazi is
   optional: its theme, drive menu and shortcuts are installed but remain dormant
   until Yazi is installed.
 
@@ -34,6 +35,9 @@ Run `python3 lib/atlas/optional.py` in a terminal to revisit the choices.
   `tcpdump`, `metasploit`, or the official Shodan Python package as appropriate.
 - The standalone Matrix screensaver uses `ttfx`, `jq`, and Omarchy's screensaver
   launcher. Matrix inside the lock screen is native QML/JavaScript.
+- The bundled [GHOSTLINE display](GHOSTLINE.md) uses Alacritty, `hyprctl`, `jq`,
+  Python's standard library and standard GNU userland commands. Bubblewrap is
+  optional and isolates its renderers from the network when available.
 
 Run `python3 install.py doctor --all` for a local prerequisite check. Install
 missing packages with Omarchy's package commands; select only components that
