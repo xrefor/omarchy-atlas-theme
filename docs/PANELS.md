@@ -7,7 +7,7 @@ remote was last checked. It is included in the apps component.
 **Ctrl+Space → g** toggles Git Status for the originating pane's directory. The
 directory is captured when the panel opens; close and reopen it after changing
 repositories. A wide terminal gets a sidebar; a narrow one gets a separate tmux
-window. **Ctrl+Space → m** opens btop for system monitoring.
+window.
 
 ## Controls
 

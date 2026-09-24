@@ -13,7 +13,10 @@ COMPONENTS = {'theme', 'desktop', 'apps', 'shell', 'cli'}
 
 
 def retired_panel_file(rel):
-    """Match only payload paths owned by the removed System/Maintain panels."""
+    """Match only payload paths owned by removed terminal panels."""
+    if rel in ('.local/bin/atlas-panel',
+               '.local/share/atlas/components/apps/bin/atlas-panel'):
+        return True
     for panel in ('system', 'maintain'):
         if rel in (f'.local/bin/atlas-{panel}',
                    f'.config/atlas/{panel}-palette.json',

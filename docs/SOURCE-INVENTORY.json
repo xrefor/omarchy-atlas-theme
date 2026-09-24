@@ -259,11 +259,6 @@
     "source_sha256": "8bee6a707c06ebe7c07f894db122ad3b70d53d4782636d0fcb0772c54221554f"
   },
   {
-    "file": "components/apps/bin/atlas-panel",
-    "origin": "application-source/bin/atlas-panel",
-    "source_sha256": "5427945d6a8db05e01ffab8e7d7658c19b3bb7890e2863169cfde7812b28827b"
-  },
-  {
     "file": "components/apps/bin/atlas-theme",
     "origin": "application-source/bin/legacy-theme",
     "source_sha256": "3c7d0959385c9f6c0307036f36e83329544cb93301a467fc11334900e648a172"

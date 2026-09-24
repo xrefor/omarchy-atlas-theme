@@ -52,8 +52,7 @@ The apps component includes the [Git Status panel](PANELS.md). It uses
 Python's standard library and the installed Git command against the originating
 pane's local directory. Remote checks use Git's configured authentication and
 run only when requested with **f**; no background service is added. tmux hosts
-the sidebar. No package beyond the normal Omarchy tools is required. btop remains
-a separate system monitor available with **Ctrl+Space → m**.
+the sidebar. No package beyond the normal Omarchy tools is required.
 
 The same component includes the [Codex interface-color adapter](CLI.md#codex-interface-colors).
 It uses Linux pseudo-terminals and Python's standard library; no additional

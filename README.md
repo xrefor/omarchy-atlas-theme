@@ -40,7 +40,7 @@ The agent and VPN panels show demonstration data.*
 | [![Code in Neovim with the ATLAS syntax palette](docs/media/atlas-editor.png)](docs/media/atlas-editor.png) | [![Yazi file browsing with an ATLAS code preview](docs/media/atlas-files.png)](docs/media/atlas-files.png) |
 | Readable comments and hints; distinct colors for functions, strings, types and control flow. Completion icons follow those same roles. | Matching code-preview colors, quiet directory names and a clear focused row. Filenames get half the width; **T** expands the preview. |
 
-The tmux workspace keeps files, monitoring and music within reach, with a
+The tmux workspace keeps files, Git Status, agents, VPN and music within reach, with a
 persistent header, tabs and a Starship prompt. Terminal preferences cover Foot,
 Ghostty, Kitty and Alacritty; app styling also includes btop, LazyGit, Lazydocker,
 Spotify Player, Discordo and Zen. [Coverage and dependencies](docs/DEPENDENCIES.md).
@@ -52,7 +52,6 @@ unpushed commits and upstream changes for the repository selected when it opens.
 Press **f** to check its configured upstream and see when the remote was last
 checked; normal refresh stays local. It never commits, pushes or merges your
 work. See the [Git Status guide](docs/PANELS.md).
-**Ctrl+Space → m** opens btop for system monitoring.
 
 The panels use the active Omarchy palette. They open beside your work on wide
 terminals and in a separate tmux window when space is limited. Their shortcuts
@@ -171,8 +170,8 @@ supported layouts, enrollment handling and interrupted transactions.
 
 Open **Omarchy → ATLAS**, or run `atlas-settings`, for wallpapers, opacity,
 lock styles, Neovim comment brightness, shortcuts, diagnostics and restoration.
-In tmux, **Ctrl+Space** then **f**, **m**, **g** or **s**
-opens files, btop, Git Status or music;
+In tmux, **Ctrl+Space** then **f**, **g**, **a**, **n** or **s**
+opens files, Git Status, agents, VPN or music;
 **Alt+1 / Alt+2 / …** switches tabs. In Yazi, **M** or **g m** opens Drives.
 
 | Guide | What it covers |

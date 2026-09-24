@@ -450,7 +450,6 @@ class BundleTests(unittest.TestCase):
         expected={
             'atlas-files':'omarchy\nlaunch\nterminal\nyazi\n',
             'atlas-info':'ATLAS / DIRECTORY',
-            'atlas-panel':'btop\n',
             'atlas-session':'tmux\nnew-session\n',
             'atlas-theme':'usage:',
             'atlas-agents':'usage:',
@@ -611,6 +610,8 @@ class BundleTests(unittest.TestCase):
         original = '.config/atlas/system-palette.json'
         self.write(original, 'original non-JSON content\n')
         retired = {
+            '.local/bin/atlas-panel': state.value('old monitor launcher', 0o755),
+            '.local/share/atlas/components/apps/bin/atlas-panel': state.value('old monitor launcher'),
             '.local/bin/atlas-system': state.value('old launcher', 0o755),
             '.local/bin/atlas-maintain': state.value('old launcher', 0o755),
             original: state.value('{}\n'),
