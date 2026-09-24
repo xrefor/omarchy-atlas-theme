@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import re
 import shlex
+import stat
 import tomllib
 from . import config, lock_style, palette, readability, settings, state
 
@@ -97,9 +98,9 @@ def plan(root, home, components, colors, syncing=False, cli_groups=None):
     def tree(path, rel, mode=None):
         for item in files_under(path): source(item, str(Path(rel)/item.relative_to(path)), mode)
     def template(name): return palette.render(app/'templates'/name, colors)
-    def merge_toml(rel, overlay):
+    def merge_toml(rel, overlay, mode=0o644):
         current = tomllib.loads(get(rel))
-        put(rel, config.toml(config.merge(current, overlay)))
+        put(rel, config.toml(config.merge(current, overlay)), mode)
     def merge_yaml(rel, text):
         import yaml
         current=yaml.safe_load(get(rel)) or {}
@@ -198,7 +199,10 @@ end)''','--'))
         put('.config/spotify-player/theme.toml', config.toml(spotify))
         merge_yaml('.config/lazygit/config.yml',template('lazygit.yml'))
         merge_yaml('.config/lazydocker/config.yml',template('lazydocker.yml'))
-        merge_toml('.config/discordo/config.toml',tomllib.loads(template('discordo.toml')))
+        discordo_rel='.config/discordo/config.toml'
+        discordo_path=state.target(home,discordo_rel)
+        discordo_mode=stat.S_IMODE(discordo_path.stat().st_mode) if discordo_path.exists() else 0o600
+        merge_toml(discordo_rel,tomllib.loads(template('discordo.toml')),discordo_mode)
         prof=profiles(home)
         for path in prof:
             put(path+'/chrome/atlas.css',template('zen.css'))

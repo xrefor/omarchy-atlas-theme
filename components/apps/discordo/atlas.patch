@@ -1,0 +1,1107 @@
+diff --git a/cmd/version.go b/cmd/version.go
+index 4976a18812fc6716e756201d16bef5b72c108cc9..e4189fea25c09ee0edfc7980ea143a5e6474c2d0 100644
+--- a/cmd/version.go
++++ b/cmd/version.go
+@@ -4,7 +4,13 @@ import (
+ 	"runtime/debug"
+ )
+ 
++// localVersion identifies the optional ATLAS presentation build via -ldflags.
++var localVersion string
++
+ func buildVersion() string {
++	if localVersion != "" {
++		return localVersion
++	}
+ 	info, ok := debug.ReadBuildInfo()
+ 	if !ok {
+ 		return "unknown"
+diff --git a/internal/markdown/link_label.go b/internal/markdown/link_label.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..df555604b202490950cc6ed588429585e3fee909
+--- /dev/null
++++ b/internal/markdown/link_label.go
+@@ -0,0 +1,42 @@
++package markdown
++
++import (
++	"net/url"
++	"strings"
++
++	"github.com/rivo/uniseg"
++)
++
++// compactLinkLabel shortens long automatic web links while retaining the full
++// destination in the rendered segment's URL metadata. Keep the entire host
++// visible, and do not rewrite non-web or userinfo-bearing URLs.
++func compactLinkLabel(raw string) string {
++	const limit = 56
++	if uniseg.StringWidth(raw) <= limit {
++		return raw
++	}
++	u, err := url.Parse(raw)
++	if err != nil || u.Host == "" || u.User != nil || (u.Scheme != "http" && u.Scheme != "https") {
++		return raw
++	}
++	label := u.Host + u.EscapedPath()
++	if u.RawQuery != "" || u.Fragment != "" {
++		label += "…"
++	}
++	if uniseg.StringWidth(label) <= limit {
++		return label
++	}
++	// Never truncate the host. Only elide the path after it.
++	remaining := max(limit-uniseg.StringWidth(u.Host)-1, 0)
++	var path strings.Builder
++	clusters := uniseg.NewGraphemes(u.EscapedPath())
++	for clusters.Next() {
++		width := uniseg.StringWidth(clusters.Str())
++		if width > remaining {
++			break
++		}
++		path.WriteString(clusters.Str())
++		remaining -= width
++	}
++	return u.Host + path.String() + "…"
++}
+diff --git a/internal/markdown/link_label_test.go b/internal/markdown/link_label_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..dcdb190db2f6235e0319aa7b54f9ce1a2311652c
+--- /dev/null
++++ b/internal/markdown/link_label_test.go
+@@ -0,0 +1,43 @@
++package markdown
++
++import (
++	"strings"
++	"testing"
++
++	md "github.com/ayn2op/arikawa/v3/markdown"
++	"github.com/ayn2op/discordo/internal/config"
++	"github.com/gdamore/tcell/v3"
++)
++
++func TestCompactLinkRetainsDestination(t *testing.T) {
++	raw := "https://example.org/files/report?signature=" + strings.Repeat("a", 120)
++	source := []byte(raw)
++	rendered := NewRenderer(&config.Config{}).RenderText(source, md.Parse(source), tcell.StyleDefault)
++	var found bool
++	for _, line := range rendered {
++		for _, segment := range line {
++			if _, target := segment.Style.GetUrl(); target != raw {
++				continue
++			}
++			found = true
++			if segment.Text != "example.org/files/report…" {
++				t.Fatalf("unexpected compact label: %q", segment.Text)
++			}
++		}
++	}
++	if !found {
++		t.Fatal("full clickable destination was lost")
++	}
++}
++
++func TestCompactLinkPreservesHostAndSpecialURLs(t *testing.T) {
++	for _, raw := range []string{"https://example.org", "mailto:" + strings.Repeat("a", 60) + "@" + "example.org", "https://example-user@" + "example.org/" + strings.Repeat("a", 90)} {
++		if got := compactLinkLabel(raw); got != raw {
++			t.Fatalf("rewrote short or special URL: %q", got)
++		}
++	}
++	host := strings.Repeat("a", 60) + ".example.org:8080"
++	if got := compactLinkLabel("https://" + host + "/a/long/path"); got != host+"…" {
++		t.Fatalf("host was shortened: %q", got)
++	}
++}
+diff --git a/internal/markdown/renderer.go b/internal/markdown/renderer.go
+index 8a764fd154651626455349d6c1470c0cbe7ecaa7..39f2e09924b9d1cdd117ad60817c390544ecc214 100644
+--- a/internal/markdown/renderer.go
++++ b/internal/markdown/renderer.go
+@@ -79,7 +79,7 @@ func (r *Renderer) RenderText(source []byte, node ast.Node, base tcell.Style) te
+ 			if entering {
+ 				url := string(node.URL(source))
+ 				style := tview.MergeStyle(currentStyle(), theme.URLStyle.Style).Url(url)
+-				builder.Write(url, style)
++				builder.Write(compactLinkLabel(url), style)
+ 			}
+ 		case *ast.Link:
+ 			if entering {
+diff --git a/internal/ui/chat/channelspicker/model.go b/internal/ui/chat/channelspicker/model.go
+index e25e1b6e9af7d0316e825c93f8768259405e1e38..8e07d9dd008ce47733192c93dd2632d048564d4a 100644
+--- a/internal/ui/chat/channelspicker/model.go
++++ b/internal/ui/chat/channelspicker/model.go
+@@ -19,7 +19,7 @@ type Model struct {
+ 
+ func NewModel(cfg *config.Config) *Model {
+ 	p := picker.NewModel()
+-	ui.ConfigurePicker(p, cfg, "Channels")
++	ui.ConfigurePicker(p, cfg, "CHANNELS")
+ 	return &Model{
+ 		Model: p,
+ 		cfg:   cfg,
+@@ -83,9 +83,21 @@ func (m *Model) channelItem(state *ningen.State, guild *discord.Guild, channel d
+ 
+ 	if guild != nil {
+ 		b.WriteString(" - ")
+-		b.WriteString(guild.Name)
++		b.WriteString(ui.ListLabel(guild.Name))
+ 	}
+ 
+ 	name := b.String()
+-	return picker.Item{Text: name, FilterText: name, Reference: channel.ID}
++	filter := name + " " + channel.Name
++	for _, recipient := range channel.DMRecipients {
++		filter += " " + recipient.DisplayOrUsername() + " " + recipient.Username
++		if state != nil && channel.Type == discord.DirectMessage {
++			if rel, ok := state.RelationshipState.FullRelationship(recipient.ID); ok && rel.Type == discord.FriendRelationship && rel.Nickname != nil {
++				filter += " " + *rel.Nickname
++			}
++		}
++	}
++	if guild != nil {
++		filter += " " + guild.Name
++	}
++	return picker.Item{Text: name, FilterText: filter, Reference: channel.ID}
+ }
+diff --git a/internal/ui/chat/channelspicker/model_test.go b/internal/ui/chat/channelspicker/model_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..3cdca255ce9da539a2a9edd61087d6c26c3f2cf5
+--- /dev/null
++++ b/internal/ui/chat/channelspicker/model_test.go
+@@ -0,0 +1,32 @@
++package channelspicker
++
++import (
++	"strings"
++	"testing"
++
++	"github.com/ayn2op/arikawa/v3/discord"
++	"github.com/ayn2op/discordo/internal/config"
++)
++
++func TestDecoratedNamesRemainSearchable(t *testing.T) {
++	m := &Model{cfg: &config.Config{}}
++	channel := discord.Channel{ID: 42, Type: discord.GuildText, Name: "📢│announcements"}
++	guild := discord.Guild{Name: "🌌 ATLAS"}
++	item := m.channelItem(nil, &guild, channel)
++	if item.Text != "announcements - ATLAS" || item.Reference != channel.ID {
++		t.Fatalf("unexpected display or identity: %+v", item)
++	}
++	if !strings.Contains(item.FilterText, channel.Name) || !strings.Contains(item.FilterText, guild.Name) {
++		t.Fatalf("original names missing from search: %q", item.FilterText)
++	}
++}
++
++func TestSymbolOnlyDMNameRemainsSearchable(t *testing.T) {
++	m := &Model{cfg: &config.Config{}}
++	channel := discord.Channel{ID: 42, Type: discord.DirectMessage,
++		DMRecipients: []discord.User{{ID: 9, Username: "🌌"}}}
++	item := m.channelItem(nil, nil, channel)
++	if item.Text != "Unnamed" || !strings.Contains(item.FilterText, "🌌") || item.Reference != channel.ID {
++		t.Fatalf("DM must retain original search and identity: %+v", item)
++	}
++}
+diff --git a/internal/ui/chat/chat_presentation_test.go b/internal/ui/chat/chat_presentation_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..2991907345c4a064c3b226ed125bd14c2cbd0300
+--- /dev/null
++++ b/internal/ui/chat/chat_presentation_test.go
+@@ -0,0 +1,163 @@
++package chat
++
++import (
++	"path/filepath"
++	"strings"
++	"testing"
++	"time"
++
++	"github.com/ayn2op/arikawa/v3/discord"
++	"github.com/ayn2op/discordo/internal/config"
++	"github.com/ayn2op/tview/text"
++	"github.com/gdamore/tcell/v3"
++)
++
++func presentationList(t *testing.T) *messagesList {
++	t.Helper()
++	cfg, err := config.Load(filepath.Join(t.TempDir(), "config.toml"))
++	if err != nil {
++		t.Fatal(err)
++	}
++	cfg.HideBlockedUsers = false
++	cfg.DateSeparator.Enabled = false
++	cfg.Timestamps.Format = "15:04"
++	cfg.Theme.Footer.NormalStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorGray)
++	cfg.Theme.MessagesList.AuthorStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorWhite).Bold(true)
++	cfg.Theme.MessagesList.MessageStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorSilver)
++	cfg.Theme.MessagesList.SelectedMessageStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorOrange).Background(tcell.ColorBlack).Bold(true)
++	cfg.Theme.Border.NormalStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorGray)
++	ml := NewModel(cfg, "").messagesList
++	ml.SetRect(0, 0, 80, 30)
++	return ml
++}
++
++func lineText(line text.Line) string {
++	var b strings.Builder
++	for _, segment := range line {
++		b.WriteString(segment.Text)
++	}
++	return b.String()
++}
++
++func TestChatHeaderBodyAndSpacing(t *testing.T) {
++	ml := presentationList(t)
++	message := discord.Message{
++		Author: discord.User{Username: "Ada"}, Content: "first line\nsecond line",
++		Timestamp:       discord.Timestamp(time.Date(2026, 9, 19, 12, 34, 0, 0, time.Local)),
++		EditedTimestamp: discord.Timestamp(time.Now()),
++	}
++	content := ml.renderMessage(message, ml.cfg.Theme.MessagesList.MessageStyle.Style)
++	if len(content) != 4 || lineText(content[0]) != "Ada  12:34  edited" || lineText(content[1]) != "first line" || lineText(content[2]) != "second line" || len(content[3]) != 0 {
++		t.Fatalf("unexpected header/body/spacing: %#v", content)
++	}
++	for _, segment := range content[0] {
++		if strings.Contains(segment.Text, "12:34") || strings.Contains(segment.Text, "edited") {
++			if segment.Style.GetForeground() != tcell.ColorGray || segment.Style.HasDim() {
++				t.Errorf("metadata is not readable secondary text: %v", segment)
++			}
++		}
++	}
++}
++
++func TestAuthorThemeOverridesRoleColor(t *testing.T) {
++	ml := presentationList(t)
++	message := discord.Message{GuildID: 1, Author: discord.User{ID: 2, Username: "Ada"}}
++	if err := ml.chat.state.Cabinet.MemberSet(1, &discord.Member{User: message.Author, Nick: "Ada Lovelace", RoleIDs: []discord.RoleID{3}}, false); err != nil {
++		t.Fatal(err)
++	}
++	if err := ml.chat.state.Cabinet.RoleSet(1, &discord.Role{ID: 3, Color: 0xffff00, Position: 1}, false); err != nil {
++		t.Fatal(err)
++	}
++	for _, configured := range []bool{true, false} {
++		want := tcell.ColorWhite
++		if !configured {
++			ml.cfg.Theme.MessagesList.AuthorStyle.Style = tcell.StyleDefault
++			want = tcell.NewHexColor(0xffff00)
++		}
++		builder := new(text.Builder)
++		ml.drawAuthor(builder, message, tcell.StyleDefault)
++		line := builder.Finish()[0]
++		if lineText(line) != "Ada Lovelace" || line[0].Style.GetForeground() != want {
++			t.Fatalf("configured=%v: author = %v, want nickname with %v", configured, line, want)
++		}
++	}
++}
++
++func TestAttachmentFilenameRetainsLinkTarget(t *testing.T) {
++	ml := presentationList(t)
++	ml.cfg.ShowAttachmentLinks = false
++	attachment := discord.Attachment{Filename: "report.pdf", URL: "https://cdn.example.test/report.pdf?signature=very-long"}
++	content := ml.renderMessage(discord.Message{Author: discord.User{Username: "Ada"}, Attachments: []discord.Attachment{attachment}}, tcell.StyleDefault)
++	count := 0
++	for _, line := range content {
++		for _, segment := range line {
++			if strings.Contains(segment.Text, attachment.URL) {
++				t.Fatal("attachment URL was rendered as text")
++			}
++			if segment.Text == attachment.Filename {
++				count++
++				if _, target := segment.Style.GetUrl(); target != attachment.URL {
++					t.Fatalf("filename target = %q", target)
++				}
++			}
++		}
++	}
++	if count != 1 {
++		t.Fatalf("filename appeared %d times", count)
++	}
++}
++
++func TestReplyPreviewFitsAndPreservesReference(t *testing.T) {
++	ml := presentationList(t)
++	ml.SetRect(0, 0, 32, 20)
++	original := &discord.Message{ID: 10, Author: discord.User{Username: "Ada"}, Content: strings.Repeat("日本語 long text\n", 12)}
++	message := discord.Message{ID: 11, Type: discord.InlinedReplyMessage, Author: discord.User{Username: "Grace"}, ReferencedMessage: original, Content: "reply body"}
++	content := ml.renderMessage(message, tcell.StyleDefault)
++	_, _, width, _ := ml.InnerRect()
++	if len(content) != 4 || content[0].Width() >= width || !strings.HasSuffix(lineText(content[0]), "…") || lineText(content[2]) != "reply body" {
++		t.Fatalf("preview/body layout = %#v", content)
++	}
++	if message.ReferencedMessage != original || original.ID != 10 || original.GuildID != 0 || !strings.Contains(original.Content, "\n") {
++		t.Fatal("preview mutated the referenced message")
++	}
++}
++
++func TestChatSelectionAndResizePreserveMessageIdentity(t *testing.T) {
++	ml := presentationList(t)
++	configured := ml.cfg.Theme.MessagesList.SelectedMessageStyle.Style
++	selected := chatSelectionStyle(ml.cfg)
++	if selected.GetForeground() != ml.cfg.Theme.MessagesList.MessageStyle.Style.GetForeground() || selected.GetBackground() != configured.GetBackground() || selected.HasBold() || ml.cfg.Theme.MessagesList.SelectedMessageStyle.Style != configured {
++		t.Fatal("chat selection lost body color, selection background, or mutated shared theme")
++	}
++	ml.setMessages([]discord.Message{{ID: 5, Content: "body"}})
++	ml.SetCursor(0)
++	view := ml.buildItem(0)
++	ml.SetRect(0, 0, 80, 40)
++	if ml.buildItem(0) != view {
++		t.Fatal("height-only resize discarded cached message")
++	}
++	ml.SetRect(0, 0, 40, 40)
++	if ml.buildItem(0) == view {
++		t.Fatal("width resize retained a stale wrapped preview")
++	}
++	if message, ok := ml.selectedMessage(); !ok || message.ID != 5 {
++		t.Fatal("resize changed the selected message")
++	}
++}
++
++func TestEmbedBarUsesThemeOutline(t *testing.T) {
++	ml := presentationList(t)
++	message := discord.Message{Author: discord.User{Username: "Ada"}, Embeds: []discord.Embed{{Title: "Release notes", Color: 0xffff00}}}
++	content := ml.renderMessage(message, tcell.StyleDefault)
++	for _, line := range content {
++		for _, segment := range line {
++			if strings.Contains(segment.Text, "▎") {
++				if segment.Style.GetForeground() != tcell.ColorGray {
++					t.Fatalf("embed bar uses Discord color: %v", segment.Style)
++				}
++				return
++			}
++		}
++	}
++	t.Fatal("embed bar missing")
++}
+diff --git a/internal/ui/chat/composer.go b/internal/ui/chat/composer.go
+index 81876f1bf55178d85c11103eb9395796ecfff46e..7aa2d8d0d959e3a33882a52e3ac6ebe152f4245f 100644
+--- a/internal/ui/chat/composer.go
++++ b/internal/ui/chat/composer.go
+@@ -57,6 +57,7 @@ type composer struct {
+ 	lastSearch        time.Time
+ 
+ 	typingUntil time.Time
++	placeholder text.Line
+ }
+ 
+ type tabSuggestMsg struct{}
+@@ -74,8 +75,13 @@ func newComposer(cfg *config.Config, chat *Model) *composer {
+ 		mentionsList:      mentionslist.NewModel(cfg),
+ 	}
+ 	ui.ConfigureBox(c.Box, &cfg.Theme)
++	// A shallow raised surface separates writing from the conversation.
++	background := cfg.Theme.Dialog.Style.GetBackground()
++	c.Box.SetBorderPadding(1, 1, 2, 2).SetBackgroundColor(background).SetTitle("MESSAGE")
++	c.SetTextStyle(cfg.Theme.MessagesList.MessageStyle.Style.Background(background))
++	c.SetSelectedStyle(cfg.Theme.MessagesList.SelectedMessageStyle.Style)
+ 	c.
+-		SetPlaceholder(text.NewLine(text.NewSegment("Select a channel to start chatting", tcell.StyleDefault.Dim(true)))).
++		SetPlaceholder(text.NewLine(text.NewSegment("Select a channel to start chatting", c.placeholderStyle()))).
+ 		SetClipboard(
+ 			func(s string) {
+ 				if _, err := clipboard.Write(context.Background(), clipboard.FmtText, []byte(s)); err != nil {
+@@ -146,9 +152,36 @@ func (c *composer) Replace(start, end int, text string) *tview.TextArea {
+ 
+ func (c *composer) SetTitle(title string) *tview.Box {
+ 	defer c.resizeForContent()
++	if title == "" {
++		title = "MESSAGE"
++	}
+ 	return c.Box.SetTitle(title)
+ }
+ 
++func (c *composer) placeholderStyle() tcell.Style {
++	return c.cfg.Theme.Footer.NormalStyle.Style.Background(c.BackgroundColor())
++}
++
++func (c *composer) SetPlaceholder(line text.Line) *tview.TextArea {
++	c.placeholder = line.Clone()
++	// The upstream placeholder creates an unthemed TextView which repaints
++	// the remaining input row with the terminal's default background.
++	return c.TextArea.SetPlaceholder(nil)
++}
++
++func (c *composer) View(screen tview.Screen) {
++	c.TextArea.View(screen)
++	if c.Text() != "" || len(c.placeholder) == 0 {
++		return
++	}
++	x, y, width, height := c.InnerRect()
++	placeholder := tview.NewTextView().SetScrollable(false).
++		SetWrap(true).SetWordWrap(true).SetTextStyle(c.placeholderStyle()).SetContent(text.Text{c.placeholder})
++	placeholder.SetBackgroundColor(c.BackgroundColor())
++	placeholder.SetRect(x, y, width, height)
++	placeholder.View(screen)
++}
++
+ func (c *composer) SetFooter(footer string) *tview.Box {
+ 	defer c.resizeForContent()
+ 	return c.Box.SetFooter(footer)
+diff --git a/internal/ui/chat/guildstree/model.go b/internal/ui/chat/guildstree/model.go
+index 00d1cad8f3800c7393804abce1f0b401bbe4c406..82a830e2e275fe39c73e2bcfa825101f7c57bbfa 100644
+--- a/internal/ui/chat/guildstree/model.go
++++ b/internal/ui/chat/guildstree/model.go
+@@ -46,7 +46,7 @@ func NewModel(cfg *config.Config, state *ningen.State) *Model {
+ 		}).
+ 		SetGraphics(cfg.Theme.GuildsTree.Graphics).
+ 		SetGraphicsColor(tcell.GetColor(cfg.Theme.GuildsTree.GraphicsColor)).
+-		SetTitle("Guilds")
++		SetTitle("SERVERS")
+ 
+ 	kbs := cfg.Keybinds.GuildsTree
+ 	t.SetKeybinds(tree.Keybinds{
+@@ -77,6 +77,7 @@ func (m *Model) reset() *tree.Node {
+ 		SetReference(dmNode{}).
+ 		SetExpandable(true).
+ 		SetExpanded(false)
++	m.setNodeLineStyle(m.dmRootNode, m.cfg.Theme.Title.NormalStyle.Style)
+ 	return m.Root().ClearChildren().AddChild(m.dmRootNode)
+ }
+ 
+@@ -133,7 +134,7 @@ func (m *Model) refreshReadStyles(event *read.UpdateEvent) {
+ 	channel, err := m.state.Cabinet.Channel(event.ChannelID)
+ 	if err != nil {
+ 		indication := m.state.ChannelIsUnread(event.ChannelID, ningen.UnreadOpts{IncludeMutedCategories: true})
+-		m.setNodeLineStyle(node, unreadStyle(indication))
++		m.setNodeLineStyle(node, m.unreadStyle(indication))
+ 		return
+ 	}
+ 	m.setNodeLineStyle(node, m.channelNodeStyle(*channel))
+@@ -171,11 +172,8 @@ func (m *Model) createFolderNode(folder gateway.GuildFolder, guildsByID map[disc
+ 		name = folder.Name
+ 	}
+ 
+-	folderNode := tree.NewNode(name).SetExpanded(m.cfg.Theme.GuildsTree.AutoExpandFolders)
+-	if folder.Color != 0 {
+-		folderStyle := tcell.StyleDefault.Foreground(tcell.NewHexColor(int32(folder.Color)))
+-		m.setNodeLineStyle(folderNode, folderStyle)
+-	}
++	folderNode := tree.NewNode(ui.ListLabel(name)).SetExpanded(m.cfg.Theme.GuildsTree.AutoExpandFolders)
++	m.setNodeLineStyle(folderNode, m.cfg.Theme.Title.NormalStyle.Style)
+ 	m.Root().AddChild(folderNode)
+ 
+ 	for _, guildID := range folder.GuildIDs {
+@@ -187,22 +185,23 @@ func (m *Model) createFolderNode(folder gateway.GuildFolder, guildsByID map[disc
+ 
+ func (m *Model) guildNodeStyle(guildID discord.GuildID) tcell.Style {
+ 	indication := m.state.GuildIsUnread(guildID, ningen.GuildUnreadOpts{IncludeMutedCategories: true})
+-	return unreadStyle(indication)
++	return m.unreadStyle(indication)
+ }
+ 
+ func (m *Model) channelNodeStyle(channel discord.Channel) tcell.Style {
+-	unread := unreadStyle(m.state.ChannelIsUnread(channel.ID, ningen.UnreadOpts{IncludeMutedCategories: true}))
+-	if channel.Type != discord.DirectMessage || len(channel.DMRecipients) != 1 {
++	indication := m.state.ChannelIsUnread(channel.ID, ningen.UnreadOpts{IncludeMutedCategories: true})
++	unread := m.unreadStyle(indication)
++	if channel.Type != discord.DirectMessage || len(channel.DMRecipients) != 1 || indication == ningen.ChannelMentioned {
+ 		return unread
+ 	}
+ 
+ 	recipient := channel.DMRecipients[0]
+ 	presence, err := m.state.Cabinet.Presence(discord.NullGuildID, recipient.ID)
+ 	if err != nil {
+-		return tview.MergeStyle(m.dmStatusStyle(discord.OfflineStatus), unread)
++		return tview.MergeStyle(unread, m.dmStatusStyle(discord.OfflineStatus))
+ 	}
+ 
+-	return tview.MergeStyle(m.dmStatusStyle(presence.Status), unread)
++	return tview.MergeStyle(unread, m.dmStatusStyle(presence.Status))
+ }
+ 
+ func (m *Model) dmStatusStyle(status discord.Status) tcell.Style {
+@@ -219,7 +218,7 @@ func (m *Model) dmStatusStyle(status discord.Status) tcell.Style {
+ }
+ 
+ func (m *Model) createGuildNode(parent *tree.Node, guild discord.Guild) {
+-	guildNode := tree.NewNode(guild.Name).
++	guildNode := tree.NewNode(ui.ListLabel(guild.Name)).
+ 		SetReference(guild.ID).
+ 		SetExpandable(true).
+ 		SetExpanded(false).
+@@ -256,6 +255,7 @@ func (m *Model) createChannelNode(parent *tree.Node, channel discord.Channel) {
+ }
+ 
+ func (m *Model) setNodeLineStyle(node *tree.Node, style tcell.Style) {
++	node.SetSelectedTextStyle(m.cfg.Theme.MessagesList.SelectedMessageStyle.Style)
+ 	line := node.Line()
+ 	for i := range line {
+ 		line[i].Style = style
+@@ -487,16 +487,13 @@ func (m *Model) canCollapseAll() bool {
+ 	return can
+ }
+ 
+-func unreadStyle(indication ningen.UnreadIndication) tcell.Style {
+-	var style tcell.Style
++func (m *Model) unreadStyle(indication ningen.UnreadIndication) tcell.Style {
+ 	switch indication {
+-	case ningen.ChannelRead:
+-		style = style.Dim(true)
+ 	case ningen.ChannelMentioned:
+-		style = style.Underline(true)
+-		fallthrough
++		return m.cfg.Theme.MessagesList.MentionStyle.Style.Bold(true).Dim(false).Underline(false)
+ 	case ningen.ChannelUnread:
+-		style = style.Bold(true)
++		return m.cfg.Theme.MessagesList.MessageStyle.Style.Bold(true).Dim(false).Underline(false)
++	default:
++		return m.cfg.Theme.Title.NormalStyle.Style.Bold(false).Dim(false).Underline(false)
+ 	}
+-	return style
+ }
+diff --git a/internal/ui/chat/guildstree/model_test.go b/internal/ui/chat/guildstree/model_test.go
+index 584d61fbc7f3e32a297d63b9ad45fc8a7905f442..653593ae6d12bb9752be708337d83089c29d2daa 100644
+--- a/internal/ui/chat/guildstree/model_test.go
++++ b/internal/ui/chat/guildstree/model_test.go
+@@ -5,9 +5,81 @@ import (
+ 	"testing"
+ 
+ 	"github.com/ayn2op/arikawa/v3/discord"
++	"github.com/ayn2op/arikawa/v3/gateway"
++	"github.com/ayn2op/discordo/internal/config"
++	"github.com/ayn2op/ningen/v3"
++	"github.com/ayn2op/tview"
+ 	"github.com/ayn2op/tview/tree"
++	"github.com/gdamore/tcell/v3"
+ )
+ 
++func TestUnreadStyleUsesThemeRoles(t *testing.T) {
++	cfg := &config.Config{}
++	cfg.Theme.Title.NormalStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorGray).Dim(true)
++	cfg.Theme.MessagesList.MessageStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorWhite)
++	cfg.Theme.MessagesList.MentionStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorOrange).Underline(true)
++	m := &Model{cfg: cfg}
++
++	for _, tt := range []struct {
++		name       string
++		indication ningen.UnreadIndication
++		color      tcell.Color
++		bold       bool
++	}{
++		{"read", ningen.ChannelRead, tcell.ColorGray, false},
++		{"unread", ningen.ChannelUnread, tcell.ColorWhite, true},
++		{"mentioned", ningen.ChannelMentioned, tcell.ColorOrange, true},
++	} {
++		t.Run(tt.name, func(t *testing.T) {
++			style := m.unreadStyle(tt.indication)
++			if style.GetForeground() != tt.color || style.HasBold() != tt.bold {
++				t.Errorf("style = %v; want foreground %v, bold %v", style, tt.color, tt.bold)
++			}
++			if style.HasDim() || style.HasUnderline() || style.HasReverse() {
++				t.Errorf("style carries unwanted dim, underline or reverse: %v", style)
++			}
++		})
++	}
++}
++
++func TestNodeSelectionUsesConfiguredStyle(t *testing.T) {
++	cfg := &config.Config{}
++	cfg.Theme.MessagesList.SelectedMessageStyle.Style = tcell.StyleDefault.
++		Foreground(tcell.ColorOrange).Background(tcell.ColorBlack).Bold(true)
++	m := &Model{cfg: cfg}
++	node := tree.NewNode("server").SetReference(discord.GuildID(42))
++	m.setNodeLineStyle(node, tcell.StyleDefault.Foreground(tcell.ColorGray))
++
++	if node.SelectedTextStyle() != cfg.Theme.MessagesList.SelectedMessageStyle.Style {
++		t.Fatalf("selected style = %v, want configured style", node.SelectedTextStyle())
++	}
++	merged := tview.MergeStyle(node.Line()[0].Style, node.SelectedTextStyle())
++	if merged.HasReverse() || merged.HasDim() || merged.GetForeground() != tcell.ColorOrange {
++		t.Fatalf("selected rendered style = %v", merged)
++	}
++	if node.Reference() != discord.GuildID(42) {
++		t.Fatal("styling changed the node reference")
++	}
++}
++
++func TestFolderAndDMRootUseThemeStyles(t *testing.T) {
++	cfg := &config.Config{}
++	cfg.Theme.Title.NormalStyle.Style = tcell.StyleDefault.Foreground(tcell.ColorGray)
++	cfg.Theme.MessagesList.SelectedMessageStyle.Style = tcell.StyleDefault.Background(tcell.ColorBlack)
++	m := NewModel(cfg, nil)
++	m.reset()
++	m.createFolderNode(gateway.GuildFolder{Name: "Work", Color: 0xff0000}, nil)
++
++	for _, node := range m.Root().Children() {
++		if node.Line()[0].Style != cfg.Theme.Title.NormalStyle.Style {
++			t.Errorf("node %v ignores normal theme style", node.Line())
++		}
++		if node.SelectedTextStyle() != cfg.Theme.MessagesList.SelectedMessageStyle.Style {
++			t.Errorf("node %v ignores selected theme style", node.Line())
++		}
++	}
++}
++
+ func TestModelMoveDMToFront(t *testing.T) {
+ 	t.Run("moves rendered channel to front", func(t *testing.T) {
+ 		firstID := discord.ChannelID(1)
+diff --git a/internal/ui/chat/mentionslist/model.go b/internal/ui/chat/mentionslist/model.go
+index 474b79f5f490d5cf3c3d3ec66261431fee09a11c..f64624fd4c9b8d74ab116016d54295e9d9156f9b 100644
+--- a/internal/ui/chat/mentionslist/model.go
++++ b/internal/ui/chat/mentionslist/model.go
+@@ -6,7 +6,6 @@ import (
+ 	"github.com/ayn2op/tview"
+ 	"github.com/ayn2op/tview/list"
+ 	"github.com/ayn2op/tview/text"
+-	"github.com/gdamore/tcell/v3"
+ 	"github.com/rivo/uniseg"
+ )
+ 
+@@ -19,9 +18,9 @@ func NewModel(cfg *config.Config) *Model {
+ 	l := list.NewModel()
+ 	ui.ConfigureBox(l.Box, &cfg.Theme)
+ 	l.
+-		SetSelectedStyle(tcell.StyleDefault.Reverse(true)).
++		SetSelectedStyle(cfg.Theme.MessagesList.SelectedMessageStyle.Style).
+ 		SetSnapToItems(true).
+-		SetTitle("Mentions")
++		SetTitle("MENTIONS")
+ 
+ 	kbs := cfg.Keybinds.MentionsList
+ 	l.SetKeybinds(list.Keybinds{
+diff --git a/internal/ui/chat/messages_list.go b/internal/ui/chat/messages_list.go
+index d864815f5c56cb7b429cd9f96cd129eb04918d80..2fc01b009517e42c42267c53a221cac91f82c04f 100644
+--- a/internal/ui/chat/messages_list.go
++++ b/internal/ui/chat/messages_list.go
+@@ -74,10 +74,10 @@ func newMessagesList(cfg *config.Config, chat *Model) *messagesList {
+ 	ml.attachmentsPicker = attachmentspicker.NewModel(cfg)
+ 
+ 	ui.ConfigureBox(ml.Box, &cfg.Theme)
+-	ml.SetTitle("Messages")
++	ml.SetTitle("CHAT")
+ 	ml.SetBuilder(ml.buildItem)
+ 	ml.SetTrackEnd(true)
+-	ml.SetSelectedStyle(cfg.Theme.MessagesList.SelectedMessageStyle.Style)
++	ml.SetSelectedStyle(chatSelectionStyle(cfg))
+ 	ml.SetKeybinds(list.Keybinds{
+ 		ScrollUp:     cfg.Keybinds.MessagesList.ScrollUp.Keybind,
+ 		ScrollDown:   cfg.Keybinds.MessagesList.ScrollDown.Keybind,
+@@ -102,11 +102,21 @@ func (ml *messagesList) reset() {
+ 
+ func (ml *messagesList) setTitle(channel discord.Channel) {
+ 	title := ui.ChannelToString(channel, ml.cfg.Icons, ml.chat.state)
+-	if topic := channel.Topic; topic != "" {
+-		title += " - " + topic
+-	}
++	ml.SetTitle("CHAT / " + title)
++}
+ 
+-	ml.SetTitle(title)
++func chatSelectionStyle(cfg *config.Config) tcell.Style {
++	return cfg.Theme.MessagesList.SelectedMessageStyle.Style.
++		Foreground(cfg.Theme.MessagesList.MessageStyle.Style.GetForeground()).Bold(false)
++}
++
++func (ml *messagesList) SetRect(x, y, width, height int) {
++	_, _, oldWidth, _ := ml.InnerRect()
++	ml.Model.SetRect(x, y, width, height)
++	_, _, newWidth, _ := ml.InnerRect()
++	if newWidth != oldWidth {
++		ml.invalidateRenderedMessages()
++	}
+ }
+ 
+ func (ml *messagesList) setMessages(messages []discord.Message) {
+@@ -176,7 +186,12 @@ func (ml *messagesList) buildItem(index int) list.Item {
+ func (ml *messagesList) renderMessage(message discord.Message, baseStyle tcell.Style) text.Text {
+ 	builder := new(text.Builder)
+ 	ml.writeMessage(builder, message, baseStyle)
+-	return builder.Finish()
++	content := builder.Finish()
++	for len(content) > 0 && len(content[len(content)-1]) == 0 {
++		content = content[:len(content)-1]
++	}
++	// Spacing belongs to each view, so message IDs and list indices stay intact.
++	return append(content, nil)
+ }
+ 
+ func (ml *messagesList) buildSeparatorItem(ts discord.Timestamp) *tview.TextView {
+@@ -193,7 +208,7 @@ func (ml *messagesList) drawDateSeparator(builder *text.Builder, ts discord.Time
+ 	date := ts.Time().In(time.Local).Format(ml.cfg.DateSeparator.Format)
+ 	label := " " + date + " "
+ 	fillChar := ml.cfg.DateSeparator.Character
+-	dimStyle := baseStyle.Dim(true)
++	dimStyle := ml.metadataStyle(baseStyle)
+ 	_, _, width, _ := ml.InnerRect()
+ 	if width <= 0 {
+ 		builder.Write(strings.Repeat(fillChar, 8)+label+strings.Repeat(fillChar, 8), dimStyle)
+@@ -279,16 +294,14 @@ func (ml *messagesList) writeMessage(builder *text.Builder, message discord.Mess
+ 			ml.drawDefaultMessage(builder, message, baseStyle)
+ 		}
+ 	case discord.GuildMemberJoinMessage:
+-		ml.drawTimestamps(builder, message.Timestamp, baseStyle)
+-		ml.drawAuthor(builder, message, baseStyle)
++		ml.drawMessageHeader(builder, message, baseStyle)
+ 		builder.Write("joined the server.", baseStyle)
+ 	case discord.InlinedReplyMessage:
+ 		ml.drawReplyMessage(builder, message, baseStyle)
+ 	case discord.ChannelPinnedMessage:
+ 		ml.drawPinnedMessage(builder, message, baseStyle)
+ 	default:
+-		ml.drawTimestamps(builder, message.Timestamp, baseStyle)
+-		ml.drawAuthor(builder, message, baseStyle)
++		ml.drawMessageHeader(builder, message, baseStyle)
+ 	}
+ 	ml.drawReactions(builder, message.Reactions, baseStyle)
+ }
+@@ -321,8 +334,23 @@ func (ml *messagesList) formatTimestamp(ts discord.Timestamp) string {
+ }
+ 
+ func (ml *messagesList) drawTimestamps(builder *text.Builder, ts discord.Timestamp, baseStyle tcell.Style) {
+-	dimStyle := baseStyle.Dim(true)
+-	builder.Write(ml.formatTimestamp(ts)+" ", dimStyle)
++	builder.Write(ml.formatTimestamp(ts), ml.metadataStyle(baseStyle))
++}
++
++func (ml *messagesList) metadataStyle(baseStyle tcell.Style) tcell.Style {
++	return tview.MergeStyle(baseStyle, ml.cfg.Theme.Footer.NormalStyle.Style).Dim(false).Bold(false)
++}
++
++func (ml *messagesList) drawMessageHeader(builder *text.Builder, message discord.Message, baseStyle tcell.Style) {
++	ml.drawAuthor(builder, message, baseStyle)
++	if ml.cfg.Timestamps.Enabled {
++		builder.Write("  ", baseStyle)
++		ml.drawTimestamps(builder, message.Timestamp, baseStyle)
++	}
++	if message.EditedTimestamp.IsValid() {
++		builder.Write("  edited", ml.metadataStyle(baseStyle))
++	}
++	builder.NewLine()
+ }
+ 
+ func (ml *messagesList) drawAuthor(builder *text.Builder, message discord.Message, baseStyle tcell.Style) {
+@@ -343,8 +371,8 @@ func (ml *messagesList) drawAuthor(builder *text.Builder, message discord.Messag
+ 		}
+ 	}
+ 
+-	style := baseStyle.Foreground(foreground).Bold(true)
+-	builder.Write(name+" ", style)
++	style := tview.MergeStyle(baseStyle.Foreground(foreground).Bold(true), ml.cfg.Theme.MessagesList.AuthorStyle.Style)
++	builder.Write(name, style)
+ }
+ 
+ func (ml *messagesList) memberForMessage(message discord.Message) *discord.Member {
+@@ -429,29 +457,22 @@ func (ml *messagesList) drawSnapshotContent(builder *text.Builder, parent discor
+ }
+ 
+ func (ml *messagesList) drawDefaultMessage(builder *text.Builder, message discord.Message, baseStyle tcell.Style) {
+-	if ml.cfg.Timestamps.Enabled {
+-		ml.drawTimestamps(builder, message.Timestamp, baseStyle)
+-	}
+-
+-	ml.drawAuthor(builder, message, baseStyle)
++	ml.drawMessageHeader(builder, message, baseStyle)
+ 	contentRoot, contentSource := ml.drawContent(builder, message, baseStyle)
+ 
+-	if message.EditedTimestamp.IsValid() {
+-		dimStyle := baseStyle.Dim(true)
+-		builder.Write(" (edited)", dimStyle)
+-	}
+-
+ 	ml.drawEmbeds(builder, message, baseStyle, contentRoot, contentSource)
+ 
+ 	attachmentStyle := tview.MergeStyle(baseStyle, ml.cfg.Theme.MessagesList.AttachmentStyle.Style)
+ 	for _, a := range message.Attachments {
+-		builder.NewLine()
++		if !builder.LineEmpty() {
++			builder.NewLine()
++		}
+ 		if ml.cfg.ShowAttachmentLinks {
+-			builder.Write(a.Filename+":", attachmentStyle)
++			builder.Write(a.Filename+":", attachmentStyle.Url(a.URL))
+ 			builder.NewLine()
+ 			builder.Write(a.URL, attachmentStyle.Url(a.URL))
+ 		} else {
+-			builder.Write(a.Filename, attachmentStyle)
++			builder.Write(a.Filename, attachmentStyle.Url(a.URL))
+ 		}
+ 	}
+ }
+@@ -476,7 +497,7 @@ func (ml *messagesList) drawEmbeds(builder *text.Builder, message discord.Messag
+ 	}
+ 
+ 	lineStyles := embedLineStyles(baseStyle, ml.cfg.Theme.MessagesList.Embeds)
+-	defaultBarStyle := baseStyle.Dim(true)
++	defaultBarStyle := tview.MergeStyle(baseStyle, ml.cfg.Theme.Border.NormalStyle.Style)
+ 	prefixText := "  ▎ "
+ 	prefixWidth := uniseg.StringWidth(prefixText)
+ 	_, _, innerWidth, _ := ml.InnerRect()
+@@ -490,11 +511,7 @@ func (ml *messagesList) drawEmbeds(builder *text.Builder, message discord.Messag
+ 		}
+ 
+ 		embedText := make(text.Text, 0, len(lines)*2)
+-		barStyle := defaultBarStyle
+-		if embed.Color != discord.NullColor && embed.Color != 0 {
+-			barStyle = barStyle.Foreground(tcell.NewHexColor(int32(embed.Color)))
+-		}
+-		prefix := text.NewSegment(prefixText, barStyle)
++		prefix := text.NewSegment(prefixText, defaultBarStyle)
+ 		builder.NewLine()
+ 		for _, line := range lines {
+ 			if strings.TrimSpace(line.Text) == "" {
+@@ -691,35 +708,73 @@ func isMarkdownEscapable(c byte) bool {
+ }
+ 
+ func (ml *messagesList) drawForwardedMessage(builder *text.Builder, message discord.Message, baseStyle tcell.Style) {
+-	dimStyle := baseStyle.Dim(true)
+-	ml.drawTimestamps(builder, message.Timestamp, baseStyle)
+-	ml.drawAuthor(builder, message, baseStyle)
+-	builder.Write(ml.cfg.Theme.MessagesList.ForwardedIndicator+" ", dimStyle)
++	ml.drawMessageHeader(builder, message, baseStyle)
++	if len(message.MessageSnapshots) == 0 {
++		ml.drawContent(builder, message, baseStyle)
++		return
++	}
++	metadataStyle := ml.metadataStyle(baseStyle)
++	builder.Write(ml.cfg.Theme.MessagesList.ForwardedIndicator+" forwarded  "+ml.formatTimestamp(message.MessageSnapshots[0].Message.Timestamp), metadataStyle)
++	builder.NewLine()
+ 	ml.drawSnapshotContent(builder, message, message.MessageSnapshots[0].Message, baseStyle)
+-	builder.Write(" ("+ml.formatTimestamp(message.MessageSnapshots[0].Message.Timestamp)+") ", dimStyle)
+ }
+ 
+ func (ml *messagesList) drawReplyMessage(builder *text.Builder, message discord.Message, baseStyle tcell.Style) {
+-	dimStyle := baseStyle.Dim(true)
+-	// indicator
+-	builder.Write(ml.cfg.Theme.MessagesList.ReplyIndicator+" ", dimStyle)
+-
+-	if m := message.ReferencedMessage; m != nil {
+-		m.GuildID = message.GuildID
+-		ml.drawAuthor(builder, *m, dimStyle)
+-		ml.drawContent(builder, *m, dimStyle)
+-	} else {
+-		builder.Write("Original message was deleted", dimStyle)
++	preview := "Original message was deleted"
++	if original := message.ReferencedMessage; original != nil {
++		// Rendering a preview must not mutate the referenced message payload.
++		referenced := *original
++		referenced.GuildID = message.GuildID
++		name := referenced.Author.DisplayOrUsername()
++		if member := ml.memberForMessage(referenced); member != nil && member.Nick != "" {
++			name = member.Nick
++		}
++		content, _, _ := ml.renderContent(referenced, baseStyle)
++		var parts []string
++		for _, line := range content {
++			var b strings.Builder
++			for _, segment := range line {
++				b.WriteString(segment.Text)
++			}
++			parts = append(parts, b.String())
++		}
++		body := strings.Join(strings.Fields(strings.Join(parts, " ")), " ")
++		if body == "" && len(referenced.Attachments) > 0 {
++			body = referenced.Attachments[0].Filename
++		}
++		preview = name + ": " + body
+ 	}
+-
++	_, _, width, _ := ml.InnerRect()
++	if width <= 0 {
++		width = 72
++	}
++	preview = compactReplyPreview(ml.cfg.Theme.MessagesList.ReplyIndicator+" "+preview, max(width-1, 1))
++	builder.Write(preview, ml.metadataStyle(baseStyle))
+ 	builder.NewLine()
+-	// main
+ 	ml.drawDefaultMessage(builder, message, baseStyle)
+ }
+ 
++func compactReplyPreview(value string, width int) string {
++	value = strings.Join(strings.Fields(value), " ")
++	if uniseg.StringWidth(value) <= width {
++		return value
++	}
++	var b strings.Builder
++	clusters := uniseg.NewGraphemes(value)
++	used := 0
++	for clusters.Next() {
++		if used+clusters.Width() > width-1 {
++			break
++		}
++		b.WriteString(clusters.Str())
++		used += clusters.Width()
++	}
++	return b.String() + "…"
++}
++
+ func (ml *messagesList) drawPinnedMessage(builder *text.Builder, message discord.Message, baseStyle tcell.Style) {
+-	builder.Write(message.Author.DisplayOrUsername(), baseStyle)
+-	builder.Write(" pinned a message.", baseStyle)
++	ml.drawMessageHeader(builder, message, baseStyle)
++	builder.Write("Pinned a message.", ml.metadataStyle(baseStyle))
+ }
+ 
+ func (ml *messagesList) selectedMessage() (*discord.Message, bool) {
+diff --git a/internal/ui/chat/model.go b/internal/ui/chat/model.go
+index d6aa42e5cac91f3bedcd06a918c8bebc1c67d47b..7086a3177fe31f7c1c39c74d5a3dc5c5d8974b56 100644
+--- a/internal/ui/chat/model.go
++++ b/internal/ui/chat/model.go
+@@ -28,7 +28,6 @@ import (
+ 	"github.com/ayn2op/tview/keybind"
+ 	"github.com/ayn2op/tview/layers"
+ 	"github.com/ayn2op/tview/text"
+-	"github.com/gdamore/tcell/v3"
+ )
+ 
+ const typingDuration = 10 * time.Second
+@@ -139,7 +138,7 @@ func (m *Model) buildLayout() {
+ 	m.rightFlex.
+ 		SetDirection(flex.DirectionRow).
+ 		AddItem(m.messagesList, 0, 1, false).
+-		AddItem(m.composer, 3, 1, false)
++		AddItem(m.composer, 5, 1, false)
+ 	// The guilds tree is always focused first at start-up.
+ 	m.mainFlex.
+ 		AddItem(m.guildsTree, 0, m.cfg.Sidebar.WidthPercent, true).
+@@ -334,7 +333,7 @@ func (m *Model) Update(msg tview.Msg) tview.Cmd {
+ 		} else if m.cfg.AutoFocus {
+ 			m.focusComposer()
+ 		}
+-		m.composer.SetPlaceholder(text.NewLine(text.NewSegment(placeholder, tcell.StyleDefault.Dim(true))))
++		m.composer.SetPlaceholder(text.NewLine(text.NewSegment(placeholder, m.composer.placeholderStyle())))
+ 		if msg.Channel.GuildID.IsValid() {
+ 			return m.messagesList.requestGuildMembers(msg.Channel.GuildID, msg.Messages)
+ 		}
+diff --git a/internal/ui/list_label.go b/internal/ui/list_label.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..227d38e768ef58c0423cfdcab215fbfa05f97863
+--- /dev/null
++++ b/internal/ui/list_label.go
+@@ -0,0 +1,36 @@
++package ui
++
++import (
++	"strings"
++	"unicode"
++
++	"github.com/rivo/uniseg"
++)
++
++// ListLabel removes decorative symbols from local navigation labels. Work on
++// grapheme clusters so emoji modifiers, flags and joined emoji disappear together,
++// while accented letters and non-Latin names remain intact. Discord's names and
++// IDs are never changed; this is only a presentation helper.
++func ListLabel(name string) string {
++	var out strings.Builder
++	clusters := uniseg.NewGraphemes(name)
++	for clusters.Next() {
++		cluster := clusters.Str()
++		decorative := false
++		for _, r := range cluster {
++			if unicode.Is(unicode.So, r) || unicode.Is(unicode.Co, r) || r == '\u20e3' {
++				decorative = true
++				break
++			}
++		}
++		if !decorative {
++			out.WriteString(cluster)
++		}
++	}
++	label := strings.Join(strings.Fields(out.String()), " ")
++	label = strings.Trim(label, " |｜·•‐‑–—-")
++	if label == "" {
++		return "Unnamed"
++	}
++	return label
++}
+diff --git a/internal/ui/list_label_test.go b/internal/ui/list_label_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..a34bfb0b7775be0772fa928a6f7194890301a82a
+--- /dev/null
++++ b/internal/ui/list_label_test.go
+@@ -0,0 +1,42 @@
++package ui
++
++import (
++	"testing"
++
++	"github.com/ayn2op/arikawa/v3/discord"
++	"github.com/ayn2op/discordo/internal/config"
++)
++
++func TestListLabel(t *testing.T) {
++	for _, tc := range []struct{ name, want string }{
++		{"📢│announcements", "announcements"},
++		{"✅ Rules and Welcome", "Rules and Welcome"},
++		{"👩🏽‍💻-developers", "developers"},
++		{"🇳🇴 Norsk", "Norsk"},
++		{"1️⃣ general", "general"},
++		{"\uf120 terminal", "terminal"},
++		{"⭐ EVE 🌌 Frontier ⭐", "EVE Frontier"},
++		{"Café — blåbær 日本語 العربية", "Café — blåbær 日本語 العربية"},
++		{"Cafe\u0301", "Cafe\u0301"},
++		{"/r/starcitizen", "/r/starcitizen"},
++		{"node.js / C++ / #help", "node.js / C++ / #help"},
++		{"support-and-help", "support-and-help"},
++		{"🔒", "Unnamed"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			if got := ListLabel(tc.name); got != tc.want {
++				t.Fatalf("ListLabel(%q) = %q, want %q", tc.name, got, tc.want)
++			}
++		})
++	}
++}
++
++func TestChannelLabelDoesNotChangeDiscordData(t *testing.T) {
++	channel := discord.Channel{ID: 42, Type: discord.GuildText, Name: "📢│announcements"}
++	if got := ChannelToString(channel, config.Icons{}, nil); got != "announcements" {
++		t.Fatalf("channel label = %q", got)
++	}
++	if channel.ID != 42 || channel.Name != "📢│announcements" {
++		t.Fatal("display formatting changed channel data")
++	}
++}
+diff --git a/internal/ui/util.go b/internal/ui/util.go
+index 6bcbe117ffe6387c80443394d31bd67dcfad1f21..f0ab38cc462b06be3ff82a91a7b8c578de013087 100644
+--- a/internal/ui/util.go
++++ b/internal/ui/util.go
+@@ -10,6 +10,7 @@ import (
+ 	"github.com/ayn2op/ningen/v3"
+ 	"github.com/ayn2op/tview"
+ 	"github.com/ayn2op/tview/grid"
++	"github.com/ayn2op/tview/list"
+ 	"github.com/ayn2op/tview/picker"
+ )
+ 
+@@ -47,6 +48,16 @@ func ConfigurePicker(model *picker.Model, cfg *config.Config, title string) {
+ 	FocusBox(model.Box, &cfg.Theme)
+ 
+ 	model.SetTitle(title)
++	// The picker embeds its input and result list in a flex layout. Give both
++	// the same quiet outlines and selected-row style as the navigation pane.
++	for i := 0; i < model.GetItemCount(); i++ {
++		switch child := model.GetItem(i).(type) {
++		case *list.Model:
++			child.SetSelectedStyle(cfg.Theme.MessagesList.SelectedMessageStyle.Style)
++		case *tview.InputField:
++			child.SetBorderStyle(cfg.Theme.Border.NormalStyle.Style)
++		}
++	}
+ 	model.SetScrollBarVisibility(cfg.Theme.ScrollBar.Visibility.ScrollBarVisibility)
+ 	model.SetScrollBar(tview.NewScrollBar().
+ 		SetTrackStyle(cfg.Theme.ScrollBar.TrackStyle.Style).
+@@ -78,7 +89,7 @@ func ChannelToString(channel discord.Channel, icons config.Icons, state *ningen.
+ 	switch channel.Type {
+ 	case discord.DirectMessage, discord.GroupDM:
+ 		if channel.Name != "" {
+-			return channel.Name
++			return ListLabel(channel.Name)
+ 		}
+ 
+ 		recipients := make([]string, len(channel.DMRecipients))
+@@ -94,7 +105,7 @@ func ChannelToString(channel discord.Channel, icons config.Icons, state *ningen.
+ 			recipients[i] = r.DisplayOrUsername()
+ 		}
+ 
+-		return strings.Join(recipients, ", ")
++		return ListLabel(strings.Join(recipients, ", "))
+ 
+ 	case discord.GuildCategory:
+ 		icon = icons.GuildCategory
+@@ -120,7 +131,7 @@ func ChannelToString(channel discord.Channel, icons config.Icons, state *ningen.
+ 		icon = icons.GuildStore
+ 	}
+ 
+-	return icon + channel.Name
++	return icon + ListLabel(channel.Name)
+ }
+ 
+ func SortGuildChannels(channels []discord.Channel) {

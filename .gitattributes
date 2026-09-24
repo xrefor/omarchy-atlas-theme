@@ -1,0 +1,2 @@
+# Patch context deliberately preserves upstream Go tabs and blank lines.
+components/apps/discordo/*.patch whitespace=-blank-at-eol,-space-before-tab

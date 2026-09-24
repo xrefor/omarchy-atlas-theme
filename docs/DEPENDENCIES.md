@@ -25,8 +25,9 @@ Run `python3 lib/atlas/optional.py` in a terminal to revisit the choices.
   Fonts are external dependencies; no font binaries are redistributed.
 - `spotify-player`, `lazygit`, `lazydocker`, Discordo, and Zen Browser for their
   corresponding application integrations. Missing optional applications can be
-  installed later. Discordo is not offered or installed by ATLAS; only its
-  [configuration theme](DISCORDO.md) is included.
+  installed later. Discordo is not offered or installed by ATLAS; its palette
+  overlay and optional, version-pinned [source customization](DISCORDO.md) are
+  included without a binary or account data.
 - The Yazi drive menu uses `udisks2`, `lsblk`, `findmnt`, and Polkit. Omarchy's
   existing udiskie automount service is reused when installed.
 - Network skins require their real commands: `nmap`, `iputils`, `iproute2`, `bind`,
@@ -88,6 +89,12 @@ PyYAML, Node.js, Lua, Bash, Git, tmux and the standalone `omarchy-theme-color`
 resolver. CI checks Python 3.11 and 3.14 with Node.js 24, Lua 5.4 and PyYAML 6.0.3.
 `tools/ci-deps.sh` can fetch a commit-pinned, checksum-verified Omarchy 4.0.4
 resolver into a selected temporary directory; it does not install Omarchy.
+
+Building the optional Discordo source customization requires Git and the Go
+toolchain required by its pinned upstream revision. ATLAS does not download that
+source or build/install the executable automatically. The repository checks the
+patch inventory and installed payload; applying it and running its embedded Go
+tests requires a matching Discordo checkout.
 
 The default checker additionally uses Quickshell for isolated monitor-panel
 fixtures, Omarchy's plugin validator, installed Neovim plugins and `qmllint`

@@ -186,7 +186,7 @@ opens Files, Git Status, Ports & Services, Agents, NymVPN or music;
 | --- | --- |
 | [Settings](docs/SETTINGS.md) | Appearance choices, editor behavior and managed configuration |
 | [Dependencies](docs/DEPENDENCIES.md) | Required tools and optional application integrations |
-| [Discordo](docs/DISCORDO.md) | Source-only terminal Discord theme and configuration boundaries |
+| [Discordo](docs/DISCORDO.md) | Palette overlay and version-pinned ATLAS presentation patch |
 | [Git Status panel](docs/PANELS.md) | Local Git data, shortcuts and collection boundaries |
 | [Ports & Services panel](docs/PORTS.md) | Local listeners, process ownership, filtering and visibility limits |
 | [Agent panel](docs/AGENT-PANEL.md) | Observation, controls and local Codex compatibility |
@@ -257,8 +257,9 @@ See the [contributor guide](CONTRIBUTING.md), [validation commands and CI covera
 `python3 tools/check.py` runs the complete repository checks;
 `python3 tools/check_release.py` verifies packaging and release behavior.
 
-ATLAS was previously named Blackburn. Project source uses the MIT license;
-upstream notices are retained in `LICENSES/`.
+ATLAS was previously named Blackburn. Project source uses the MIT license except
+for the clearly separated GPL-3.0 Discordo patch; upstream notices are retained
+in `LICENSES/`.
 
 </details>
 

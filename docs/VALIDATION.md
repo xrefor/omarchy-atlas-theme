@@ -47,7 +47,8 @@ requires Node.js for JavaScript model tests. It covers:
 - Seven mocked Yazi drive-menu cases: authorization, clean removal, busy failure,
   internal-device rejection, argument handling, mounted siblings and optical media.
 - Python, JSON, TOML, YAML, XML and shell syntax; four Omarchy plugin manifests;
-  generated root theme files compared to their palette/templates.
+  generated root theme files compared to their palette/templates; Discordo
+  palette ownership, source-patch inventory and installed customization payload.
 
 The four shell clones additionally passed QML/JavaScript lint/syntax checks
 against the installed Quickshell/Omarchy modules. An isolated tmux server loaded
