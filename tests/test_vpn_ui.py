@@ -30,10 +30,130 @@ class Screen:
 
 class LayoutTests(unittest.TestCase):
     def setUp(self):
+        preference = patch.object(vpn, "read_layout_style", return_value="classic")
+        preference.start()
+        self.addCleanup(preference.stop)
         self.data = {'status': 'State: Connected', 'tunnel': 'Two-hop: off',
                      'gateway': '', 'message': ''}
         self.attributes = dict.fromkeys(
             [*vpn.ROW_ROLES.values(), 'header', 'header_prefix', 'footer'], 0)
+
+    def test_framed_active_mode_comes_from_status_not_selected_settings(self):
+        for status, selected, active, configured in (
+                ('State: Connected wg to 192.0.2.1 [Entry] → 198.51.100.1 [Exit]',
+                 'off', 'dVPN / WireGuard', 'MIXNET'),
+                ('State: Connected mix to 192.0.2.1',
+                 'on', 'MIXNET', 'dVPN / TWO-HOP WIREGUARD')):
+            self.data.update(status=status, tunnel='Two-hop: ' + selected)
+            for columns in (48, 60):
+                _, width = layout(columns)
+                rows = vpn.dashboard(self.data, width, [], style='framed')
+                text = '\n'.join(line for line, _ in rows)
+                self.assertEqual(rows[1][0], 'CONNECTED · ' + ('dVPN' if active.startswith('dVPN') else 'MIXNET'))
+                self.assertNotIn('MIXNET' if active.startswith('dVPN') else 'dVPN', rows[1][0])
+                self.assertIn('ACTIVE TUNNEL MODE  ' + active, text)
+                content = ' '.join(line[2:-2].strip() for line, role in rows
+                                   if isinstance(role, str) and role.startswith('card:')
+                                   and line.startswith('│'))
+                self.assertIn('SELECTED MODE ' + configured, ' '.join(content.split()))
+                self.assertLess(text.index('ACTIVE TUNNEL MODE'), text.index('LIVE ROUTE'))
+                self.assertLess(text.index('LIVE ROUTE'), text.index('NEXT CONNECTION'))
+                self.assertLess(text.index('NEXT CONNECTION'), text.index('SELECTED MODE'))
+                self.assertTrue(all(cell_width(line) <= width for line, _ in rows))
+
+    def test_framed_disconnected_transitions_and_unknown_never_claim_selected_mode_active(self):
+        for status, state, active in (
+                ('State: Disconnected', 'DISCONNECTED', 'NONE (disconnected)'),
+                ('State: Connecting mix, selecting gateways', 'CONNECTING', 'NOT CONFIRMED'),
+                ('State: Reconnecting wg', 'RECONNECTING', 'NOT CONFIRMED'),
+                ('State: Disconnecting', 'DISCONNECTING', 'NOT CONFIRMED'),
+                ('State: Error: tunnel failed', 'ERROR', 'UNKNOWN'),
+                ('State: Offline', 'OFFLINE', 'NONE (offline)'),
+                ('State: Connected', 'CONNECTED', 'UNKNOWN'),
+                ('State: Connected futuristic to 192.0.2.1', 'CONNECTED', 'UNKNOWN'),
+                ('Unavailable — last readings may be stale\nState: Connected wg', 'UNAVAILABLE', 'UNKNOWN'),
+                ('State: Connectedness unknown', 'UNAVAILABLE', 'UNKNOWN'),
+                ('', 'UNAVAILABLE', 'UNKNOWN')):
+            with self.subTest(status=status):
+                self.data.update(status=status, tunnel='Two-hop: off')
+                rows = vpn.dashboard(self.data, 43, [], style='framed')
+                self.assertTrue(rows[1][0].startswith(state + ' · '))
+                self.assertNotIn('MIXNET', rows[1][0])
+                text = '\n'.join(line for line, _ in rows)
+                self.assertIn('ACTIVE TUNNEL MODE  ' + active, text)
+                self.assertIn('SELECTED MODE   MIXNET', text)
+
+    def test_framed_live_route_and_gateway_configuration_are_distinct(self):
+        self.data.update(status='State: Connected wg to 192.0.2.1 [Norway] → 198.51.100.1 [Sweden]',
+                         gateway='Entry point: Auto\nExit point: Switzerland',
+                         tunnel='Two-hop: off\nIPv6: on')
+        for columns in (48, 60):
+            screen = Screen(36, columns)
+            _, width = layout(columns)
+            rows = vpn.dashboard(self.data, width, [('12:00', 'Connected')], style='framed')
+            text = '\n'.join(line for line, _ in rows)
+            route, configuration = text.split('NEXT CONNECTION / CONFIGURATION')
+            self.assertIn('192.0.2.1', route)
+            self.assertIn('Norway', route)
+            self.assertIn('198.51.100.1', route)
+            self.assertNotIn('Switzerland', route)
+            self.assertIn('GATEWAY CONFIGURATION', configuration)
+            self.assertIn('Switzerland', configuration)
+            with patch.object(vpn, 'read_layout_style', return_value='framed'):
+                vpn.draw_frame(screen, rows, vpn.footer_rows(width, style='framed'), self.attributes, 999)
+            visible = '\n'.join(call[2] for call in screen.calls)
+            self.assertIn('CONNECTED', visible)
+            self.assertIn('q close', visible)
+            self.assertIn('Closing keeps VPN running', visible)
+
+    def test_framed_cards_preserve_wrapped_fields_and_rectangular_edges(self):
+        value = 'Gateway in Norway with a very long descriptive country and location name'
+        self.data.update(gateway='Entry point: ' + value,
+                         message='Settings updated',
+                         service={'ActiveState': 'active', 'SubState': 'running',
+                                  'UnitFileState': 'enabled'})
+        for width in (23, 43, 55):
+            rows = vpn.dashboard(self.data, width, [('12:00', 'Connected')],
+                                 detailed=True, style='framed')
+            cards, current = [], None
+            for line, role in rows[4:]:
+                if line.startswith('┌'):
+                    current = []
+                elif line.startswith('└'):
+                    cards.append(current)
+                    current = None
+                elif current is not None:
+                    self.assertTrue(line.startswith('│ ') and line.endswith(' │'))
+                    self.assertTrue(role.startswith('card:'))
+                    current.append(line[2:-2].rstrip())
+                if line:
+                    self.assertEqual(cell_width(line), width)
+            self.assertEqual(len(cards), 6)
+            configuration = ' '.join(' '.join(cards[1]).split())
+            self.assertIn(value, configuration)
+            self.assertIn('SELECTED MODE MIXNET', configuration)
+            for columns in (12, 48):
+                screen = Screen(8, columns)
+                with patch.object(vpn, 'read_layout_style', return_value='framed'):
+                    vpn.draw_frame(screen, rows, vpn.footer_rows(max(1, columns - 5)),
+                                   self.attributes, 999)
+
+    def test_framed_dashboard_retains_all_action_hints_and_pinned_footer(self):
+        screen = Screen(30, 60)
+        _, width = layout(screen.columns)
+        rows = vpn.dashboard(self.data, width, []) + [(f'body {i}', 7) for i in range(40)]
+        footer = vpn.footer_rows(width, style='framed')
+        frames = []
+        with patch.object(vpn, 'read_layout_style', return_value='framed'):
+            for offset in (0, 8):
+                vpn.draw_frame(screen, rows, footer, self.attributes, offset)
+                frames.append(list(screen.calls))
+        text = '\n'.join(call[2] for call in frames[0])
+        for hint in ('c connect', 'd disconnect', 'm mode', 's settings', 'r refresh',
+                     'i details', 'b setup', 'o app', 'q close', 'Closing keeps VPN running'):
+            self.assertIn(hint, text)
+        pinned = lambda calls: [call for call in calls if call[0] < 4 or call[0] >= 30 - len(footer) - 3]
+        self.assertEqual(pinned(frames[0]), pinned(frames[1]))
 
     def test_dashboard_status_groups_wrap_together_without_inline_shortcuts(self):
         self.data['service'] = {'ActiveState': 'active', 'SubState': 'running',
@@ -103,6 +223,20 @@ class LayoutTests(unittest.TestCase):
         self.assertEqual([call.args[0] for call in style.call_args_list], [first, changed])
         self.assertEqual([call.args for call in screen.bkgd.call_args_list], [(' ', 10), (' ', 20)])
         backend.assert_not_called()
+
+    def test_framed_footer_hints_fit_inside_the_inset_outline(self):
+        for columns in (48, 60):
+            _, width = layout(columns)
+            footer = vpn.footer_rows(width, style='framed')
+            self.assertTrue(all(cell_width(line) <= width - 4 for line in footer))
+            screen = Screen(36, columns)
+            rows = vpn.dashboard(self.data, width, [], style='framed')
+            with patch.object(vpn, 'read_layout_style', return_value='framed'):
+                vpn.draw_frame(screen, rows, footer, self.attributes, 999)
+            visible = '\n'.join(call[2] for call in screen.calls)
+            for hint in ('c connect', 'd disconnect', 'm mode', 's settings',
+                         'r refresh', 'i details', 'b setup', 'o app', 'q close'):
+                self.assertIn(hint, visible)
 
     def test_sidebar_footer_keeps_all_dashboard_actions_and_tunnel_hint(self):
         _, width = layout(48)

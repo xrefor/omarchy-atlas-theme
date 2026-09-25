@@ -8,7 +8,8 @@ import threading
 import time
 import unicodedata
 
-from atlas_panel import clip, draw_panel_frame, layout, read_palette, styles, title
+from atlas_panel import (clip, draw_panel_frame, field_rows, layout, read_layout_style,
+                         read_palette, styles, title, card_rows)
 
 
 _ANSI = re.compile(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\|$)|'
@@ -35,7 +36,42 @@ def _matches(listener, query):
     return query.casefold() in ' '.join(clean(value) for value in values).casefold()
 
 
-def dashboard(snapshot, width, page=1, query=''):
+def _listener_card(listener, width, elevated):
+    """One socket card with complete, separately readable ownership fields."""
+    inner = max(0, width - 4) if width >= 12 else width
+    protocol = clean(listener.get('protocol')).upper() or '?'
+    port = clean(listener.get('port')) or '?'
+    rows = [(f'{protocol} · {port}', 'bright_foreground'), ('', 'foreground')]
+
+    def fields(items, role='secondary'):
+        rows.extend((line, role) for line in field_rows(items, inner))
+
+    fields([('BIND', clean(listener.get('address')) or
+             clean(listener.get('endpoint')) or 'UNKNOWN ADDRESS')], 'foreground')
+    fields([('SCOPE', _SCOPE.get(listener.get('scope'), 'UNKNOWN BIND'))])
+    rows.append(('', 'foreground'))
+    owners = _owners(listener)
+    if owners:
+        for owner in owners:
+            fields([('PROCESS', clean(owner.get('name')) or 'Unknown process'),
+                    ('PID', clean(owner.get('pid')) or 'unavailable')], 'foreground')
+    else:
+        fields([('', 'Process/PID unavailable' if elevated else
+                 'Process/PID restricted or unavailable')])
+    account = clean(listener.get('account'))
+    uid = listener.get('uid')
+    fields([('ACCOUNT', account or 'Unavailable')])
+    if isinstance(uid, int) and not isinstance(uid, bool):
+        fields([('UID', uid)])
+    services = list(dict.fromkeys(clean(service) for service in
+                    [listener.get('service')] + [owner.get('service') for owner in owners]
+                    if service))
+    for service in services:
+        fields([('SERVICE', service)], 'accent')
+    return card_rows(rows, width)
+
+
+def dashboard(snapshot, width, page=1, query='', *, style='classic'):
     width = max(0, min(int(width), 4096))
     snapshot = snapshot if isinstance(snapshot, dict) else {}
     query = clean(query)
@@ -55,6 +91,8 @@ def dashboard(snapshot, width, page=1, query=''):
         status = 'REFRESHING' if available else 'LOADING'
     if available and partial:
         status += ' · PARTIAL'
+    if style == 'framed' and not snapshot.get('elevated') and not snapshot.get('authenticating'):
+        status = 'USER · ' + status
     rows = [(title('ports & services', width), 'accent'),
             (f'{label} · {status}', 'secondary'),
             ('─' * width, 'muted'), ('', 'foreground')]
@@ -81,6 +119,10 @@ def dashboard(snapshot, width, page=1, query=''):
         rows.append(('Bind addresses · reachability not tested', 'muted'))
         if partial:
             rows.append(('Collection incomplete · see details below', 'yellow'))
+        if style == 'framed' and filtered:
+            if not snapshot.get('elevated') and any(not _owners(item) for item in filtered):
+                rows.extend((line, 'secondary') for line in field_rows(
+                    [('', 'a · Authenticate for restricted process details')], width))
         if not filtered:
             rows.append(('No matches in collected data.' if partial else
                          'No matching sockets.' if query else
@@ -88,6 +130,9 @@ def dashboard(snapshot, width, page=1, query=''):
                          'No listening sockets.', 'secondary'))
         for listener in filtered:
             rows.append(('', 'foreground'))
+            if style == 'framed':
+                rows.extend(_listener_card(listener, width, snapshot.get('elevated', False)))
+                continue
             endpoint = clean(listener.get('endpoint') or 'UNKNOWN ADDRESS')
             rows.append((f'{clean(listener.get("protocol")).upper()}  {endpoint}', 'bright_foreground'))
             rows.append((_SCOPE.get(listener.get('scope'), 'UNKNOWN BIND'), 'secondary'))
@@ -246,10 +291,19 @@ def _screen_loop(screen, worker, palette_path, inspect_details=None, stop_admin=
             previous_palette = palette
         _, columns = screen.getmaxyx()
         _, width = layout(columns)
+        presentation = read_layout_style()
         rows = dashboard(dict(snapshot, loading=worker.active,
                               notices=notices), width, page,
-                         draft if editing else query)
-        if editing:
+                         draft if editing else query, style=presentation)
+        if presentation == 'framed':
+            if editing:
+                footer = ['/ ' + draft + '▏', 'Enter apply · Esc cancel · Ctrl+U clear']
+            else:
+                refresh = 'r user' if snapshot.get('elevated') else 'r refresh'
+                admin = ' · a auth' if inspect_details is not None else ''
+                footer = ['1 TCP · 2 UDP · 3 All · / filter',
+                          f'↑↓{admin} · {refresh} · q close']
+        elif editing:
             footer = '/ ' + draft + '▏ · Enter apply · Esc cancel'
         else:
             refresh = 'r user' if snapshot.get('elevated') else 'r'

@@ -34,6 +34,36 @@ session exits or its originating tmux pane closes. Completed results remain
 available through the manual toggle from the originating pane after the CLI
 exits; an incomplete final observation is marked unknown.
 
+## Framed information hierarchy
+
+With **Framed** selected in ATLAS Layout, each task occupies a full rectangular
+card. The thin border sits on the same continuous background as the panel. The task
+name shares its row with the available uppercase role, aligned quietly on the
+right. Status shares the next row with elapsed time in **MM:SS**, or **H:MM:SS**
+after an hour. Status uses a distinct symbol: ● running, ▲ attention, ✖ failed and ■ completed;
+rectangular cells are reserved for plan progress. **Plan** shows a completed-step
+count with reported steps as solid cells on the right when the entire row fits.
+Complete cells are accent-colored for unfinished agents and green for completed
+agents; pending cells are neutral. Narrow cards keep the count and omit cells.
+No progress is inferred from elapsed time; absent plans and roles remain absent.
+
+The stable objective follows the metadata. A **Now ·** line displays distinct,
+bounded public activity for unfinished work. **Next ·** shows the immediate
+pending step when it has a reported name distinct from the task and activity.
+It is omitted for completed, interrupted, failed or unknown execution states.
+An unnamed pending step does not cause the panel to skip ahead.
+Press **p** in Framed layout to show or hide the named checklist in every card:
+**✓** complete, **●** in progress, **○** pending. Missing names show **Unnamed step**.
+The checklist starts collapsed, validates reported statuses and bounds the
+display to 64 plan entries. Completed cards retain role, frozen
+elapsed time, reported plan and objective; final reports
+are omitted. The existing 30-second move into **Recently completed** and **h**
+toggle remain unchanged. Uppercase header counts describe displayed tasks;
+expanding history includes those completed entries in the **DONE** count.
+Busy lists scroll beneath the pinned heading and above a two-row shortcut
+footer at normal widths. **Home/End** and **Page Up/Page Down** navigate the list. Tiny widths
+use the original compact content. **Classic** preserves its previous presentation.
+
 ## Palette and launch behavior
 
 The panel inherits the terminal font, including the normal ATLAS 9 pt setting.
@@ -89,8 +119,8 @@ Unsupported schemas, missing records and disconnections produce an unavailable
 or stale indicator. Database spawn-edge state alone is not treated as execution
 status. Remote Codex sessions are outside this adapter's scope.
 
-Only brief task descriptions, execution lifecycle labels and reported plan
-counts are displayed. Reasoning content, shell output, authentication files and
+Only brief task descriptions, execution lifecycle labels, reported plan
+counts and, in Framed layout, bounded public activity are displayed. Reasoning content, shell output, authentication files and
 tool arguments are not displayed. The observer starts no agent turns and sends
 no approvals or other commands to Codex. A lightweight observer exists only
 while its CLI process is alive, identified by PID and process start time.
@@ -98,5 +128,9 @@ while its CLI process is alive, identified by PID and process start time.
 Snapshots and locks are private to the user under `$XDG_RUNTIME_DIR/atlas-agents`
 (or `/tmp/atlas-agents-UID` when no private runtime directory exists). Snapshots
 contain the task description and bounded public activity retained by the observer.
-The panel displays the task description. The installer journals
+The panel displays the stable task description and, in Framed layout, supplied
+current public activity for unfinished tasks. The installer journals
 the command, Bash integration and palette for normal ATLAS restoration.
+
+Card headings explicitly identify the entry as **Agent · Task name**. Status
+symbols distinguish execution state from the unchanged rectangular plan cells.

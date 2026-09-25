@@ -65,6 +65,21 @@ The live tunnel reading is separate from the selected mode and timestamped
 state history. Settings are read back before success is reported. Changing
 mode or tunnel settings can reconnect an active tunnel.
 
+The **Framed** layout pins the reported connection state and short active mode
+in its header, then leads with **ACTIVE TUNNEL MODE**. It identifies dVPN or
+Mixnet only when Nym's connected status explicitly reports `wg` or `mix`.
+A disconnected tunnel shows no active mode;
+transitions show **NOT CONFIRMED**, and incomplete or unfamiliar readings show
+**UNKNOWN**. It never substitutes the selected setting for the active mode.
+The dashboard groups connection and live route, next-connection settings, service,
+notices, and history into outlined sections with horizontal padding, all on the
+same continuous background. Fields
+use aligned continuations inside each card when the pane narrows. Optional raw
+details have their own card. **NEXT CONNECTION / CONFIGURATION** separates
+the selected mode and gateway policy from that live reading; these settings
+can differ during reconnection. Existing settings pages and controls are
+unchanged, as is the **Classic** presentation.
+
 - Common: IPv6.
 - dVPN: circumvention transports; advanced Netstack (testing only, normally off).
 - Mixnet advanced: loop-cover interval, per-mixnode delay, message-send interval,
@@ -80,8 +95,8 @@ delays to Auto. Extreme values can substantially affect latency and bandwidth.
 The panel uses the generated `~/.config/atlas/vpn-palette.json`, with the same
 semantic colors and ATLAS fallback as Agents. `atlas-theme sync` updates both
 palettes along with other application colors; open panels reload them. Terminal
-color slots are not redefined. Both panels share a background, title strip,
-content inset, separators and pinned keyboard-hint footer. Nym's controls wrap
+color slots are not redefined. Framed panels share a continuous background, connected header and perimeter,
+content inset, outlined sections and neutral pinned keyboard-hint footer. Nym's controls wrap
 to fit the pane, and its title remains visible while the content scrolls.
 Status fields move as complete label/value groups when resized; long individual
 values use aligned continuation lines. Dashboard shortcuts appear in the footer

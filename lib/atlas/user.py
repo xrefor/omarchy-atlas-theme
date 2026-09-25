@@ -209,7 +209,7 @@ end)''','--'))
             put(path+'/chrome/atlas-content.css',template('zen-content.css'))
         put('.config/atlas/palette.bash',shell_palette(colors))
         panel_palette=json.dumps({key: colors[key] for key in
-            ('background','lighter_background','foreground','dark_foreground','bright_foreground',
+            ('background','dark_background','lighter_background','foreground','dark_foreground','bright_foreground',
              'secondary','muted','accent','green','yellow','red')})+'\n'
         for panel in ('vpn','agents','projects','ports'):
             put(f'.config/atlas/{panel}-palette.json',panel_palette)
@@ -225,6 +225,9 @@ end)''','--'))
             source(root/'LICENSES/mount.yazi-MIT.txt','.config/yazi/plugins/mount.yazi/LICENSE')
             source(app/'atlas-enter.lua','.config/yazi/plugins/atlas-enter.yazi/main.lua')
             source(app/'atlas-preview.lua','.config/yazi/plugins/atlas-preview.yazi/main.lua')
+            source(app/'atlas-frame.lua','.config/yazi/plugins/atlas-frame.yazi/main.lua')
+            put('.config/yazi/init.lua', config.block(get('.config/yazi/init.lua'),
+                'FRAMED FILES', 'require("atlas-frame"):setup()', '--'))
             merge_toml('.config/yazi/yazi.toml',{'mgr':{'ratio':[1,4,3],'sort_by':'natural','sort_dir_first':True,'show_hidden':False,'show_symlink':True,'linemode':'size'},'preview':{'max_width':800,'max_height':800,'image_filter':'triangle','image_quality':75}})
             keymap=tomllib.loads(get('.config/yazi/keymap.toml'))
             keys=keymap.setdefault('mgr',{}).setdefault('prepend_keymap',[])

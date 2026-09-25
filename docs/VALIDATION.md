@@ -719,3 +719,104 @@ media and recovery logic. It does not validate physical firmware rendering,
 GPU variation, fingerprint readers, encrypted Plymouth prompts, real Nym account
 connectivity or every optional application version. The archive is suitable for
 sharing as **1.0.0-rc7** with those limitations stated.
+
+## Reversible terminal framing — 2026-09-25
+
+The complete checker passed 434 Python tests plus model, Neovim, plugin manifest,
+root-template and native VPN checks. QML lint was unavailable; this change does
+not modify QML. The final tmux header revision separately passed three native
+PTY tests verifying actual horizontal-rule output, focus arrows, unchanged pane
+widths, one additional status row, repeated reloads and exact Classic restoration
+of default and custom status settings. Native framed curses checks cover plan
+cells, history, narrow resizing, scrolling to the final card border and closing.
+The header repetition format was verified with the installed tmux 3.7c.
+
+Layout settings tests cover persistent choice, updates/sync, manual-edit
+protection, rollback on refresh failure and original-file restoration. Panel
+backends, authentication and pane lifecycle logic are unchanged.
+
+## Panel information hierarchy — 2026-09-25
+
+The complete checker passed 456 Python tests plus model, Neovim, plugin manifest,
+root-template and native VPN checks. Native curses/tmux fixtures cover Agents,
+Git and Ports at normal/narrow sizes, history/pages, final-row scrolling and
+closing. Nym's fake-backend control lifecycle now runs in both Classic and Framed.
+The fixtures isolate presentation preferences from the current desktop.
+
+Representative simulated-data measurements: eight Agents entries (four running,
+four completed) decreased from 92 to 56 rows at 55/43 content columns; the Git
+fixture's first changed file moved from row 24 to row 13 at 60/48 terminal columns;
+the compact 12-listener Ports fixture uses at most 75% of Classic's rows while
+retaining addresses, owner/PID/account and service information. These are layout
+measurements, not live workload or network measurements. VPN tests explicitly
+cover differing active and selected modes, transitions and unknown readings.
+Classic content, controls and all backends remain unchanged. QML lint is still
+unavailable; no QML files changed.
+
+## Reference-style panel cards and Files frames — 2026-09-25
+
+Agents, Git Status, Ports and NymVPN now use full rectangular card surfaces,
+including neutral borders and padding. Agents retains separate title, status,
+role, elapsed-time, plan and objective rows for completed and active work.
+Renderer coverage checks complete surface attributes, narrow layouts, Unicode,
+scroll limits, history and pinned controls. Native tmux fixtures exercise the
+actual curses output. A live sample-data preview of all four installed panels
+and the real conversation's Agents panel were inspected on this desktop.
+
+Files adds native Parent, Files and Preview frames through Yazi's Tab.build
+extension point. Mocked geometry checks and installed Yazi 26.9.1 tests cover
+normal/expanded/restored proportions, small-window fallback, help and fresh
+Classic startup. Installer tests preserve preexisting init.lua, avoid duplicate
+setup, retain sync behavior and restore the original file. The installed Files
+window was also visually inspected. Spotify was not changed. No live VPN
+connection, authentication flow or network collection behavior was changed.
+
+The final complete checker passed 459 Python tests, the Lua Files-frame checks,
+JavaScript models, native Neovim, plugin manifests and disposable tmux checks.
+QML lint was unavailable; no QML changed. Installed renderer/plugin bytes match
+the validated working tree. Live updates used the existing restoration journal.
+
+## Whole-panel reference design review — 2026-09-25
+
+A subsequent comparison against the approved reference replaced the separate
+card tiles and shaded rails with a continuous panel surface and connected outer
+outline. The header places status beside the title when it fits, cards use
+compact adjacent fields, status and plan cells are solid, and inset footer
+controls wrap without losing actions. Completed plan cells use green. Font size
+and sidebar width were not changed. The full four-panel sample preview and the
+installed live Agents sidebar were inspected after integration.
+
+The complete checker passed 469 Python tests and all available native/model
+checks; QML lint remains unavailable. The final completed-plan color adjustment
+also passed all 33 Agents UI tests. The runtime update used the restoration
+journal and the live Agents panel was reopened with its real history visible.
+
+## Agent metadata and named plans — 2026-09-25
+
+Framed agent cards pair title/role and status/elapsed time, and keep reported plan
+counts beside step cells when space permits. Next uses the first pending step's
+actual name and is omitted for terminal states, missing names and duplicates.
+The p key expands/collapses bounded named checklists. Unicode-aware paired spans
+keep right-hand metadata quiet and unfinished cells neutral on the shared surface.
+
+The complete checker passed 476 Python tests plus available model/native checks;
+QML lint remains unavailable. Native tmux coverage includes p toggling, history,
+resize and closing. Installed demo output was checked with real terminal captures
+using clearly labeled sample states and meaningful example step names. No observer
+or backend collection logic changed. The two installed renderer files were updated
+through the restoration journal; the demo's q key returns to real observations.
+
+## Definitive panel repository sync — 2026-09-26
+
+The shared renderer, four panel UIs, Files frame plugin, tmux/Yazi templates and
+layout/settings/installer modules matched the installed version byte-for-byte.
+All 17 synchronization-conflict copies were historical Git blobs with no unique
+changes and were preserved outside the repository.
+
+The complete checker passed 477 Python tests with no skips, plus the available
+model, Lua, Neovim, manifest, native tmux/VPN and root-template checks. QML lint
+was unavailable. Native tests ran outside the restricted command sandbox to
+allow disposable tmux sockets. Release checks passed deterministic packaging,
+payload checksums, the extracted showcase build and installation, repeat/sync/
+check stability, and restoration in a temporary home. No live desktop changes
+were needed for this repository sync.

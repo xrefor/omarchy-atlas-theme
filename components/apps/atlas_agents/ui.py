@@ -8,6 +8,7 @@ import unicodedata
 from atlas_panel import (
     DEFAULT_PALETTE, cell_width, clip, color_index as _color_index,
     draw_bar, layout, put as _put, read_palette, styles as _styles, title,
+    card_rows, field_rows, read_layout_style, draw_panel_frame,
 )
 
 
@@ -70,13 +71,18 @@ def _timestamp(value, fallback):
         return fallback
 
 
-def elapsed(agent, now):
+def elapsed(agent, now, *, compact=False):
     start = _timestamp(agent.get('started_at'), now)
     end = now
     if agent.get('status') in ('completed', 'interrupted', 'error'):
         end = _timestamp(agent.get('finished_at'),
                          _timestamp(agent.get('updated_at'), start))
     seconds = max(0, int(min(now, end) - start))
+    if compact:
+        minutes, seconds = divmod(seconds, 60)
+        if minutes >= 60:
+            return f'{minutes // 60}:{minutes % 60:02d}:{seconds:02d}'
+        return f'{minutes:02d}:{seconds:02d}'
     if seconds >= 3600:
         return f'{seconds // 3600}h {(seconds % 3600) // 60:02d}m'
     if seconds >= 60:
@@ -114,7 +120,80 @@ def _agent_rows(agent, width, now):
     return lines
 
 
-def dashboard(snapshot, width, now=None, *, show_completed=False):
+def _plan_steps(plan):
+    if not isinstance(plan, list):
+        return []
+    aliases = {'pending': 'pending', 'inProgress': 'in_progress',
+               'in_progress': 'in_progress', 'completed': 'completed'}
+    return [{'status': aliases[item['status']],
+             'step': clean(item.get('step')) if isinstance(item.get('step'), str) else ''}
+            for item in plan[:64] if isinstance(item, dict)
+            and isinstance(item.get('status'), str) and item['status'] in aliases]
+
+
+def _split_rows(left, right, width, left_role, right_role):
+    right_width = cell_width(right)
+    if right and cell_width(left) + right_width + 2 <= width:
+        return [(left + ' ' * (width - cell_width(left) - right_width) + right,
+                 f'split:{left_role}:{right_role}:{right_width}')]
+    rows = [(line, left_role) for line in _wrapped(left, width, 2)]
+    if right:
+        rows.extend((line, right_role) for line in _wrapped(right, width, 2))
+    return rows
+
+
+def _framed_agent_rows(agent, width, now, *, show_plan=False):
+    if width < 16:
+        return _agent_rows(agent, width, now)
+    inner = width - 4
+    symbol, label, role = STATUS.get(agent.get('status'), STATUS['unknown'])
+    symbol = {'waiting': '▲', 'error': '✖', 'completed': '■'}.get(agent.get('status'), symbol)
+    name = re.sub(r'[_-]+', ' ', clean(agent.get('name') or agent.get('id') or 'Agent'))
+    name = name[:1].upper() + name[1:]
+    completed = agent.get('status') == 'completed'
+    valid = _plan_steps(agent.get('plan'))
+    agent_role = clean(agent.get('role')).upper()
+    heading = 'Agent' if name.casefold() == 'agent' else 'Agent · ' + name
+    rows = _split_rows(heading, agent_role, inner, 'bright_foreground', 'secondary')
+    rows.extend(_split_rows(symbol + ' ' + label, elapsed(agent, now, compact=True), inner,
+                            role, 'secondary'))
+    if valid:
+        done = sum(item['status'] == 'completed' for item in valid)
+        count = f'Plan  {done} of {len(valid)} steps complete'
+        cells = ' '.join('█' if item['status'] == 'completed' else '□' for item in valid)
+        if cell_width(count) + cell_width(cells) + 2 <= inner:
+            rows.extend(_split_rows(count, cells, inner, 'secondary',
+                                    'plan_green' if completed else 'plan_accent'))
+        else:
+            rows.extend((line, 'secondary') for line in _wrapped(count, inner, 2))
+    if isinstance(agent.get('plan'), list) and len(agent['plan']) > 64:
+        rows.extend((line, 'secondary') for line in _wrapped('Plan limited to first 64 entries', inner, 2))
+    task = clean(agent.get('task'))
+    normalized = lambda text: text.casefold().rstrip('.')
+    if task and normalized(task) != normalized(name):
+        rows.extend((line, 'foreground') for line in _wrapped(task, inner, 2))
+    activity = clean(agent.get('activity'))
+    if not completed and activity and normalized(activity) not in (
+            normalized(task), normalized(name), label.casefold()):
+        rows.extend((line, 'secondary') for line in _wrapped('Now · ' + activity, inner, 2))
+    if agent.get('status') in ('running', 'starting', 'waiting', 'idle'):
+        next_step = next((item['step'] for item in valid
+                          if item['status'] == 'pending'), '')
+        if next_step and normalized(next_step) not in (
+                normalized(task), normalized(activity), normalized(name)):
+            rows.extend((line, 'secondary') for line in _wrapped('Next · ' + next_step, inner, 2))
+    if show_plan:
+        symbols = {'completed': ('✓', 'green'), 'in_progress': ('●', 'accent'),
+                   'pending': ('○', 'secondary')}
+        for item in valid:
+            symbol, step_role = symbols[item['status']]
+            wrapped = _wrapped(item['step'] or 'Unnamed step', inner - 2, 2)
+            rows.extend(((symbol if index == 0 else ' ') + ' ' + line, step_role)
+                        for index, line in enumerate(wrapped))
+    return card_rows(rows, width) + [('', 'foreground')]
+
+
+def dashboard(snapshot, width, now=None, *, show_completed=False, show_plan=False, style="classic"):
     """Return bounded (text, semantic color role) rows; the first four are fixed."""
     now = time.time() if now is None else now
     width = max(0, min(int(width), 4096))
@@ -139,8 +218,15 @@ def dashboard(snapshot, width, now=None, *, show_completed=False):
     summary = ' · '.join(f'{counts[key]} {key}' for key in
                          ('running', 'waiting', 'completed', 'interrupted', 'error', 'unknown')
                          if counts.get(key))
+    if style == 'framed':
+        if show_completed and history:
+            counts['completed'] = counts.get('completed', 0) + len(history)
+        summary = ' / '.join(f'{counts[key]} ' + ('DONE' if key == 'completed' else key.upper())
+                             for key in ('running', 'waiting', 'completed', 'interrupted', 'error', 'unknown')
+                             if counts.get(key))
     lines = [(title('agents', width), 'accent'),
-             (summary or ('No active agents' if history else 'No agents yet'), 'secondary'),
+             (summary or (('NO ACTIVE AGENTS' if history else 'NO AGENTS YET') if style == 'framed'
+                          else ('No active agents' if history else 'No agents yet')), 'secondary'),
              ('─' * width, 'muted'), ('', 'foreground')]
     if snapshot.get('error'):
         lines.extend((line, 'yellow') for line in _wrapped(snapshot['error'], width, 2))
@@ -155,17 +241,33 @@ def dashboard(snapshot, width, now=None, *, show_completed=False):
         lines.extend((line, 'secondary') for line in
                      _wrapped('Task status and reported plan steps update automatically.', width, 3))
     for agent in agents:
-        lines.extend(_agent_rows(agent, width, now))
+        lines.extend(_framed_agent_rows(agent, width, now, show_plan=show_plan) if style == 'framed'
+                     else _agent_rows(agent, width, now))
     if history:
         symbol, action = ('▾', 'hide') if show_completed else ('▸', 'show')
         lines.append((f'{symbol} Recently completed ({len(history)}) · h {action}', 'secondary'))
         if show_completed:
             lines.append(('', 'foreground'))
             for agent in history:
-                lines.extend(_agent_rows(agent, width, now))
+                lines.extend(_framed_agent_rows(agent, width, now, show_plan=show_plan) if style == 'framed'
+                     else _agent_rows(agent, width, now))
     if len(raw_agents) > _MAX_AGENTS:
         lines.append((f'{len(raw_agents) - _MAX_AGENTS} more agents omitted', 'secondary'))
     return [(clip(text, width), role) for text, role in lines]
+
+
+def _footer(width, presentation):
+    if presentation == 'framed' and width >= 34:
+        return ['↑↓/jk scroll · h history', 'p plan · r refresh · q close']
+    if presentation == 'framed':
+        width = max(0, width - 4)
+        return ('h history · p plan · q' if width >= 23 else
+                'p plan · q close' if width >= 16 else 'q close')
+    return ('↑↓/jk scroll · h history · r refresh · q close' if width >= 44 else
+            '↑↓ scroll · h history · r refresh · q close' if width >= 41 else
+            '↑↓ scroll · h history · r · q close' if width >= 34 else
+            '↑↓ · h history · r · q' if width >= 23 else
+            'h history · q close' if width >= 19 else 'q close')
 
 
 def _screen(screen, get_snapshot, palette_path, on_refresh):
@@ -177,6 +279,7 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
     screen.timeout(500)
     offset = 0
     show_completed = False
+    show_plan = False
     previous_palette = None
     styles = {}
     snapshot = {'agents': [], 'connected': False}
@@ -197,29 +300,14 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
             previous_palette = palette
         height, columns = screen.getmaxyx()
         left, width = layout(columns)
-        rows = dashboard(snapshot, width, now, show_completed=show_completed)
-        fixed = min(4, max(0, height - 1))
-        available = max(0, height - fixed - 1)
+        presentation = read_layout_style()
+        rows = dashboard(snapshot, width, now, show_completed=show_completed,
+                         show_plan=show_plan, style=presentation)
         body = rows[4:]
-        offset = min(offset, max(0, len(body) - available))
-        screen.erase()
-        for row, (line, role) in enumerate(rows[:fixed]):
-            if row == 0:
-                draw_bar(screen, row, line, styles['header'], columns,
-                         prefix_style=styles['header_prefix'])
-            else:
-                _put(screen, row, line, styles[role], columns, left=left)
-        for row, (line, role) in enumerate(body[offset:offset + available], fixed):
-            _put(screen, row, line, styles[role], columns, left=left)
-        if height:
-            footer = ('↑↓/jk scroll · h history · r refresh · q close' if width >= 44 else
-                      '↑↓ scroll · h history · r refresh · q close' if width >= 41 else
-                      '↑↓ scroll · h history · r · q close' if width >= 34 else
-                      '↑↓ · h history · r · q' if width >= 23 else
-                      'h history · q close' if width >= 19 else 'q close')
-            if len(body) > available and width >= 48:
-                footer += f'  {offset + 1}/{max(1, len(body) - available + 1)}'
-            draw_bar(screen, height - 1, footer, styles['footer'], columns)
+        footer = _footer(width, presentation)
+        offset, available, body_length, width = draw_panel_frame(
+            screen, rows, styles, offset, footer, style=presentation,
+            dimensions=(height, columns))
         screen.refresh()
         key = screen.getch()
         if key in (ord('q'), ord('Q'), 27):
@@ -238,6 +326,9 @@ def _screen(screen, get_snapshot, palette_path, on_refresh):
             offset = max(0, len(body) - available)
         elif key in (ord('h'), ord('H')):
             show_completed = not show_completed
+            offset = 0
+        elif key in (ord('p'), ord('P')) and presentation == 'framed':
+            show_plan = not show_plan
             offset = 0
         elif key in (ord('r'), ord('R')):
             if on_refresh is not None:

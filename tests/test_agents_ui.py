@@ -17,11 +17,246 @@ spec.loader.exec_module(ui)
 
 
 class AgentsUiTests(unittest.TestCase):
+    def setUp(self):
+        preference = patch.object(ui, "read_layout_style", return_value="classic")
+        preference.start()
+        self.addCleanup(preference.stop)
+
     def snapshot(self, **agent):
         return {'connected': True, 'agents': [dict(
             id='agent-id', name='palette-review', status='running', started_at=100,
             updated_at=180, task='Review the active theme palette',
             activity='Checking the active theme palette', **agent)]}
+
+    def test_framed_status_symbols_are_distinct_from_plan_cells(self):
+        expected = {'starting': '◌', 'running': '●', 'waiting': '▲',
+                    'idle': '○', 'completed': '■', 'interrupted': '−',
+                    'error': '✖', 'unknown': '?'}
+        for status, symbol in expected.items():
+            agent = {'name': 'palette_review', 'task': 'Palette review', 'status': status,
+                     'plan': [{'status': 'completed'}, {'status': 'pending'}]}
+            rows = ui._framed_agent_rows(agent, 55, 185)
+            text = '\n'.join(line for line, _ in rows)
+            self.assertIn('Agent · Palette review', text)
+            self.assertIn(symbol + ' ' + ui.STATUS[status][1], text)
+            self.assertIn('█ □', text)
+            self.assertEqual(text.count('Palette review'), 1)
+
+    def test_framed_cards_use_only_reported_steps_and_keep_history(self):
+        snapshot = self.snapshot(plan=[{'status': 'completed'}, {'status': 'in_progress'}, None])
+        rows = ui.dashboard(snapshot, 55, now=185, style='framed')
+        text = '\n'.join(line for line, _ in rows)
+        self.assertIn('█ □', text)
+        self.assertIn('1 of 2 steps complete', text)
+        self.assertIn('01:25', text)
+        self.assertTrue(any(line.startswith('┌') and role == 'card:dark_foreground' for line, role in rows))
+        snapshot['agents'][0].update(status='completed', finished_at=185)
+        self.assertNotIn('Palette review', '\n'.join(line for line, _ in
+            ui.dashboard(snapshot, 55, now=300, style='framed')))
+        restored = ui.dashboard(snapshot, 55, now=300, style='framed', show_completed=True)
+        self.assertIn('Palette review', '\n'.join(line for line, _ in restored))
+        self.assertTrue(any('COMPLETED' in line and role.startswith('card:split:green:') for line, role in restored))
+        self.assertTrue(any('█ □' in line and ':plan_green:' in role for line, role in restored))
+        self.assertTrue(any('█ □' in line and ':plan_accent:' in role for line, role in rows))
+
+    def test_framed_card_uses_adjacent_metadata_rows_without_invented_fields(self):
+        agent = self.snapshot(role='worker', plan=[{'status': 'completed'}, {'status': 'pending'}])['agents'][0]
+        rows = ui._framed_agent_rows(agent, 55, 185)
+        content = [' '.join(line[2:-2].split()) for line, _ in rows if line.startswith('│')]
+        self.assertEqual(content[:4], ['Agent · Palette review WORKER', '● RUNNING 01:25',
+            'Plan 1 of 2 steps complete █ □', 'Review the active theme palette'])
+        self.assertNotIn('', content)
+        self.assertEqual(rows[-1], ('', 'foreground'))
+        minimal = ui._framed_agent_rows({'name': 'review', 'status': 'running'}, 55, 185)
+        text = '\n'.join(line for line, _ in minimal)
+        self.assertNotIn('Plan', text)
+        self.assertNotIn('worker', text)
+        self.assertNotIn('Agent task', text)
+
+    def test_framed_summary_counts_only_displayed_history(self):
+        snapshot = {'connected': True, 'agents': [
+            {'name': 'active', 'status': 'running'},
+            {'name': 'recent', 'status': 'completed', 'finished_at': 190},
+            {'name': 'archived', 'status': 'completed', 'finished_at': 150}]}
+        self.assertEqual(ui.dashboard(snapshot, 55, now=200, style='framed')[1][0],
+                         '1 RUNNING / 1 DONE')
+        self.assertEqual(ui.dashboard(snapshot, 55, now=200, style='framed', show_completed=True)[1][0],
+                         '1 RUNNING / 2 DONE')
+        self.assertEqual(ui.dashboard(snapshot, 55, now=200, show_completed=True)[1][0],
+                         '1 running · 1 completed')
+
+    def test_framed_footer_uses_two_rows_and_keeps_narrow_exit(self):
+        for width in (34, 43, 55):
+            footer = ui._footer(width, 'framed')
+            self.assertEqual(len(footer), 2)
+            self.assertTrue(all(ui.cell_width(line) <= width for line in footer))
+            self.assertIn('h history', footer[0])
+            self.assertIn('q close', footer[1])
+        self.assertEqual(ui._footer(14, 'framed'), 'q close')
+        self.assertIsInstance(ui._footer(55, 'classic'), str)
+
+    def test_framed_elapsed_clock_retains_terminal_state_freezing(self):
+        agent = {'status': 'running', 'started_at': 100}
+        self.assertEqual(ui.elapsed(agent, 105, compact=True), '00:05')
+        self.assertEqual(ui.elapsed(agent, 3765, compact=True), '1:01:05')
+        self.assertEqual(ui.elapsed(agent, 3765), '1h 01m')
+        agent.update(status='completed', finished_at=185)
+        self.assertEqual(ui.elapsed(agent, 9000, compact=True), '01:25')
+
+    def test_framed_next_uses_immediate_pending_step_only_for_live_tasks(self):
+        agent = self.snapshot(plan=[{'status': 'inProgress', 'step': 'Current work'},
+                                    {'status': 'pending', 'step': 'Run checks'},
+                                    {'status': 'pending', 'step': 'Publish results'}])['agents'][0]
+        def text():
+            return '\n'.join(line for line, _ in ui._framed_agent_rows(agent, 55, 185))
+        self.assertIn('Next · Run checks', text())
+        self.assertNotIn('Publish results', text())
+        for status in ('completed', 'interrupted', 'error', 'unknown'):
+            agent['status'] = status
+            self.assertNotIn('Next ·', text())
+        agent['status'] = 'waiting'
+        agent['plan'][1]['step'] = ''
+        self.assertNotIn('Next ·', text(), 'do not skip an unnamed immediate next step')
+        for duplicate in (agent['task'], agent['activity'], 'Palette review.'):
+            agent['plan'][1]['step'] = duplicate
+            self.assertNotIn('Next ·', text())
+
+    def test_framed_checklist_normalizes_valid_states_and_sanitizes_names(self):
+        agent = self.snapshot(plan=[None, {}, {'status': 'invented', 'step': 'No'},
+            {'status': [], 'step': 'Bad state'}, {'status': 'completed', 'step': 'Read sources'},
+            {'status': 'inProgress', 'step': '\x1b[31mCheck\u202e colors'},
+            {'status': 'in_progress', 'step': 'Check colors'}, {'status': 'pending'}])['agents'][0]
+        collapsed = '\n'.join(line for line, _ in ui._framed_agent_rows(agent, 55, 185))
+        detailed = '\n'.join(line for line, _ in ui._framed_agent_rows(agent, 55, 185, show_plan=True))
+        self.assertIn('1 of 4 steps complete', collapsed)
+        self.assertNotIn('Read sources', collapsed)
+        self.assertIn('✓ Read sources', detailed)
+        self.assertEqual(detailed.count('● Check colors'), 2, 'separate reported steps remain separate')
+        self.assertIn('○ Unnamed step', detailed)
+        self.assertNotIn('\x1b', detailed)
+        self.assertNotIn('\u202e', detailed)
+        self.assertNotIn('Bad state', detailed)
+
+    def test_framed_split_and_checklist_fit_unicode_and_narrow_widths(self):
+        agent = self.snapshot(role='界面 e\u0301 reviewer', plan=[
+            {'status': 'pending', 'step': '界面 e\u0301 ' * 50}])['agents'][0]
+        for width in (16, 20, 24, 43, 55):
+            rows = ui._framed_agent_rows(agent, width, 185, show_plan=True)
+            self.assertTrue(all(ui.cell_width(line) <= width for line, _ in rows))
+        row, role = ui._split_rows('Task 界', 'REVIEW e\u0301', 30, 'bright_foreground', 'secondary')[0]
+        self.assertEqual(ui.cell_width(row), 30)
+        self.assertTrue(row.endswith('REVIEW e\u0301'))
+        self.assertEqual(role, 'split:bright_foreground:secondary:8')
+        rows = ui._split_rows('Long task title', 'WORKER', 12, 'bright_foreground', 'secondary')
+        self.assertGreater(len(rows), 1)
+        self.assertTrue(all(ui.cell_width(line) <= 12 for line, _ in rows))
+
+    def test_plan_key_toggles_all_framed_cards_without_refreshing_backend(self):
+        screen = Mock()
+        screen.getmaxyx.return_value = (30, 60)
+        screen.getch.side_effect = [ord('p'), ord('P'), ord('q')]
+        snapshot = self.snapshot(plan=[{'status': 'pending', 'step': 'Run checks'}])
+        on_refresh = Mock()
+        with patch.object(ui.curses, 'curs_set'), \
+             patch.object(ui, 'read_layout_style', return_value='framed'), \
+             patch.object(ui, 'read_palette', return_value=ui.DEFAULT_PALETTE), \
+             patch.object(ui, '_styles', return_value=dict.fromkeys(
+                 [*ui.DEFAULT_PALETTE, 'header', 'header_prefix', 'footer'], 0)), \
+             patch.object(ui, 'dashboard', wraps=ui.dashboard) as dashboard:
+            ui._screen(screen, Mock(return_value=snapshot), None, on_refresh)
+        self.assertEqual([call.kwargs['show_plan'] for call in dashboard.call_args_list],
+                         [False, True, False])
+        on_refresh.assert_not_called()
+
+    def test_framed_cards_have_no_fictional_progress_and_fit_narrow_widths(self):
+        for plan in (None, [], [None], [{'status': 'pending'}] * 100):
+            snapshot = self.snapshot(plan=plan)
+            snapshot['agents'][0]['name'] = '界面 e\u0301 ' * 30
+            for width in (0, 1, 8, 16, 24, 43, 55):
+                rows = ui.dashboard(snapshot, width, now=200, style='framed')
+                self.assertTrue(all(ui.cell_width(line) <= width for line, _ in rows))
+                text = '\n'.join(line for line, _ in rows)
+                self.assertNotIn('%', text)
+                if not plan or plan == [None]:
+                    self.assertNotIn('Steps', text)
+                    self.assertNotIn('□', text)
+                elif width >= 24:
+                    self.assertIn('0 of 64', text)
+                    self.assertIn('complete', text)
+                    self.assertNotIn('□', text)
+
+    def test_framed_hierarchy_displays_only_supplied_public_activity(self):
+        snapshot = self.snapshot(role='worker')
+        rows = ui.dashboard(snapshot, 55, now=185, style='framed')
+        text = '\n'.join(line for line, _ in rows)
+        self.assertIn('Palette review', text)
+        self.assertIn('Now · Checking the active theme palette', text)
+        self.assertIn('WORKER', text)
+        self.assertIn('01:25', text)
+        self.assertLess(text.index('RUNNING'), text.index('Now ·'))
+        self.assertLess(text.index('WORKER'), text.index('01:25'))
+        self.assertLess(text.index('01:25'), text.index('Now ·'))
+        for activity in ('', None, snapshot['agents'][0]['task']):
+            snapshot['agents'][0]['activity'] = activity
+            text = '\n'.join(line for line, _ in ui.dashboard(snapshot, 55, now=185, style='framed'))
+            self.assertNotIn('Now ·', text)
+        snapshot['agents'][0]['activity'] = '\x1b[31mChecking\u202e\x00'
+        text = '\n'.join(line for line, _ in ui.dashboard(snapshot, 55, now=185, style='framed'))
+        self.assertIn('Now · Checking', text)
+        self.assertNotIn('\x1b', text)
+        self.assertNotIn('\u202e', text)
+
+    def test_busy_framed_dashboard_preserves_full_cards_and_completed_metadata(self):
+        for columns, width in ((60, 55), (48, 43)):
+            snapshot = {'connected': True, 'agents': [
+                {'name': f'task_{i}', 'task': f'Review component {i}', 'role': 'worker',
+                 'status': 'running' if i < 6 else 'completed', 'started_at': 100 + i,
+                 'finished_at': None if i < 6 else 190, 'activity': 'Checking tests',
+                 'plan': [{'status': 'completed'}, {'status': 'pending'}]}
+                for i in range(10)]}
+            rows = ui.dashboard(snapshot, width, now=200, style='framed')
+            text = '\n'.join(line for line, _ in rows)
+            self.assertEqual(text.count('Now · Checking tests'), 6)
+            for i in range(10):
+                self.assertIn(f'Task {i}', text)
+                self.assertIn(f'Review component {i}', text)
+            self.assertLessEqual(len(rows), 200)
+            self.assertTrue(all(ui.cell_width(line) <= width for line, _ in rows))
+            active = ui._framed_agent_rows(snapshot['agents'][0], width, 200)
+            completed = ui._framed_agent_rows(snapshot['agents'][-1], width, 200)
+            self.assertLess(len(completed), len(active))
+            self.assertTrue(any('WORKER' in line for line, _ in completed))
+            self.assertTrue(any('01:21' in line for line, _ in completed))
+            self.assertFalse(any('Now ·' in line for line, _ in completed))
+            self.assertEqual(sum(line.startswith('┌') for line, _ in rows), 10)
+
+    def test_framed_narrow_fallback_retains_classic_content(self):
+        agent = self.snapshot(role='worker', plan=[{'status': 'completed'}])['agents'][0]
+        for width in (0, 1, 8, 15):
+            self.assertEqual(ui._framed_agent_rows(agent, width, 200), ui._agent_rows(agent, width, 200))
+
+    def test_busy_framed_end_and_down_reach_last_completed_card(self):
+        screen = Mock()
+        screen.getmaxyx.return_value = (16, 48)
+        screen.getch.side_effect = [ui.curses.KEY_END, ord('j'), ord('q')]
+        snapshot = {'connected': True, 'agents': [
+            {'name': f'task_{i}', 'task': f'Review component {i}', 'status': 'running',
+             'started_at': 100 + i, 'activity': 'Checking tests'} for i in range(10)]}
+        frames = []
+        def frame():
+            frames.append([call.args[2] for call in screen.addstr.call_args_list])
+            screen.addstr.reset_mock()
+        screen.refresh.side_effect = frame
+        with patch.object(ui.curses, 'curs_set'), \
+             patch.object(ui, 'read_layout_style', return_value='framed'), \
+             patch.object(ui, 'read_palette', return_value=ui.DEFAULT_PALETTE), \
+             patch.object(ui, '_styles', return_value=dict.fromkeys(
+                 [*ui.DEFAULT_PALETTE, 'header', 'header_prefix', 'footer'], 0)):
+            ui._screen(screen, Mock(return_value=snapshot), None, None)
+        self.assertNotIn('Review component 0', '\n'.join(frames[0]))
+        self.assertIn('Review component 0', '\n'.join(frames[1]))
+        self.assertEqual(frames[1], frames[2])
+        self.assertIn('└' + '─' * 41 + '┘', frames[1])
 
     def test_reported_status_progress_and_duration(self):
         snapshot = self.snapshot(plan=[{'step': 'Read theme', 'status': 'completed'},

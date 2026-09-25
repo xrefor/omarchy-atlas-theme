@@ -2,12 +2,16 @@
 from pathlib import Path
 import sys
 import signal
+import shutil
+import subprocess
+import tempfile
 import threading
 import time
 from unittest.mock import patch
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'components/apps'))
+import atlas_panel as panel
 from atlas_panel import cell_width
 from atlas_projects import ui
 
@@ -108,6 +112,188 @@ class ProjectsUiTests(unittest.TestCase):
         self.assertIn('Resolve conflicts before handoff', text)
 
 
+class FramedProjectsUiTests(unittest.TestCase):
+    def test_shared_renderer_preserves_summary_labels_in_final_cells(self):
+        class Screen:
+            def __init__(self, columns):
+                self.columns = columns
+                self.erase()
+
+            def erase(self):
+                self.cells = [[' '] * self.columns for _ in range(30)]
+
+            def getmaxyx(self):
+                return (30, self.columns)
+
+            def addstr(self, row, column, text, style):
+                for character in text:
+                    self.cells[row][column] = character
+                    column += cell_width(character)
+
+        styles = dict.fromkeys([*panel.DEFAULT_PALETTE, 'header', 'header_prefix', 'footer'], 0)
+        for columns in (48, 60):
+            with self.subTest(columns=columns):
+                screen = Screen(columns)
+                left, width = panel.layout(columns)
+                rows = ui.dashboard(SNAPSHOT, width, style='framed')
+                panel.draw_panel_frame(screen, rows, styles, 0, 'f remote · q close', style='framed')
+                rendered = [''.join(line) for line in screen.cells]
+                visible = '\n'.join(rendered)
+                self.assertIn('TREE  3 changed', visible)
+                self.assertIn('CACHED AHEAD  2   BEHIND  1', visible)
+                self.assertIn('LAST SUCCESS  NEVER', visible)
+                self.assertIn('┌', visible)
+                self.assertIn('A.  staged.txt', '\n'.join(rendered))
+
+    def test_checkout_and_cached_remote_facts_precede_files_at_sidebar_widths(self):
+        snapshot = dict(SNAPSHOT, remote_check={'state': 'ok', 'checked_at': 1700000000})
+        for width in (43, 55):
+            with self.subTest(width=width):
+                rows = ui.dashboard(snapshot, width, style='framed')
+                lines = [line for line, _ in rows]
+                self.assertIn('main', lines[1])
+                text = '\n'.join(lines)
+                self.assertIn('TREE  3 changed', text)
+                self.assertIn('CACHED AHEAD  2   BEHIND  1', text)
+                self.assertIn('REMOTE  SUCCEEDED', text)
+                self.assertIn(ui._when(1700000000), text)
+                first_file = next(index for index, line in enumerate(lines) if 'staged.txt' in line)
+                self.assertLess(next(i for i, line in enumerate(lines)
+                                     if 'LAST SUCCESS' in line), first_file)
+                self.assertEqual(sum(line.startswith('┌') for line in lines), 3)
+                for line, role in rows:
+                    if role.startswith('card:'):
+                        self.assertEqual(cell_width(line), width)
+
+    def test_missing_counts_and_failed_queries_are_never_zero_or_clean(self):
+        for update in ({'status_available': False, 'divergence_available': False},
+                       {'changes_total': None, 'counts': {}, 'ahead': None, 'behind': None}):
+            with self.subTest(update=update):
+                lines = [line for line, _ in ui.dashboard(dict(SNAPSHOT, **update), 55,
+                                                         style='framed')]
+                text = '\n'.join(lines)
+                self.assertIn('TREE  UNKNOWN', text)
+                self.assertIn('CACHED AHEAD  UNKNOWN', text)
+                self.assertIn('BEHIND  UNKNOWN', text)
+                self.assertIn('CONFLICTS  UNKNOWN', text)
+                self.assertIn('Changed files unavailable.', text)
+                self.assertNotIn('CLEAN', text)
+                self.assertNotIn('Working tree clean.', text)
+
+    def test_remote_failure_and_previous_success_remain_distinct_on_both_pages(self):
+        snapshot = dict(SNAPSHOT, remote_check={'state': 'failed', 'checked_at': 1700000000,
+                                               'attempted_at': 1700000600,
+                                               'error': 'Network unavailable'})
+        for page in (1, 2):
+            text = '\n'.join(line for line, _ in ui.dashboard(snapshot, 43, page, style='framed'))
+            self.assertIn('REMOTE  FAILED', text)
+            self.assertIn('LAST SUCCESS  ' + ui._when(1700000000), text)
+            self.assertIn('LAST ATTEMPT  ' + ui._when(1700000600), text)
+            self.assertIn('Network unavailable', text)
+
+    def test_conflicts_and_tracking_states_are_explicit(self):
+        for update, expected in (({'upstream': None}, 'NO UPSTREAM'),
+                                 ({'upstream': None, 'detached': True}, 'DETACHED HEAD'),
+                                 ({'upstream': None, 'status_available': False}, 'UNKNOWN')):
+            text = '\n'.join(line for line, _ in ui.dashboard(dict(SNAPSHOT, **update), 43,
+                                                              style='framed'))
+            self.assertIn('TRACKING  ' + expected, text)
+        text = '\n'.join(line for line, _ in ui.dashboard(
+            dict(SNAPSHOT, counts={'conflicts': 2}), 43, style='framed'))
+        self.assertIn('CONFLICTS  2', text)
+        self.assertIn('STAGED  UNKNOWN', text)
+
+    def test_history_has_separate_commits_and_worktrees_and_keeps_failures(self):
+        lines = [line for line, _ in ui.dashboard(SNAPSHOT, 55, 2, style='framed')]
+        self.assertIn('HISTORY', lines[1])
+        self.assertIn('main', lines[1])
+        text = '\n'.join(lines)
+        self.assertLess(text.index('RECENT LOCAL COMMITS'), text.index('WORKTREES'))
+        self.assertIn('Keep project facts local', text)
+        self.assertIn('/work/review', text)
+        failed = '\n'.join(line for line, _ in ui.dashboard(
+            dict(SNAPSHOT, history_available=False, commits=[]), 43, 2, style='framed'))
+        self.assertIn('Commit history unavailable.', failed)
+        self.assertNotIn('No commits yet.', failed)
+
+    def test_framed_rows_are_bounded_and_long_file_paths_are_preserved_by_wrapping(self):
+        path = 'src/' + '日本語/' * 10 + 'long filename.py'
+        snapshot = dict(SNAPSHOT, changes=[{'status': '.M', 'path': path, 'unstaged': True}],
+                        branch='\x1b[31mfeature\x00')
+        for width in (0, 1, 8, 24, 43, 55, 60):
+            for page in (1, 2):
+                with self.subTest(width=width, page=page):
+                    rows = ui.dashboard(snapshot, width, page, style='framed')
+                    self.assertTrue(all(cell_width(line) <= width for line, _ in rows))
+                    text = '\n'.join(line for line, _ in rows)
+                    self.assertNotIn('\x1b', text)
+                    self.assertNotIn('\x00', text)
+        text = '\n'.join(line for line, _ in ui.dashboard(snapshot, 43, style='framed'))
+        self.assertIn('long filename.py', ' '.join(text.split()))
+        self.assertNotIn('…', text)
+
+    def test_classic_renderer_is_independent_of_installed_preference(self):
+        with patch.object(ui, 'read_layout_style', return_value='framed'):
+            for page, renderer in ((1, ui.overview), (2, ui.history)):
+                rows = ui.dashboard(SNAPSHOT, 55, page)
+                self.assertEqual(rows, [(ui.clip(line, 55), role)
+                                        for line, role in renderer(SNAPSHOT, 55)])
+
+
+@unittest.skipUnless(shutil.which('tmux'), 'tmux is not installed')
+class FramedProjectsTerminalTests(unittest.TestCase):
+    def test_real_terminal_preserves_summary_labels_on_both_pages_and_widths(self):
+        with tempfile.TemporaryDirectory(prefix='atlas-git-ui-') as directory:
+            base = Path(directory)
+            socket, demo = base / 'tmux.sock', base / 'demo.py'
+            apps = Path(__file__).resolve().parents[1] / 'components/apps'
+            demo.write_text(
+                'import sys\n'
+                f'sys.path.insert(0, {str(apps)!r})\n'
+                'import atlas_panel\n'
+                'from atlas_projects import ui\n'
+                'atlas_panel.read_layout_style = ui.read_layout_style = lambda: "framed"\n'
+                f'snapshot = {SNAPSHOT!r}\n'
+                'class Collector:\n'
+                '    def collect(self): return snapshot\n'
+                'ui.run(Collector())\n')
+
+            def tm(*args):
+                return subprocess.check_output(['tmux', '-S', str(socket), *args],
+                                               text=True, stderr=subprocess.STDOUT)
+
+            def capture_when(predicate):
+                deadline, capture = time.monotonic() + 4, ''
+                while time.monotonic() < deadline:
+                    capture = tm('capture-pane', '-p')
+                    if predicate(capture):
+                        return capture
+                    time.sleep(.05)
+                self.fail('Expected Git Status content did not render:\n' + capture)
+
+            try:
+                try:
+                    tm('-f', '/dev/null', 'new-session', '-d', '-x', '60', '-y', '35',
+                       'python3', str(demo))
+                except subprocess.CalledProcessError as error:
+                    if 'Operation not permitted' in error.output or 'Permission denied' in error.output:
+                        self.skipTest('sandbox does not allow a temporary tmux socket')
+                    raise
+                for columns in (60, 48):
+                    tm('resize-window', '-x', str(columns), '-y', '35')
+                    for page, expected in (('1', 'staged.txt'), ('2', 'Keep project facts local')):
+                        tm('send-keys', page)
+                        capture = capture_when(lambda text: expected in text and
+                                               max(map(len, text.splitlines()), default=0) <= columns)
+                        self.assertIn('TREE  3 changed', capture)
+                        self.assertIn('CACHED AHEAD  2   BEHIND  1', capture)
+                        self.assertIn('LAST SUCCESS  NEVER', capture)
+                tm('send-keys', 'q')
+            finally:
+                subprocess.run(['tmux', '-S', str(socket), 'kill-server'],
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
 class BlockingCollector:
     path = '/work/test'
 
@@ -178,6 +364,28 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(result['discovery_state'], 'unavailable')
         self.assertFalse(result['is_git'])
         self.assertNotIn('Working tree clean', str(ui.dashboard(result, 60)))
+
+    def test_framed_controls_fit_and_end_uses_shared_visible_rows(self):
+        for columns in (48, 60):
+            screen = unittest.mock.Mock()
+            screen.getmaxyx.return_value = (30, columns)
+            screen.getch.side_effect = [ui.curses.KEY_END, ord('q')]
+            worker = unittest.mock.Mock(checking=False)
+            worker.poll.return_value = SNAPSHOT
+            frames = []
+            def frame(screen, rows, style, offset, footer):
+                frames.append((offset, footer))
+                return offset, 7, 70, columns - 5
+            with patch.object(ui.curses, 'curs_set'), \
+                    patch.object(ui, 'read_layout_style', return_value='framed'), \
+                    patch.object(ui, 'styles', return_value={'foreground': 0}), \
+                    patch.object(ui, 'draw_panel_frame', side_effect=frame):
+                ui._screen_loop(screen, worker, None)
+            self.assertEqual(frames[-1][0], 63)
+            footer = frames[-1][1]
+            self.assertEqual(len(footer), 2)
+            self.assertTrue(all(cell_width(line) <= columns - 9 for line in footer))
+            self.assertIn('f check remote', ' '.join(footer))
 
     def test_screen_navigation_and_close_while_fetch_blocks(self):
         collector = BlockingCollector()

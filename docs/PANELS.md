@@ -27,6 +27,17 @@ single local observation and does not contact a remote.
 
 ## Reading the handoff view
 
+With **Terminal layout → Framed**, the header leads with the branch. The overview
+then puts working-tree state, cached ahead/behind counts, remote-check outcome and
+last successful check above changed files. Counts that could not be collected
+show `UNKNOWN`; a failed remote check retains its separate last-success timestamp
+and shows the latest attempt. The history page keeps the same summary, followed
+by distinct local-commit and worktree cards. Each section uses a continuous panel
+surface inside a neutral outline, with horizontal padding and space between
+cards. The connected header and two-row controls share that same background. Long file paths wrap inside the cards; use scrolling for longer views.
+**Classic** keeps the original presentation. Both layouts use the same pages,
+shortcuts and collection behavior; changing layout never contacts a remote.
+
 - Uncommitted changes include staged, unstaged and untracked files. Conflicts
   need attention before a handoff. A file can be both staged and unstaged;
   the changed-file total counts that file once.

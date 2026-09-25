@@ -33,6 +33,15 @@ a specified tmux pane.
 
 ## Reading the panel
 
+Framed layout gives each listener a bordered card with a continuous panel surface
+and horizontal padding. The connected header and two-row controls use the same
+background. Protocol and port lead each card, followed by separate
+bind, scope, process/PID, account/UID and service fields. Long addresses and
+multiple owners wrap inside the cards without dropping details. Scroll to see
+additional listeners. The pinned header
+distinguishes **USER** from **ADMIN LIVE**. Classic retains its original listing.
+Neither layout treats missing process details as proof that no process exists.
+
 Each entry identifies its protocol, local address and port, with the owning
 account and UID, process name, PID and systemd unit when available. Account
 names come from local `/etc/passwd`; numeric UIDs remain visible when no local

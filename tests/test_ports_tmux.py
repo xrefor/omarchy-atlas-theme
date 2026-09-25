@@ -95,6 +95,8 @@ class PortsNativeTmuxTests(unittest.TestCase):
                 self.skipTest('sandbox does not allow a temporary tmux socket')
             raise
         self.origin = self.tm('display-message', '-p', '-t', 'test:0', '#{pane_id}')
+        # Isolate layout preferences from the desktop running the test suite.
+        self.tm('set-environment', '-g', 'HOME', str(self.root))
         env = patch.dict(os.environ, {'TMUX': f'{self.socket},1,0'})
         env.start()
         self.addCleanup(env.stop)
@@ -144,6 +146,30 @@ class PortsNativeTmuxTests(unittest.TestCase):
         self.assertIn(self.origin, panes)
         self.assertIn(other, panes)
         self.assertNotIn(pane, panes)
+
+    def test_framed_cards_scroll_resize_and_close(self):
+        preference = self.root / '.config/atlas/layout.json'
+        preference.parent.mkdir(parents=True)
+        preference.write_text('{"style":"framed"}\n')
+        pane = self.panel.open()
+        frame = self.wait_for(pane, 'web-demo')
+        self.assertIn('USER', frame)
+        self.assertIn('┌', frame)
+        self.assertIn('127.0.0.1', frame)
+        self.assertIn('PID  987654', frame)
+        self.tm('send-keys', '-t', pane, 'End')
+        bottom = self.wait_for(pane, '8039')
+        self.assertIn('P O R T S', bottom.splitlines()[1])
+        self.assertIn('/ filter', bottom)
+        self.tm('resize-pane', '-t', pane, '-x', '48')
+        self.tm('send-keys', '-t', pane, 'End')
+        self.wait_for(pane, '8039')
+        self.tm('send-keys', '-t', pane, 'q')
+        deadline = time.monotonic() + 3
+        while pane in self.tm('list-panes', '-a', '-F', '#{pane_id}').splitlines() and time.monotonic() < deadline:
+            time.sleep(.05)
+        self.assertNotIn(pane, self.tm('list-panes', '-a', '-F', '#{pane_id}').splitlines())
+        self.assertIn(self.origin, self.tm('list-panes', '-a', '-F', '#{pane_id}').splitlines())
 
     def test_graphical_auth_on_open_live_updates_cancel_and_owned_close(self):
         # Exercise real curses/tmux with a session fixture. No real authentication

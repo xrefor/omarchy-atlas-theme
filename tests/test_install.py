@@ -391,9 +391,11 @@ class BundleTests(unittest.TestCase):
         original_theme = '[flavor]\ndark = "personal-dark"\nlight = "personal-light"\n[mgr]\nsyntect_theme = "~/personal.tmTheme"\n'
         original_config = '[preview]\nwrap = "yes"\n'
         original_keys = '[mgr]\nprepend_keymap = [{ on = "Q", run = "quit --no-cwd-file" }]\n'
+        original_init = '-- Personal initialization\nrequire("personal-plugin"):setup()\n'
         originals = {'.config/yazi/theme.toml': original_theme,
                      '.config/yazi/yazi.toml': original_config,
-                     '.config/yazi/keymap.toml': original_keys}
+                     '.config/yazi/keymap.toml': original_keys,
+                     '.config/yazi/init.lua': original_init}
         for rel, text in originals.items(): self.write(rel, text)
         desired = self.plan({'apps'})
         user.validate(desired)
@@ -412,8 +414,15 @@ class BundleTests(unittest.TestCase):
         self.assertEqual([key['run'] for key in keymap if key['on'] == 'T'], ['plugin atlas-preview'])
         self.assertIn({'on': 'Q', 'run': 'quit --no-cwd-file'}, keymap)
         self.assertTrue((self.home/'.config/yazi/plugins/atlas-preview.yazi/main.lua').is_file())
+        self.assertEqual((self.home/'.config/yazi/plugins/atlas-frame.yazi/main.lua').read_bytes(),
+                         (ROOT/'components/apps/atlas-frame.lua').read_bytes())
+        init = (self.home/'.config/yazi/init.lua').read_text()
+        self.assertTrue(init.startswith(original_init))
+        self.assertEqual(init.count('require("atlas-frame"):setup()'), 1)
+        self.assertIn('-- BEGIN ATLAS FRAMED FILES\n', init)
         again = self.plan({'apps'})
         self.assertEqual(yazi, {rel: again[rel] for rel in yazi})
+        self.apply({rel: again[rel] for rel in yazi})
         changed_colors = dict(self.colors, green='#55aa77', foreground='#e0d0c0')
         synced = user.plan(ROOT, self.home, {'apps'}, changed_colors, syncing=True)
         preview = plistlib.loads(state.text_value(synced['.config/yazi/atlas.tmTheme']).encode())
@@ -422,6 +431,8 @@ class BundleTests(unittest.TestCase):
         self.assertEqual(string_roles, ['#55aa77'])
         self.assertNotIn('.config/yazi/yazi.toml', synced)
         self.assertNotIn('.config/yazi/plugins/atlas-preview.yazi/main.lua', synced)
+        self.assertNotIn('.config/yazi/init.lua', synced)
+        self.assertNotIn('.config/yazi/plugins/atlas-frame.yazi/main.lua', synced)
         self.apply({rel: value for rel, value in synced.items() if rel.startswith('.config/yazi/')})
         records = state.load(self.home)['files']
         with state.lock(self.home):
@@ -429,6 +440,7 @@ class BundleTests(unittest.TestCase):
         for rel, text in originals.items(): self.assertEqual((self.home/rel).read_text(), text)
         self.assertFalse((self.home/'.config/yazi/atlas.tmTheme').exists())
         self.assertFalse((self.home/'.config/yazi/plugins/atlas-preview.yazi/main.lua').exists())
+        self.assertFalse((self.home/'.config/yazi/plugins/atlas-frame.yazi/main.lua').exists())
 
     def test_restore_preserves_preexisting_and_nonempty_directories(self):
         preexisting=self.home/'.config/yazi'

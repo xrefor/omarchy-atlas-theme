@@ -9,7 +9,7 @@ import time
 import unicodedata
 
 from atlas_panel import (cell_width, clip, draw_panel_frame, layout, read_palette,
-                         styles, title)
+                         styles, title, read_layout_style, field_rows, card_rows)
 
 
 _ANSI = re.compile(r'\x1b\][^\x07\x1b]*(?:\x07|\x1b\\|$)|'
@@ -190,12 +190,164 @@ def history(snapshot, width):
     return rows
 
 
-def dashboard(snapshot, width, page=1):
+def _known_count(value):
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _framed_fields(rows, fields, width, role='secondary'):
+    rows.extend((line, role) for line in field_rows(fields, width))
+
+
+def _framed_section(rows, name, width):
+    rows.extend([('', 'section_break'), (clean(name).upper(), 'bright_foreground'),
+                 ('', 'foreground')])
+
+
+def _framed_summary(snapshot, width, page):
+    name = clean(snapshot.get('repo_name') or 'PROJECT')
+    branch = _branch(snapshot) if snapshot.get('is_git') else clean(
+        snapshot.get('discovery_state', 'unavailable')).upper()
+    rows = [(title('git status', width), 'accent'),
+            (clip(('HISTORY · ' if page == 2 else '') + branch + ' · ' + name, width),
+             'bright_foreground'), ('─' * width, 'muted'), ('', 'foreground')]
+    if not snapshot.get('is_git'):
+        rows.append(('NO GIT REPOSITORY' if snapshot.get('discovery_state') == 'not_repo'
+                     else 'Repository data unavailable.', 'yellow'))
+        _framed_fields(rows, [('PATH', clean(snapshot.get('path') or 'UNAVAILABLE'))], width)
+        return rows
+
+    status_ok = snapshot.get('status_available', False)
+    counts = snapshot.get('counts') if isinstance(snapshot.get('counts'), dict) else {}
+    total = _known_count(snapshot.get('changes_total')) if status_ok else None
+    conflicts = _known_count(counts.get('conflicts')) if status_ok else None
+    state = 'UNKNOWN' if total is None else 'CLEAN' if total == 0 else f'{total} changed'
+    _framed_fields(rows, [('TREE', state)], width,
+                   'yellow' if total is None or total else 'green')
+    divergence_ok = snapshot.get('divergence_available', False)
+    divergence = [_known_count(snapshot.get(key)) if divergence_ok else None
+                  for key in ('ahead', 'behind')]
+    _framed_fields(rows, [('CACHED AHEAD', divergence[0] if divergence[0] is not None else 'UNKNOWN'),
+                         ('BEHIND', divergence[1] if divergence[1] is not None else 'UNKNOWN')], width,
+                   'yellow' if any(value is None or value for value in divergence) else 'secondary')
+    remote = snapshot.get('remote_check')
+    remote = remote if isinstance(remote, dict) else {}
+    remote_state = remote.get('state', 'never')
+    labels = {'never': 'NOT CHECKED', 'checking': 'CHECKING', 'ok': 'SUCCEEDED',
+              'failed': 'FAILED', 'unavailable': 'UNAVAILABLE'}
+    _framed_fields(rows, [('REMOTE', labels.get(remote_state, 'UNKNOWN'))], width,
+                   'yellow' if remote_state in ('failed', 'unavailable') else 'secondary')
+    _framed_fields(rows, [('LAST SUCCESS', _when(remote.get('checked_at')))], width)
+    if remote_state == 'failed':
+        _framed_fields(rows, [('LAST ATTEMPT', _when(remote.get('attempted_at')))], width)
+    if remote.get('error'):
+        _framed_fields(rows, [('ERROR', clean(remote['error']))], width, 'yellow')
+    if conflicts is None or conflicts:
+        _framed_fields(rows, [('CONFLICTS', conflicts if conflicts is not None else 'UNKNOWN')],
+                       width, 'yellow')
+    if status_ok and total != 0:
+        count_fields = []
+        for label, key in (('STAGED', 'staged'), ('UNSTAGED', 'unstaged'), ('NEW', 'untracked')):
+            value = _known_count(counts.get(key))
+            count_fields.append((label, value if value is not None else 'UNKNOWN'))
+        _framed_fields(rows, count_fields, width)
+    tracking = snapshot.get('upstream') or ('UNKNOWN' if not status_ok else
+               'DETACHED HEAD' if snapshot.get('detached') else 'NO UPSTREAM')
+    _framed_fields(rows, [('TRACKING', clean(tracking))], width)
+    return rows
+
+
+def framed(snapshot, width, page=1):
+    card_width = width
+    width = max(0, width - 4) if width >= 12 else width
+    summary = _framed_summary(snapshot, width, page)
+    header = [(title('git status', card_width), 'accent'), summary[1],
+              ('─' * card_width, 'muted'), ('', 'foreground')]
+    rows = [('CHECKOUT', 'bright_foreground'), ('', 'foreground')] + summary[4:]
+    if snapshot.get('is_git') and page != 2:
+        _framed_section(rows, 'Changed files', width)
+        status_ok = snapshot.get('status_available', False)
+        total = _known_count(snapshot.get('changes_total')) if status_ok else None
+        changes = snapshot.get('changes') if isinstance(snapshot.get('changes'), list) else []
+        if not status_ok or total is None:
+            rows.append(('Changed files unavailable.', 'yellow'))
+        elif total == 0:
+            rows.append(('Working tree clean.', 'green'))
+        elif not changes:
+            rows.append(('Changed file details unavailable.', 'yellow'))
+        for item in changes if status_ok else []:
+            if not isinstance(item, dict):
+                continue
+            role = 'accent' if item.get('untracked') else 'yellow' if item.get('unstaged') else 'green'
+            _framed_fields(rows, [(clean(item.get('status') or '??'),
+                                   clean(item.get('path') or 'UNKNOWN'))], width, role)
+            if item.get('original_path'):
+                _framed_fields(rows, [('FROM', clean(item['original_path']))], width)
+        omitted = _known_count(snapshot.get('changes_omitted'))
+        if omitted:
+            rows.append((f'{omitted} more changed files omitted', 'secondary'))
+    elif snapshot.get('is_git'):
+        _framed_section(rows, 'Recent local commits', width)
+        commits = snapshot.get('commits') if isinstance(snapshot.get('commits'), list) else []
+        if not snapshot.get('history_available', False):
+            rows.append(('Commit history unavailable.', 'yellow'))
+            commits = []
+        elif not commits:
+            rows.append(('No commits yet.', 'secondary'))
+        for item in commits:
+            if not isinstance(item, dict):
+                continue
+            when = _when(item.get('timestamp'))
+            when = when[:10] if when != 'NEVER' else 'UNKNOWN'
+            _framed_fields(rows, [(clean(item.get('short_hash') or 'UNKNOWN'), when)], width)
+            _framed_fields(rows, [('', clean(item.get('subject') or '(no subject)'))], width,
+                           'foreground')
+        _framed_section(rows, 'Worktrees', width)
+        worktrees = snapshot.get('worktrees') if isinstance(snapshot.get('worktrees'), list) else []
+        if not worktrees:
+            rows.append(('Worktree data unavailable.', 'yellow'))
+        for item in worktrees:
+            if not isinstance(item, dict):
+                continue
+            marker = '●' if item.get('path') == snapshot.get('repo_root') else '○'
+            label = clean(item.get('branch') or ('DETACHED' if item.get('detached') else 'WORKTREE'))
+            _framed_fields(rows, [(marker + ' ' + label, clean(item.get('path') or 'UNAVAILABLE'))],
+                           width, 'bright_foreground' if marker == '●' else 'foreground')
+            flags = ' · '.join(key.upper() for key in ('locked', 'prunable') if item.get(key))
+            if flags:
+                _framed_fields(rows, [('', flags)], width, 'yellow')
+    if snapshot.get('is_git'):
+        _framed_section(rows, 'Context', width)
+        _framed_fields(rows, [('PATH', clean(snapshot.get('path') or 'UNAVAILABLE'))], width)
+        rows.extend((line, 'secondary') for line in field_rows(
+            [('', 'Counts use cached refs; f checks remote.'),
+             ('', 'Other machines’ uncommitted work is unknown.')], width))
+    errors = snapshot.get('errors') if isinstance(snapshot.get('errors'), list) else []
+    if errors:
+        _framed_section(rows, 'Unavailable', width)
+        for error in errors[:6]:
+            _framed_fields(rows, [('ERROR', clean(error))], width, 'yellow')
+    result, section = header, []
+    for text, role in rows + [('', 'section_break')]:
+        if role == 'section_break':
+            if section:
+                if len(result) > 4:
+                    result.append(('', 'foreground'))
+                result.extend(card_rows(section, card_width))
+                section = []
+        else:
+            section.append((text, role))
+    return result
+
+
+def dashboard(snapshot, width, page=1, *, style='classic'):
     width = max(0, min(int(width), 4096))
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
+    if style == 'framed':
+        return [(clip(text, width), role) for text, role in framed(snapshot, width, page)]
     renderer = history if page == 2 else overview
     palette = read_palette()
     return [(clip(text, width), role if role in palette else 'foreground')
-            for text, role in renderer(snapshot if isinstance(snapshot, dict) else {}, width)]
+            for text, role in renderer(snapshot, width)]
 
 
 class _Worker:
@@ -299,17 +451,22 @@ def _screen_loop(screen, worker, palette_path):
             previous_palette = palette
         height, columns = screen.getmaxyx()
         _, width = layout(columns)
-        rows = dashboard(display, width, page)
-        fixed = min(4, max(0, height - 1))
-        available = max(0, height - fixed - 1)
-        body = rows[4:]
-        offset = min(offset, max(0, len(body) - available))
-        footer = ('1/2 pages · ↑↓ scroll · r local · f check remote · q'
-                  if width >= 55 else
-                  '1/2 · ↑↓ · r local · f check remote · q' if width >= 43 else
-                  '1/2 · r local · f remote · q' if width >= 30 else '1/2 · f remote · q')
-        if len(body) > available and width >= 48:
-            footer += f'  {offset + 1}/{max(1, len(body) - available + 1)}'
+        presentation = read_layout_style()
+        rows = dashboard(display, width, page, style=presentation)
+        if presentation == 'framed':
+            footer = ['1 overview · 2 history · ↑↓ scroll',
+                      'r local · f check remote · q close']
+        else:
+            fixed = min(4, max(0, height - 1))
+            available = max(0, height - fixed - 1)
+            body = rows[4:]
+            offset = min(offset, max(0, len(body) - available))
+            footer = ('1/2 pages · ↑↓ scroll · r local · f check remote · q'
+                      if width >= 55 else
+                      '1/2 · ↑↓ · r local · f check remote · q' if width >= 43 else
+                      '1/2 · r local · f remote · q' if width >= 30 else '1/2 · f remote · q')
+            if len(body) > available and width >= 48:
+                footer += f'  {offset + 1}/{max(1, len(body) - available + 1)}'
         offset, available, body_length, width = draw_panel_frame(
             screen, rows, style, offset, footer)
         screen.refresh()
@@ -329,7 +486,7 @@ def _screen_loop(screen, worker, palette_path):
         elif key == curses.KEY_HOME:
             offset = 0
         elif key == curses.KEY_END:
-            offset = max(0, len(body) - available)
+            offset = max(0, body_length - available)
         elif key in (ord('r'), ord('R')):
             next_update = 0
         elif key in (ord('f'), ord('F')):

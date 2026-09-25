@@ -23,6 +23,17 @@ installations default to **100% window opacity**. Change it through
 **Omarchy → ATLAS → Window opacity**, or run `atlas-settings`. Updates preserve
 your existing opacity choice.
 
+The optional **Framed** terminal layout adds a divided tmux header, outlined
+sections on a continuous dark surface in Agents, Git Status, Ports and NymVPN,
+framed Files sections, and connected panel headings and shortcut footers. Select it with
+`atlas-settings layout framed` or **Omarchy → ATLAS → Terminal layout**.
+`atlas-settings layout classic` returns to the original layout. Both use the
+same pane controls; closing a sidebar returns its space to the working pane.
+After updating the panel code, close and reopen an existing panel once. Later
+layout switches update on its normal refresh; reopen Files to change its layout.
+Spotify keeps its native TUI. New installations retain Classic
+until you choose Framed. See [terminal layout](docs/TERMINAL-LAYOUT.md).
+
 | Carbon | Surface | Outline | Ivory | Signal |
 | --- | --- | --- | --- | --- |
 | `#100E0C` | `#1C1814` | `#3A342C` | `#D6CFC4` | `#FF5A12` |

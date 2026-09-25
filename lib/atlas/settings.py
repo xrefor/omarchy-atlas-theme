@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from . import readability, state
+from . import layout, readability, state
 
 MENU_PATH = '.config/omarchy/extensions/omarchy-menu.jsonc'
 OPACITY_FILES = ('.config/hypr/looknfeel.lua', '.config/hypr/hyprland.lua')
@@ -44,6 +44,9 @@ def menu_entries():
         'atlas.readability': {'label': 'Neovim comments', 'description': 'Choose standard or brighter comments; applies when you return to Neovim'},
         'atlas.readability.standard': {'label': 'Standard', 'action': 'atlas-settings readability standard', 'checked': 'atlas-settings readability-is standard'},
         'atlas.readability.readable': {'label': 'Brighter', 'action': 'atlas-settings readability readable', 'checked': 'atlas-settings readability-is readable'},
+        'atlas.layout': {'label': 'Terminal layout', 'description': 'Switch terminal framing; pane controls stay the same'},
+        'atlas.layout.classic': {'label': 'Classic', 'action': 'atlas-settings layout classic', 'checked': 'atlas-settings layout-is classic'},
+        'atlas.layout.framed': {'label': 'Framed', 'action': 'atlas-settings layout framed', 'checked': 'atlas-settings layout-is framed'},
         'atlas.lock': {'icon': '', 'label': 'Lock screen', 'description': 'Choose the style for your next lock', 'when': 'command -v atlas-lock-style >/dev/null'},
         'atlas.lock.terminal': {'label': 'Terminal', 'action': 'atlas-lock-style terminal', 'checked': 'atlas-lock-style is terminal'},
         'atlas.lock.classic': {'label': 'Classic', 'action': 'atlas-lock-style classic', 'checked': 'atlas-lock-style is classic'},
@@ -102,6 +105,8 @@ def status(home):
     print('Wallpaper: ' + (bg.resolve().name if bg.exists() else 'Not detected'))
     try: print('Neovim comments: ' + readability.current(home))
     except ValueError: print('Neovim comments: custom / invalid preference')
+    try: print('Terminal layout: ' + layout.current(home))
+    except ValueError: print('Terminal layout: custom / invalid preference')
     print()
     probes = {
         'theme': '.config/omarchy/themes/atlas/colors.toml',
@@ -177,7 +182,7 @@ def restore(root, home):
 
 def main(root):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', nargs='?', default='menu', choices=['menu', 'wallpaper', 'opacity', 'opacity-is', 'readability', 'readability-is', 'status', 'diagnostics', 'help', 'restore'])
+    parser.add_argument('action', nargs='?', default='menu', choices=['menu', 'wallpaper', 'opacity', 'opacity-is', 'readability', 'readability-is', 'layout', 'layout-is', 'status', 'diagnostics', 'help', 'restore'])
     parser.add_argument('value', nargs='?')
     parser.add_argument('--home', type=Path, default=Path.home())
     parser.add_argument('--pause', action='store_true', help='Keep reports visible when launched from the menu')
@@ -188,6 +193,9 @@ def main(root):
     elif args.action in ('readability', 'readability-is'):
         if args.value not in readability.PRESETS:
             parser.error(args.action + ' requires standard or readable')
+    elif args.action in ('layout', 'layout-is'):
+        if args.value not in layout.PRESETS:
+            parser.error(args.action + ' requires classic or framed')
     elif args.value is not None:
         parser.error(args.action + ' does not take a value')
     home = args.home.resolve()
@@ -210,11 +218,16 @@ def main(root):
             return int(readability.current(home) != args.value)
         elif args.action == 'readability':
             print('ATLAS Neovim comments: ' + readability.select(home, args.value))
+        elif args.action == 'layout-is':
+            return int(layout.current(home) != args.value)
+        elif args.action == 'layout':
+            print('ATLAS terminal layout: ' + layout.select(home, args.value, live=home == Path.home().resolve()))
+            print('Reopen existing panels once after a code update. Layout changes then follow panel refreshes.')
         elif args.action == 'status': status(home)
         elif args.action == 'diagnostics': code = diagnostics(home)
         elif args.action == 'restore': code = restore(root, home)
         elif args.action == 'help':
-            print('ATLAS / everyday shortcuts\n\nCtrl+Space → f  Files (Yazi)\nEnter          Enter a folder / open a file\nRight or l     Enter a folder\nLeft or h      Parent folder\nT              Expand / restore Yazi preview\nCtrl+Space → c  New terminal tab\nCtrl+Space → g  Git Status\nCtrl+Space → p  Ports & Services\nCtrl+Space → a  Agent panel\nCtrl+Space → n  NymVPN panel\n\nNeovim: Space opens the key guide; :q closes the current window.\n\nAppearance: Omarchy → ATLAS, or run atlas-settings.\nOpacity: 100% (default, fully opaque); 80%, 87% and 95% are also available.\nNeovim comments: Standard or Brighter (refreshes on focus).\nFonts stay at the configured size; ATLAS uses 9 pt.\n\nDiagnostics are local and preserve manual edits.\nRestore shows the affected files before asking for confirmation.')
+            print('ATLAS / everyday shortcuts\n\nCtrl+Space → f  Files (Yazi)\nEnter          Enter a folder / open a file\nRight or l     Enter a folder\nLeft or h      Parent folder\nT              Expand / restore Yazi preview\nCtrl+Space → c  New terminal tab\nCtrl+Space → g  Git Status\nCtrl+Space → p  Ports & Services\nCtrl+Space → a  Agent panel\nCtrl+Space → n  NymVPN panel\n\nNeovim: Space opens the key guide; :q closes the current window.\n\nAppearance: Omarchy → ATLAS, or run atlas-settings.\nOpacity: 100% (default, fully opaque); 80%, 87% and 95% are also available.\nNeovim comments: Standard or Brighter (refreshes on focus).\nTerminal layout: atlas-settings layout framed / classic.\nFonts stay at the configured size; ATLAS uses 9 pt.\n\nDiagnostics are local and preserve manual edits.\nRestore shows the affected files before asking for confirmation.')
     except (ValueError, OSError, subprocess.SubprocessError) as error:
         print(f'ATLAS: {error}', file=sys.stderr)
         code = 1

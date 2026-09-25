@@ -8,6 +8,7 @@ import unicodedata
 
 DEFAULT_PALETTE = {
     'background': '#100e0c',
+    'dark_background': '#0a0908',
     'lighter_background': '#1c1814',
     'foreground': '#d6cfc4',
     'dark_foreground': '#6e675c',
@@ -38,6 +39,95 @@ def read_palette(path=None):
         colors.update({key: value[key].lower() for key in colors
                        if isinstance(value.get(key), str) and _HEX.fullmatch(value[key])})
     return colors
+
+
+def read_layout_style(path=None):
+    """Missing or invalid preferences retain the original, reversible layout."""
+    path = Path(path) if path is not None else Path.home() / '.config/atlas/layout.json'
+    try:
+        if path.stat().st_size <= 65536:
+            value = json.loads(path.read_text())
+            if isinstance(value, dict) and value.get('style') == 'framed':
+                return 'framed'
+    except (OSError, ValueError):
+        pass
+    return 'classic'
+
+
+def card_rows(rows, width):
+    """Frame content without changing its semantic colors or claiming progress."""
+    if width < 12:
+        return [(clip(text, width), role) for text, role in rows]
+    inner = width - 4
+    result = [('┌' + '─' * (width - 2) + '┐', 'card:dark_foreground')]
+    for text, role in rows:
+        text = clip(text, inner)
+        result.append(('│ ' + text + ' ' * (inner - cell_width(text)) + ' │',
+                       'card:' + role))
+    result.append(('└' + '─' * (width - 2) + '┘', 'card:dark_foreground'))
+    return result
+
+
+def _card_split(text, role, width):
+    """Validate a paired row and locate its right span on display-cell boundaries."""
+    match = re.fullmatch(r'split:([a-z_]+):([a-z_]+):([0-9]{1,4})', role)
+    if not match or not (text.startswith('│ ') and text.endswith(' │')):
+        return None
+    left_role, right_role, count = match.groups()
+    base_right = right_role.removeprefix('plan_')
+    if (left_role not in DEFAULT_PALETTE or base_right not in DEFAULT_PALETTE
+            or (right_role.startswith('plan_') and right_role not in ('plan_accent', 'plan_green'))):
+        return None
+    inner, count = text[2:-2], int(count)
+    inner_width = cell_width(inner)
+    if cell_width(text) != width or not 0 < count <= inner_width:
+        return None
+    target, used = inner_width - count, 0
+    for index, character in enumerate(inner):
+        # A combining mark belongs to the preceding cell, never the right span.
+        if used == target and not unicodedata.combining(character):
+            return left_role, base_right, inner[index:], target, right_role.startswith('plan_')
+        used += cell_width(character)
+        if used > target:
+            break
+    return None
+
+
+def draw_row(screen, row, text, role, panel_styles, columns, left, width):
+    """Outline cards on the continuous panel surface, without a dark tile."""
+    if role.startswith('card:'):
+        role = role[5:]
+        split = _card_split(text, role, width) if role.startswith('split:') else None
+        base_role = split[0] if split else 'foreground' if role.startswith('split:') else role
+        backing = panel_styles.get(base_role, panel_styles.get('muted', panel_styles['foreground']))
+        put(screen, row, clip(text, width), backing, columns, left)
+        # Unfinished plan cells describe absence of completion, not activity.
+        cell_style = panel_styles['secondary']
+        if split:
+            _, right_role, suffix, start, plan = split
+            right = left + 2 + start
+            put(screen, row, suffix, panel_styles.get(right_role, panel_styles['foreground']), columns, right)
+            if plan:
+                for index, character in enumerate(suffix):
+                    if character == '□':
+                        put(screen, row, '█', cell_style, columns,
+                            right + cell_width(suffix[:index]))
+        else:
+            plan_cells = re.fullmatch(r'[█□](?: [█□])*', text[2:-2].strip())
+            for index, character in enumerate(text):
+                if plan_cells and character == '□':
+                    put(screen, row, '█', cell_style, columns,
+                        left + cell_width(text[:index]))
+            metadata = re.match(r'^│ ((?:Elapsed|Plan)\s+)(.*?)(\s+│)$', text)
+            if metadata:
+                put(screen, row, metadata[2], panel_styles['bright_foreground'],
+                    columns, left + 2 + cell_width(metadata[1]))
+        edge = panel_styles.get('dark_foreground', panel_styles['muted'])
+        if text.startswith('│'):
+            put(screen, row, '│', edge, columns, left)
+            put(screen, row, '│', edge, columns, left + width - 1)
+    else:
+        put(screen, row, clip(text, width), panel_styles.get(role, panel_styles['foreground']), columns, left)
 
 
 def cell_width(text):
@@ -100,6 +190,7 @@ def styles(palette):
     styles['header'] = curses.A_NORMAL
     styles['header_prefix'] = curses.A_NORMAL
     styles['footer'] = curses.A_NORMAL
+    styles.update({'card_' + key: curses.A_NORMAL for key in palette})
     try:
         if not curses.has_colors():
             return styles
@@ -110,6 +201,8 @@ def styles(palette):
             pass
         background = color_index(palette['background'])
         pairs = [(key, value, background) for key, value in palette.items()]
+        pairs += [('card_' + key, value, color_index(palette['dark_background']))
+                  for key, value in palette.items()]
         pairs += [('header', palette['accent'], color_index(palette['lighter_background'])),
                   ('header_prefix', palette['dark_foreground'], color_index(palette['lighter_background'])),
                   ('footer', palette['secondary'], color_index(palette['lighter_background']))]
@@ -154,14 +247,18 @@ def draw_bar(screen, row, text, style, columns, prefix_style=None):
         put(screen, row, clip('//', width), prefix_style, columns, left)
 
 
-def draw_panel_frame(screen, rows, panel_styles, offset, footer):
+def draw_panel_frame(screen, rows, panel_styles, offset, footer, *, style=None, dimensions=None):
     """Draw the shared pinned header, scrolling body and footer strip.
 
     The first four rows are the panel header contract used by Agents and Nym.
     Returns the clamped offset, visible body rows, total body rows and content
     width so panel-specific input handling can remain local.
     """
-    height, columns = screen.getmaxyx()
+    height, columns = dimensions or screen.getmaxyx()
+    style = read_layout_style() if style is None else style
+    if style == 'framed':
+        return draw_framed_panel(screen, rows, panel_styles, offset, footer,
+                                 dimensions=(height, columns))
     left, width = layout(columns)
     fixed = min(4, max(0, height - 1))
     available = max(0, height - fixed - (1 if height else 0))
@@ -180,6 +277,65 @@ def draw_panel_frame(screen, rows, panel_styles, offset, footer):
             columns, left=left)
     if height:
         draw_bar(screen, height - 1, footer, panel_styles['footer'], columns)
+    return offset, available, len(body), width
+
+
+def draw_framed_panel(screen, rows, panel_styles, offset, footer, *, dimensions=None):
+    """Retain four pinned header rows and a scrolling body; reclaim rails when tiny."""
+    height, columns = dimensions or screen.getmaxyx()
+    left, width = layout(columns)
+    if height < 10 or columns < 16:
+        # Small terminals prioritize content and controls over decoration.
+        plain = [(text, role.removeprefix('card:')) for text, role in rows]
+        if not isinstance(footer, str):
+            choices = list(footer)
+            exits = [line for line in choices if re.search(r'\bq\b|\bclose\b', line, re.I)]
+            footer = exits[-1] if exits else choices[0] if choices else ''
+            if exits and cell_width(footer) > width:
+                footer = 'q close'
+        return draw_panel_frame(screen, plain, panel_styles, offset, footer,
+                                style='classic', dimensions=(height, columns))
+    footer = [footer] if isinstance(footer, str) else list(footer)
+    footer = footer[:max(1, height - 8)]
+    footer_height = len(footer) + 3
+    available = max(0, height - 4 - footer_height)
+    body = rows[4:]
+    offset = min(max(0, offset), max(0, len(body) - available))
+    edge = panel_styles.get('dark_foreground', panel_styles['muted'])
+    foreground = panel_styles['foreground']
+    screen.erase()
+    # Every surface shares the normal background, including empty body rows.
+    for row in range(height):
+        put(screen, row, ' ' * (columns - 1), foreground, columns)
+        if 0 < row < height - 1:
+            put(screen, row, '│', edge, columns)
+            put(screen, row, '│', edge, columns, columns - 2)
+    put(screen, 0, '┌' + '─' * (columns - 3) + '┐', edge, columns)
+    put(screen, height - 1, '└' + '─' * (columns - 3) + '┘', edge, columns)
+    heading = '▎ ' + rows[0][0].removeprefix('// ')
+    subtitle = rows[1][0]
+    combined = cell_width(heading) + 2 + cell_width(subtitle) <= width
+    put(screen, 1, clip(heading, width), panel_styles['bright_foreground'], columns, left)
+    put(screen, 1, '▎', panel_styles['accent'], columns, left)
+    if combined:
+        put(screen, 1, subtitle, panel_styles['secondary'], columns,
+            left + width - cell_width(subtitle))
+    else:
+        put(screen, 2, clip(subtitle, width), panel_styles['secondary'], columns, left)
+    separator = 2 if combined else 3
+    put(screen, separator, '├' + '─' * (columns - 3) + '┤', edge, columns)
+    for row, (line, role) in enumerate(body[offset:offset + available], 4):
+        draw_row(screen, row, line, role, panel_styles, columns, left, width)
+    start = height - footer_height
+    put(screen, start, '┌' + '─' * (width - 2) + '┐', edge, columns, left)
+    for row, text in enumerate(footer, start + 1):
+        inner = width - 4
+        text = clip(text, inner)
+        line = '│ ' + text + ' ' * (inner - cell_width(text)) + ' │'
+        put(screen, row, line, panel_styles['secondary'], columns, left)
+        put(screen, row, '│', edge, columns, left)
+        put(screen, row, '│', edge, columns, left + width - 1)
+    put(screen, height - 2, '└' + '─' * (width - 2) + '┘', edge, columns, left)
     return offset, available, len(body), width
 
 

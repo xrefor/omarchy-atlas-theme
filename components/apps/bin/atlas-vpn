@@ -18,7 +18,7 @@ source = Path(__file__).resolve().parents[1]
 if not (source / 'atlas_panel.py').is_file():
     source = Path.home() / '.local/share/atlas/components/apps'
 sys.path.insert(0, str(source))
-from atlas_panel import clip, draw_bar, field_rows, layout, put, read_palette, sidebar_width, styles, title
+from atlas_panel import card_rows, clip, draw_bar, field_rows, layout, put, read_palette, sidebar_width, styles, title, read_layout_style, draw_framed_panel
 
 
 ROW_ROLES = {1: 'accent', 2: 'secondary', 3: 'green', 4: 'red',
@@ -407,7 +407,122 @@ def state_name(status):
     return 'WAITING' if value.startswith('Waiting') else 'UNAVAILABLE'
 
 
-def dashboard(data, width, events, detailed=False):
+def live_tunnel(status):
+    """Read the active mode only from the CLI's primary connection-state line."""
+    first = status.strip().splitlines()[0] if status.strip() else ''
+    value = first.removeprefix('State: ').strip()
+    match = re.match(r'^(Connected|Disconnected|Connecting|Reconnecting|Disconnecting|Error|Offline)\b', value)
+    state = match[1].upper() if match else 'WAITING' if value.startswith('Waiting') else 'UNAVAILABLE'
+    if state == 'DISCONNECTED':
+        return state, 'NONE (disconnected)'
+    if state == 'OFFLINE':
+        return state, 'NONE (offline)'
+    if state in ('CONNECTING', 'RECONNECTING', 'DISCONNECTING'):
+        return state, 'NOT CONFIRMED'
+    if state == 'CONNECTED':
+        mode = re.match(r'^Connected (wg|mix)(?:\s|$)', value)
+        if mode:
+            return state, {'wg': 'dVPN / WireGuard', 'mix': 'MIXNET'}[mode[1]]
+    return state, 'UNKNOWN'
+
+
+def framed_dashboard(data, width, events, detailed=False):
+    state, active = live_tunnel(data['status'])
+    short_mode = {'dVPN / WireGuard': 'dVPN', 'MIXNET': 'MIXNET',
+                  'UNKNOWN': 'UNKNOWN MODE', 'NOT CONFIRMED': 'MODE UNCONFIRMED',
+                  'NONE (disconnected)': 'NO ACTIVE TUNNEL',
+                  'NONE (offline)': 'NO ACTIVE TUNNEL'}[active]
+    summary = state + ' · ' + short_mode
+    rows = header_rows(summary if len(summary) <= width else state, width)
+    card_width = width
+    width = max(1, width - 4) if width >= 12 else width
+    content = []
+    def finish_card():
+        if content:
+            rows.extend(card_rows([(line, ROW_ROLES[color]) for line, color in content], card_width))
+            rows.append(('', 7))
+            content.clear()
+    def row(value='', color=7):
+        for line in value.splitlines() or ['']:
+            content.extend((part, color) for part in
+                        (textwrap.wrap(line, max(1, width), replace_whitespace=False) or ['']))
+    def fields(values, color=2, label_width=0):
+        for value in values:
+            content.extend((line, color) for line in field_rows([value], width, label_width=label_width))
+    def section(name):
+        finish_card()
+        row(name, 6)
+        row()
+
+    section('CONNECTION')
+    fields([('ACTIVE TUNNEL MODE', active)], 6, label_width=20)
+    if active == 'UNKNOWN':
+        row('Nym has not confirmed the active mode.', 2)
+    elif active == 'NOT CONFIRMED':
+        row('Waiting for a connected tunnel reading.', 2)
+    row()
+    row('LIVE ROUTE', 2)
+    first = data['status'].strip().splitlines()[0] if data['status'].strip() else ''
+    route = re.match(r'^(?:State: )?Connected wg to (\S+) \[([^]]+)\] → (\S+) \[([^]]+)\]', first)
+    if route:
+        fields([('ENTRY', route[1])], 6, label_width=8)
+        row('        ' + route[2], 2)
+        fields([('EXIT', route[3])], 6, label_width=8)
+        row('        ' + route[4], 2)
+    else:
+        row(data['status'], 7)
+
+    section('NEXT CONNECTION / CONFIGURATION')
+    tunnel = data['tunnel']
+    selected = {'on': 'dVPN / TWO-HOP WIREGUARD', 'off': 'MIXNET'}.get(
+        setting_value(tunnel, 'two-hop'), 'UNKNOWN')
+    fields([('SELECTED MODE', selected)], 6, label_width=16)
+    row('Selected settings; not an active-mode reading.', 2)
+    row()
+    fields([('IPv6', display_setting(tunnel, 'ipv6')),
+            ('CIRCUMVENTION', display_setting(tunnel, 'circumvention-transports'))], label_width=16)
+    row()
+    row('GATEWAY CONFIGURATION', 2)
+    for line in data['gateway'].splitlines():
+        if ': ' not in line:
+            row(line, 2)
+            continue
+        label, value = line.split(': ', 1)
+        if value.startswith('Auto'):
+            exclusions = []
+            if 'exclude_user_country: true' in value:
+                exclusions.append('your country')
+            if 'exclude_entry_point_country: true' in value:
+                exclusions.append('entry country')
+            value = 'Auto' + (' / excludes ' + ' + '.join(exclusions) if exclusions else '')
+        fields([(label.upper().replace(' POINT', ''), value)], 7, label_width=18)
+    if not data['gateway']:
+        row('Waiting for gateway settings…', 2)
+
+    if 'service' in data:
+        section('SERVICE')
+        service = data['service']
+        fields([('STATE', service['ActiveState'] + ' / ' + service['SubState']),
+                ('STARTUP', service['UnitFileState'])], label_width=9)
+    if data['message']:
+        section('COMMAND NOTICE')
+        row(data['message'], 1)
+    section('RECENT STATE CHANGES')
+    if events:
+        for stamp, message in events[-3:]:
+            row(f'{stamp}  {message}', 2)
+    else:
+        row('Waiting for the first Nym reading…', 2)
+    if detailed:
+        section('RAW NYM OUTPUT')
+        row('\n'.join(data[key] for key in ('status', 'tunnel', 'gateway')), 2)
+    finish_card()
+    return rows
+
+
+def dashboard(data, width, events, detailed=False, *, style='classic'):
+    if style == 'framed':
+        return framed_dashboard(data, width, events, detailed)
     rows = header_rows('MIXNET / DVPN CONTROL', width)
     def row(value='', color=7):
         for line in value.splitlines() or ['']:
@@ -478,8 +593,10 @@ def dashboard(data, width, events, detailed=False):
     return rows
 
 
-def footer_rows(width, page=None, editor=None, confirm=None, age='', busy=False):
+def footer_rows(width, page=None, editor=None, confirm=None, age='', busy=False, *, style='classic'):
     """Wrap complete key hints so every control remains visible in a sidebar."""
+    if style == 'framed':
+        width = max(1, width - 4)
     if confirm:
         controls = ['n/Esc cancel', 'y confirm', '↑↓ scroll']
     elif editor:
@@ -516,6 +633,11 @@ def footer_rows(width, page=None, editor=None, confirm=None, age='', busy=False)
 def draw_frame(screen, rows, footer, attributes, scroll):
     """Keep the title and controls pinned while the content scrolls."""
     height, columns = screen.getmaxyx()
+    if read_layout_style() == 'framed' and height >= max(10, len(footer) + 9) and columns >= 16:
+        semantic_rows = [(line, ROW_ROLES.get(color, color)) for line, color in rows]
+        semantic_rows[0] = (title('NymVPN', layout(columns)[1]), 'accent')
+        return draw_framed_panel(screen, semantic_rows, attributes, scroll, footer,
+                                 dimensions=(height, columns))[0]
     left, width = layout(columns)
     fixed = min(4, max(0, height - 1))
     # On very short terminals leave one content row whenever possible.
@@ -529,9 +651,9 @@ def draw_frame(screen, rows, footer, attributes, scroll):
             draw_bar(screen, row, line, attributes['header'], columns,
                      prefix_style=attributes['header_prefix'])
         else:
-            put(screen, row, clip(line, width), attributes[ROW_ROLES[color]], columns, left)
+            put(screen, row, clip(line, width), attributes[ROW_ROLES.get(color, color).removeprefix('card:')], columns, left)
     for row, (line, color) in enumerate(body[scroll:scroll + available], fixed):
-        put(screen, row, clip(line, width), attributes[ROW_ROLES[color]], columns, left)
+        put(screen, row, clip(line, width), attributes[ROW_ROLES.get(color, color).removeprefix('card:')], columns, left)
     for row, line in enumerate(footer, height - len(footer)):
         draw_bar(screen, row, line, attributes['footer'], columns)
     return scroll
@@ -602,12 +724,13 @@ def panel(screen, binary):
             _, columns = screen.getmaxyx()
             _, content_width = layout(columns)
             content_width = max(1, content_width)
+            presentation = read_layout_style()
             rows = (service_rows(service, content_width, binary, data['message'], confirm) if page == 'service'
                     else settings_rows(data, content_width, page, editor, entry) if page
-                    else dashboard(data, content_width, events, detailed))
+                    else dashboard(data, content_width, events, detailed, style=presentation))
             age = (f'Last reading {int(time.monotonic()-updated)}s ago' if updated
                    else 'Approve Nym authentication if prompted' if backend else 'Open service setup with B')
-            footer = footer_rows(content_width, page, editor, confirm, age, busy)
+            footer = footer_rows(content_width, page, editor, confirm, age, busy, style=presentation)
             scroll = draw_frame(screen, rows, footer, attributes, scroll)
             screen.refresh()
             key = screen.getch()

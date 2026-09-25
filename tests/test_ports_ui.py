@@ -28,6 +28,98 @@ def rendered(snapshot=SNAPSHOT, width=60, page=1, query=''):
     return '\n'.join(row for row, _ in ui.dashboard(snapshot, width, page, query))
 
 
+def setUpModule():
+    # UI fixtures must not inherit the user's currently selected live layout.
+    unittest.enterModuleContext(patch.object(ui, 'read_layout_style', return_value='classic'))
+    unittest.enterModuleContext(patch('atlas_panel.read_layout_style', return_value='classic'))
+
+
+class FramedPortsTests(unittest.TestCase):
+    def test_listener_cards_preserve_details_and_fill_their_frames(self):
+        data = dict(SNAPSHOT, listeners=[dict(SNAPSHOT['listeners'][0], port=3000 + i)
+                                        for i in range(12)])
+        for width in (43, 55):
+            framed = ui.dashboard(data, width, style='framed')
+            text = '\n'.join(line for line, _ in framed)
+            self.assertEqual(sum(line.startswith('┌') for line, _ in framed), 12)
+            for line, role in framed:
+                if role.startswith('card:'):
+                    self.assertEqual(cell_width(line), width)
+            for value in ('USER', '3011', '127.0.0.1', 'node', 'PID  42', 'alice',
+                          'UID  1000', 'web.service', 'LOOPBACK'):
+                self.assertIn(value, text)
+            self.assertIn('┌', text)
+
+    def test_full_ipv6_and_multiple_owners_survive_wrapping(self):
+        address = '2001:0db8:85a3:0000:0000:8a2e:0370:7334%eth0'
+        listener = dict(SNAPSHOT['listeners'][0], address=address, port=65535,
+                        owners=[{'name': 'first', 'pid': 42}, {'name': 'second', 'pid': 43}])
+        for width in (24, 43, 55):
+            rows = ui.dashboard(dict(SNAPSHOT, listeners=[listener]), width, style='framed')
+            joined = ''.join(''.join(line.strip('│ ').split()) for line, role in rows
+                             if role.startswith('card:') and line.startswith('│'))
+            for value in (address, '65535', 'first', 'second', 'PID42', 'PID43'):
+                self.assertIn(value, joined)
+            self.assertTrue(all(cell_width(line) <= width for line, _ in rows))
+
+    def test_privilege_unknown_and_partial_states_remain_explicit(self):
+        for admin in (False, True):
+            rows = ui.dashboard(dict(SNAPSHOT, elevated=admin), 55, page=2, style='framed')
+            text = '\n'.join(line for line, _ in rows)
+            self.assertIn('ADMIN LIVE' if admin else 'USER', text)
+            self.assertIn('Process/PID unavailable' if admin else 'restricted or unavailable', text)
+            self.assertIn('UID  65534', text)
+        partial = dict(SNAPSHOT, listeners=[], partial=True, errors=['timeout'])
+        text = '\n'.join(line for line, _ in ui.dashboard(partial, 55, style='framed'))
+        self.assertIn('PARTIAL', text)
+        self.assertIn('No matches in collected data', text)
+        self.assertNotIn('No listening sockets', text)
+
+    def test_framed_cards_scroll_to_final_listener_with_pinned_controls(self):
+        data = dict(SNAPSHOT, listeners=[dict(SNAPSHOT['listeners'][0], port=3000 + i)
+                                        for i in range(12)])
+        colors = {key: 0 for key in read_palette()}
+        colors.update(header=0, header_prefix=0, footer=0)
+        for columns in (48, 60):
+            screen = Screen(size=(30, columns))
+            width = ui.layout(columns)[1]
+            rows = ui.dashboard(data, width, style='framed')
+            offset, available, count, _ = draw_panel_frame(
+                screen, rows, colors, 99999, 'q close', style='framed')
+            self.assertEqual(offset, count - available)
+            visible = '\n'.join(text for _, _, text in screen.draws)
+            self.assertIn('3011', visible)
+            self.assertIn('q close', visible)
+            self.assertIn('P O R T S', visible)
+
+    def test_framed_controls_fit_and_scroll_uses_shared_visible_rows(self):
+        for columns in (48, 60):
+            worker = unittest.mock.Mock(active=False)
+            worker.poll.return_value = SNAPSHOT
+            frames = []
+            def frame(screen, rows, style, offset, footer):
+                frames.append((offset, footer))
+                return offset, 7, 70, columns - 5
+            with patch.object(ui.curses, 'curs_set'), \
+                    patch.object(ui, 'read_layout_style', return_value='framed'), \
+                    patch.object(ui, 'styles', return_value={'foreground': 0}), \
+                    patch.object(ui, 'draw_panel_frame', side_effect=frame):
+                ui._screen_loop(Screen([curses.KEY_END, 'q'], size=(30, columns)),
+                                worker, None, lambda: None)
+            self.assertEqual(frames[-1][0], 63)
+            footer = frames[-1][1]
+            self.assertEqual(len(footer), 2)
+            self.assertTrue(all(cell_width(line) <= columns - 9 for line in footer))
+            self.assertIn('a auth', ' '.join(footer))
+            self.assertIn('q close', ' '.join(footer))
+
+    def test_framed_filter_and_tiny_widths(self):
+        for width in (0, 1, 8, 24, 43, 55):
+            rows = ui.dashboard(SNAPSHOT, width, page=3, query='node', style='framed')
+            self.assertTrue(all(cell_width(line) <= width for line, _ in rows))
+            self.assertNotIn('5353', str(rows))
+
+
 class Screen:
     def __init__(self, keys=(), size=(30, 60)):
         self.keys = iter(keys)

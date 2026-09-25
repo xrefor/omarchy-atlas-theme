@@ -5,11 +5,13 @@ dark = ""
 light = ""
 
 [app]
-overall = { fg = "{{ foreground }}", bg = "{{ background }}" }
+# Native lists and dialogs share the recessed ATLAS panel surface.
+# Preview syntax retains its separate managed palette below.
+overall = { fg = "{{ foreground }}", bg = "{{ dark_background }}" }
 
 [mgr]
 syntect_theme = "~/.config/yazi/atlas.tmTheme"
-cwd = { fg = "{{ accent }}", bold = true }
+cwd = { fg = "{{ bright_foreground }}", bold = true }
 find_keyword = { fg = "{{ accent }}", bold = true, underline = true }
 find_position = { fg = "{{ secondary }}" }
 symlink_target = { fg = "{{ secondary }}" }
@@ -24,14 +26,14 @@ border_symbol = "│"
 border_style = { fg = "{{ muted }}" }
 
 [tabs]
-active = { fg = "{{ accent }}", bg = "{{ selection }}", bold = true }
-inactive = { fg = "{{ secondary }}", bg = "{{ background }}" }
+active = { fg = "{{ bright_foreground }}", bg = "{{ lighter_background }}", bold = true }
+inactive = { fg = "{{ secondary }}", bg = "{{ dark_background }}" }
 sep_inner = { open = "", close = "" }
 sep_outer = { open = "", close = "" }
 
 [mode]
-normal_main = { fg = "{{ accent }}", bg = "{{ background }}", bold = true }
-normal_alt = { fg = "{{ secondary }}", bg = "{{ background }}" }
+normal_main = { fg = "{{ accent }}", bg = "{{ dark_background }}", bold = true }
+normal_alt = { fg = "{{ secondary }}", bg = "{{ dark_background }}" }
 select_main = { fg = "{{ background }}", bg = "{{ accent }}", bold = true }
 select_alt = { fg = "{{ accent }}", bg = "{{ selection }}" }
 unset_main = { fg = "{{ background }}", bg = "{{ bright_red }}", bold = true }
@@ -44,7 +46,7 @@ preview = { fg = "{{ foreground }}", bg = "{{ lighter_background }}", underline 
 padding = { open = "", close = "" }
 
 [status]
-overall = { fg = "{{ secondary }}", bg = "{{ background }}" }
+overall = { fg = "{{ secondary }}", bg = "{{ dark_background }}" }
 sep_left = { open = "", close = "" }
 sep_right = { open = "", close = "" }
 perm_sep = { fg = "{{ muted }}" }
@@ -58,7 +60,7 @@ progress_error = { fg = "{{ bright_red }}", bg = "{{ background }}" }
 
 [which]
 border = { fg = "{{ muted }}" }
-mask = { bg = "{{ background }}" }
+mask = { bg = "{{ dark_background }}" }
 cand = { fg = "{{ accent }}" }
 rest = { fg = "{{ secondary }}" }
 desc = { fg = "{{ foreground }}" }
@@ -67,7 +69,7 @@ separator_style = { fg = "{{ muted }}" }
 
 [confirm]
 border = { fg = "{{ muted }}" }
-title = { fg = "{{ accent }}" }
+title = { fg = "{{ bright_foreground }}", bold = true }
 body = { fg = "{{ foreground }}" }
 list = { fg = "{{ secondary }}" }
 btn_yes = { fg = "{{ accent }}", bg = "{{ selection }}", bold = true }
@@ -75,7 +77,7 @@ btn_no = { fg = "{{ secondary }}" }
 
 [spot]
 border = { fg = "{{ muted }}" }
-title = { fg = "{{ accent }}" }
+title = { fg = "{{ bright_foreground }}", bold = true }
 tbl_col = { fg = "{{ secondary }}" }
 tbl_cell = { fg = "{{ foreground }}", bg = "{{ selection }}" }
 
@@ -91,7 +93,7 @@ inactive = { fg = "{{ secondary }}" }
 
 [input]
 border = { fg = "{{ muted }}" }
-title = { fg = "{{ accent }}" }
+title = { fg = "{{ bright_foreground }}", bold = true }
 value = { fg = "{{ foreground }}" }
 selected = { fg = "{{ selection_foreground }}", bg = "{{ selection_background }}" }
 
@@ -102,7 +104,7 @@ inactive = { fg = "{{ secondary }}" }
 
 [tasks]
 border = { fg = "{{ muted }}" }
-title = { fg = "{{ accent }}" }
+title = { fg = "{{ bright_foreground }}", bold = true }
 hovered = { fg = "{{ accent }}", bg = "{{ selection }}" }
 
 [help]

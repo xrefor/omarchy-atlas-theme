@@ -1,4 +1,5 @@
 """Exercise launch and observation with fake Codex state in disposable tmux."""
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -128,7 +129,7 @@ class LifecycleTests(unittest.TestCase):
         self.database = self.home / 'state_5.sqlite'
         self.rollout = self.home / 'sessions/root.jsonl'
         self.rollout.write_text(encoded({'type': 'session_meta', 'payload': {'id': 'root', 'source': 'cli'}}))
-        with sqlite3.connect(self.database) as database:
+        with closing(sqlite3.connect(self.database)) as database, database:
             database.executescript('''
                 CREATE TABLE threads (id TEXT PRIMARY KEY, rollout_path TEXT, agent_path TEXT,
                     agent_nickname TEXT, agent_role TEXT, created_at INTEGER, history_mode TEXT);
@@ -223,7 +224,7 @@ sys.exit(int((root / 'exit-request').read_text()))
             metadata['subagent_history_start_ordinal'] = 0
         path.write_text(encoded({'type': 'session_meta', 'payload': metadata}))
         self.append(path, 'task_started', turn_id=identifier, started_at=time.time())
-        with sqlite3.connect(self.database) as database:
+        with closing(sqlite3.connect(self.database)) as database, database:
             database.execute('INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?)',
                              (identifier, str(path), '/root/' + identifier, '', 'worker',
                               int(time.time()), 'paginated'))
@@ -329,7 +330,7 @@ sys.exit(int((root / 'exit-request').read_text()))
     time.sleep(.025)'''))
         second = self.home / 'sessions/second-root.jsonl'
         second.write_text(encoded({'type': 'session_meta', 'payload': {'id': 'second-root', 'source': 'cli'}}))
-        with sqlite3.connect(self.database) as database:
+        with closing(sqlite3.connect(self.database)) as database, database:
             database.execute('INSERT INTO threads VALUES (?, ?, ?, ?, ?, ?, ?)',
                              ('second-root', str(second), '/root', '', '', int(time.time()), 'paginated'))
         with patch.dict(os.environ, self.environment):
@@ -368,8 +369,14 @@ sys.exit(int((root / 'exit-request').read_text()))
         # Explicit attach must reach the existing observer despite its same-PID
         # duplicate lock. Only process discovery is mocked: the fixture binary
         # is Python, while discovery deliberately requires the Codex executable.
+        spawn_watcher = cli.spawn_watcher
+        def retain_watcher(*args):
+            process = spawn_watcher(*args)
+            self.addCleanup(process.wait, timeout=5)
+            return process
         with (patch.dict(os.environ, self.environment),
-              patch.object(cli, 'codex_process', return_value=ready['pid'])):
+              patch.object(cli, 'codex_process', return_value=ready['pid']),
+              patch.object(cli, 'spawn_watcher', side_effect=retain_watcher)):
             cli.attach(SimpleNamespace(pane=self.origin, thread='second-root'))
         threshold = time.time() + 1
         self.wait(lambda: self.snapshot().get('root_id') == 'second-root'
