@@ -105,7 +105,7 @@ the director and its active overlays. See the [GHOSTLINE guide](docs/GHOSTLINE.m
 
 ### Two lock-screen styles
 
-| Classic · default | Terminal |
+| Classic | Terminal · default |
 | --- | --- |
 | [![Classic ATLAS lock screen with animated Matrix rain, captured from the native lock component](docs/media/atlas-lock.gif)](docs/media/atlas-lock.gif) | [![Terminal ATLAS lock screen with a blinking chevron, captured from the native lock component](docs/media/atlas-lock-terminal.gif)](docs/media/atlas-lock-terminal.gif) |
 | Matrix rain, blurred wallpaper and a framed password field. | A centered ATLAS mark and a blinking chevron, opening directly to password input. |
@@ -221,9 +221,14 @@ opens Files, Git Status, Ports & Services, Agents, NymVPN or music;
 | [CLI coverage](docs/CLI.md) | Command colors and optional tool integrations |
 
 <details>
-<summary>Eight included wallpapers</summary>
+<summary>Nine included wallpapers</summary>
+
+Carbon Fold is the default wallpaper for fresh installs. Its `00-` filename places it first in Omarchy’s background order; existing wallpaper selections remain available.
 
 <table>
+<tr>
+<td align="center"><a href="backgrounds/00-atlas-carbon-fold.png"><img src="docs/media/previews/00-atlas-carbon-fold-320.webp" alt="Carbon Fold" width="200"></a><br>Carbon Fold · default</td>
+</tr>
 <tr>
 <td align="center"><a href="backgrounds/atlas-ember-seam.png"><img src="docs/media/previews/atlas-ember-seam-320.webp" alt="Ember Seam" width="200"></a><br>Ember Seam</td>
 <td align="center"><a href="backgrounds/atlas-boot.png"><img src="docs/media/previews/atlas-boot-320.webp" alt="ATLAS Boot" width="200"></a><br>ATLAS Boot</td>

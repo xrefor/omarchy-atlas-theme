@@ -7,7 +7,7 @@ import qs.Ui
 Item {
   id: root
 
-  property bool terminalStyle: false
+  property bool terminalStyle: true
   property string backgroundPath: ""
   property int backgroundVersion: 0
   property bool fingerprintConfigured: false

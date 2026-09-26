@@ -25,9 +25,11 @@ class LockStyleTests(unittest.TestCase):
             return lock_style.select(self.home, value)
 
     def test_default_toggle_and_restore_missing_preference(self):
-        self.assertEqual(lock_style.current(self.home), 'classic')
-        self.assertEqual(self.change('toggle'), 'terminal')
+        self.assertEqual(lock_style.current(self.home), 'terminal')
+        desired = user.plan(ROOT, self.home, {'shell'}, palette.resolve(ROOT / 'colors.toml'))
+        self.assertEqual(state.text_value(desired[lock_style.PREFERENCE]), 'terminal\n')
         self.assertEqual(self.change('toggle'), 'classic')
+        self.assertEqual(self.change('toggle'), 'terminal')
         records = state.load(self.home)['files']
         with state.lock(self.home), contextlib.redirect_stdout(io.StringIO()):
             state.transact(self.home, {key: item['before'] for key, item in records.items()}, restoring=True)

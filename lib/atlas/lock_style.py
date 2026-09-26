@@ -16,7 +16,7 @@ STYLES = ('classic', 'terminal')
 def current(home):
     item = state.snapshot(state.target(home, PREFERENCE))
     if item['kind'] == 'absent':
-        return 'classic'
+        return 'terminal'
     if item['kind'] != 'file':
         raise ValueError('Lock-style preference must be a regular file')
     style = state.text_value(item).strip()

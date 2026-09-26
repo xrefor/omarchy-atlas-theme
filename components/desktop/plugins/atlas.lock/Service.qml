@@ -16,8 +16,8 @@ Item {
   readonly property string userName: Quickshell.env("USER") || Quickshell.env("LOGNAME")
   readonly property string currentBackgroundLink: stateHome + "/omarchy/current/background"
 
-  property bool preferredTerminalStyle: false
-  property bool activeTerminalStyle: false
+  property bool preferredTerminalStyle: true
+  property bool activeTerminalStyle: true
   // A preference change applies to the next lock, never a live password field.
   readonly property bool terminalStyle: locked ? activeTerminalStyle : preferredTerminalStyle
 
@@ -26,7 +26,7 @@ Item {
     watchChanges: true
     printErrors: false
     onLoaded: root.preferredTerminalStyle = text().trim() === "terminal"
-    onLoadFailed: root.preferredTerminalStyle = false
+    onLoadFailed: root.preferredTerminalStyle = true
     onFileChanged: reload()
   }
 

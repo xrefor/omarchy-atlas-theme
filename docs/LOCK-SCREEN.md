@@ -4,11 +4,12 @@ The optional `shell` component includes two appearances for the same Omarchy
 session-lock service:
 
 - **Classic**: the existing Matrix screensaver, blurred wallpaper and framed
-  password field. This remains the default for new installations.
+  password field.
 - **Terminal**: a centered ATLAS logo, a borderless 9 pt IBM Plex Mono prompt,
   a grey `>` blinking every 1.2 seconds, asterisk masking and a thin orange
-  caret. It opens directly to password input. The mouse pointer stays hidden,
-  and mouse movement, buttons and scrolling do not interact with the prompt.
+  caret. This is the default for new installations and opens directly to password
+  input. The mouse pointer stays hidden, and mouse movement, buttons and scrolling
+  do not interact with the prompt.
 
 Choose **ATLAS → Lock screen → Terminal / Classic**, or run:
 
@@ -22,7 +23,7 @@ atlas-lock-style current
 The preference lives in `~/.config/atlas/lock-style`. Changes made through the
 command use the installation journal, survive reinstall/update, and restore
 the original preference when ATLAS is removed. A missing preference selects
-Classic. If the screen is already locked, a style change applies to the next
+Terminal. If the screen is already locked, a style change applies to the next
 lock; it does not replace a live password field.
 
 Both styles share the existing password and fingerprint PAM flows, input

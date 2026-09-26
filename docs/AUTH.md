@@ -4,7 +4,7 @@ The bundle ships four Omarchy shell clones under `components/desktop/plugins`:
 
 - `atlas.lock` keeps Omarchy's session-lock and PAM implementation and adds the ATLAS password tile, caps-lock feedback, and embedded Matrix rain.
 - `atlas.polkit` keeps Quickshell's native Polkit agent and changes only its presentation and user feedback.
-- `atlas.idle` derives from Omarchy's idle service and hands the first configured idle event directly to `omarchy-system-lock`, where `atlas.lock` renders Matrix rain inside the secure lock surface.
+- `atlas.idle` derives from Omarchy's idle service and hands the first configured idle event directly to `omarchy-system-lock`, where `atlas.lock` opens the Terminal prompt by default, or renders Matrix rain in Classic mode, inside the secure lock surface.
 - `atlas.monitor` derives from the stock monitor panel and adds the Night Light row. It uses Omarchy's normal monitor, display-text-size, brightness, and OSD commands.
 
 Each manifest retains `omarchy.clonedFrom`, so Omarchy grants only the capabilities of the corresponding built-in plugin. The original Omarchy portions are distributed under the MIT license in `LICENSES/Omarchy-MIT.txt`.
