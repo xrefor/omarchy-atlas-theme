@@ -221,25 +221,23 @@ opens Files, Git Status, Ports & Services, Agents, NymVPN or music;
 | [CLI coverage](docs/CLI.md) | Command colors and optional tool integrations |
 
 <details>
-<summary>Nine included wallpapers</summary>
+<summary>Seven included wallpapers</summary>
 
-Carbon Fold is the default wallpaper for fresh installs. Its `00-` filename places it first in Omarchy’s background order; existing wallpaper selections remain available.
+Carbon Fold is the default wallpaper for fresh installs. Its `00-` filename places it first in Omarchy’s background order. All seven wallpapers are 3440 × 1440: four originals from the local ATLAS background selector and three new Carbon generations. See the [collection notes](docs/WALLPAPER-COLLECTION.md) for source paths and generation details.
 
 <table>
 <tr>
 <td align="center"><a href="backgrounds/00-atlas-carbon-fold.png"><img src="docs/media/previews/00-atlas-carbon-fold-320.webp" alt="Carbon Fold" width="200"></a><br>Carbon Fold · default</td>
 </tr>
 <tr>
-<td align="center"><a href="backgrounds/atlas-ember-seam.png"><img src="docs/media/previews/atlas-ember-seam-320.webp" alt="Ember Seam" width="200"></a><br>Ember Seam</td>
 <td align="center"><a href="backgrounds/atlas-boot.png"><img src="docs/media/previews/atlas-boot-320.webp" alt="ATLAS Boot" width="200"></a><br>ATLAS Boot</td>
-<td align="center"><a href="backgrounds/atlas-vault.png"><img src="docs/media/previews/atlas-vault-320.webp" alt="ATLAS Vault" width="200"></a><br>ATLAS Vault</td>
-<td align="center"><a href="backgrounds/atlas-thermal-horizon.png"><img src="docs/media/previews/atlas-thermal-horizon-320.webp" alt="Thermal Horizon" width="200"></a><br>Thermal Horizon</td>
+<td align="center"><a href="backgrounds/atlas-carbon-arch.png"><img src="docs/media/previews/atlas-carbon-arch-320.webp" alt="Carbon Arch" width="200"></a><br>Carbon Arch</td>
+<td align="center"><a href="backgrounds/atlas-carbon-intersect.png"><img src="docs/media/previews/atlas-carbon-intersect-320.webp" alt="Carbon Intersect" width="200"></a><br>Carbon Intersect</td>
 </tr>
 <tr>
-<td align="center"><a href="backgrounds/atlas-cinder-array.png"><img src="docs/media/previews/atlas-cinder-array-320.webp" alt="Cinder Array" width="200"></a><br>Cinder Array</td>
-<td align="center"><a href="backgrounds/atlas-umbra-core.png"><img src="docs/media/previews/atlas-umbra-core-320.webp" alt="Umbra Core" width="200"></a><br>Umbra Core</td>
-<td align="center"><a href="backgrounds/atlas-ember-causeway.png"><img src="docs/media/previews/atlas-ember-causeway-320.webp" alt="Ember Causeway" width="200"></a><br>Ember Causeway</td>
-<td align="center"><a href="backgrounds/atlas-obsidian-fold.png"><img src="docs/media/previews/atlas-obsidian-fold-320.webp" alt="Obsidian Fold" width="200"></a><br>Obsidian Fold</td>
+<td align="center"><a href="backgrounds/atlas-carbon-terrace.png"><img src="docs/media/previews/atlas-carbon-terrace-320.webp" alt="Carbon Terrace" width="200"></a><br>Carbon Terrace</td>
+<td align="center"><a href="backgrounds/atlas-ember-meridian-native.png"><img src="docs/media/previews/atlas-ember-meridian-native-320.webp" alt="Ember Meridian" width="200"></a><br>Ember Meridian</td>
+<td align="center"><a href="backgrounds/atlas-ember-strata-native.png"><img src="docs/media/previews/atlas-ember-strata-native-320.webp" alt="Ember Strata" width="200"></a><br>Ember Strata</td>
 </tr>
 </table>
 

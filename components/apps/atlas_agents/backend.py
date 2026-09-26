@@ -14,6 +14,7 @@ import re
 import sqlite3
 import stat
 import time
+import tomllib
 
 MAX_AGENTS = 64
 READ_BUDGET = 512 * 1024
@@ -152,6 +153,100 @@ def process_root(pid, home):
     if len(candidates) > 1:
         raise ValueError('Multiple open Codex conversations; use atlas-agents attach --thread ID')
     return next(iter(candidates), None)
+
+
+def title_launch_args(args, home):
+    """Add a pane-local thread signal without changing persistent Codex settings.
+
+    Put the UUID and fixed app name first, before any user-controlled thread
+    name. Empty title selections explicitly opt out of this integration.
+    """
+    try:
+        config = tomllib.loads((Path(home) / 'config.toml').read_text())
+    except FileNotFoundError:
+        config = {}
+    except (OSError, ValueError):
+        return args, False
+    if not isinstance(config.get('tui', {}), dict) or not isinstance(config.get('profiles', {}), dict):
+        return args, False
+    profile = config.get('profile')
+    directory = Path.cwd()
+    overrides = []
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        if arg == '--': break
+        if arg in ('-p', '--profile', '-c', '--config', '-C', '--cd'):
+            if index + 1 >= len(args): return args, False
+            index += 1
+            if arg in ('-p', '--profile'): profile = args[index]
+            elif arg in ('-C', '--cd'): directory = Path(args[index]).expanduser().absolute()
+            else: overrides.append(args[index])
+        elif arg.startswith('--profile='): profile = arg.split('=', 1)[1]
+        elif arg.startswith('--cd='): directory = Path(arg.split('=', 1)[1]).expanduser().absolute()
+        elif arg.startswith('--config='): overrides.append(arg.split('=', 1)[1])
+        elif arg.startswith('-c') and len(arg) > 2: overrides.append(arg[2:].removeprefix('='))
+        elif arg.startswith('-p') and len(arg) > 2: profile = arg[2:].removeprefix('=')
+        elif arg.startswith('-C') and len(arg) > 2: directory = Path(arg[2:].removeprefix('=')).expanduser().absolute()
+        index += 1
+    items = config.get('tui', {}).get('terminal_title', ['activity', 'thread-name', 'project-name'])
+    if profile:
+        if not isinstance(profile, str): return args, False
+        selected = config.get('profiles', {}).get(profile, {})
+        if not isinstance(selected, dict) or not isinstance(selected.get('tui', {}), dict):
+            return args, False
+        items = selected.get('tui', {}).get('terminal_title', items)
+    # Respect project-local title choices too. The observer never changes trust
+    # or enables project config: copying only this display selection is harmless
+    # even when Codex elects not to load an untrusted project's other settings.
+    for directory in reversed((directory, *directory.parents)):
+        path = directory / '.codex/config.toml'
+        if path == Path(home) / 'config.toml': continue
+        try:
+            local = tomllib.loads(path.read_text()).get('tui', {})
+            if not isinstance(local, dict): return args, False
+            items = local.get('terminal_title', items)
+        except FileNotFoundError:
+            continue
+        except (OSError, ValueError):
+            return args, False
+    for override in overrides:
+        try:
+            value = tomllib.loads(override)
+        except ValueError:
+            # Codex also accepts bare string values for unrelated keys.
+            if 'tui' in override.split('=', 1)[0]: return args, False
+            continue
+        if 'tui' in value:
+            if not isinstance(value['tui'], dict): return args, False
+            items = value['tui'].get('terminal_title', items)
+    if not items or not isinstance(items, list) or not all(isinstance(item, str) for item in items):
+        return args, False
+    items = ['thread-id', 'app-name', *[item for item in items if item not in ('thread-id', 'session-id', 'app-name')]]
+    boundary = args.index('--') if '--' in args else len(args)
+    return [*args[:boundary], '-c', 'tui.terminal_title=' + json.dumps(items), *args[boundary:]], True
+
+
+def title_root(title, home):
+    """Accept only our title prefix and a recorded top-level thread UUID."""
+    # Codex adds a fixed microphone/approval prefix and separates an adjacent
+    # activity spinner with a space instead of a pipe.
+    match = re.match(r'^(?:● )?(?:\[ [!.] \] Action Required \| )?'
+                     r'([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-'
+                     r'(?:[0-9a-f]{12}|[0-9a-f]{5,11}\.\.\.)) \| [Cc]odex(?: |$)', title)
+    if not match: return None
+    identifier = match[1]
+    with contextlib.closing(Observer(identifier, home).database()) as database:
+        # The TUI may abbreviate the final UUID component in its title. Resolve
+        # only a long, exact prefix and require one recorded top-level match.
+        # SQL GLOB is safe here because the grammar permits only hex and '-'.
+        pattern = identifier[:-3] + '*' if identifier.endswith('...') else identifier
+        rows = database.execute('SELECT id FROM threads WHERE id GLOB ? LIMIT 2', (pattern,)).fetchall()
+        if len(rows) != 1: return None
+        identifier = rows[0]['id']
+        child = database.execute('SELECT 1 FROM thread_spawn_edges WHERE child_thread_id=?',
+                                 (identifier,)).fetchone()
+    return None if child else identifier
 
 
 class Rollout:

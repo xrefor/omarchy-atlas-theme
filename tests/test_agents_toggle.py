@@ -156,6 +156,26 @@ class AgentsToggleTests(unittest.TestCase):
         self.assertIn('Waiting for Codex', self.tmux.call_args.args[-1])
         self.panels.open.assert_not_called()
 
+    def test_attach_recovers_same_launch_title_signal(self):
+        self.active()
+        cli.write_cache(self.path, {'session_key': '123:456', 'title_signal': True})
+        with patch.object(cli, 'title_root', return_value='ready-thread') as title:
+            self.assertEqual(self.invoke('attach'), (0, ''))
+            title.assert_called_once()
+        self.root.assert_not_called()
+        self.assertTrue(cli.read_cache(self.path)['title_signal'])
+        self.watcher.assert_called_once_with(123, '%0', None)
+
+    def test_explicit_thread_stays_authoritative_with_recovered_title_signal(self):
+        self.active()
+        cli.write_cache(self.path, {'session_key': '123:456', 'title_signal': True})
+        with patch.object(cli, 'title_root') as title:
+            self.assertEqual(cli.main(['attach', '--pane', '%0', '--thread', 'pinned']), 0)
+            title.assert_not_called()
+        self.root.assert_not_called()
+        self.observer.assert_called_once_with('pinned')
+        self.watcher.assert_called_once_with(123, '%0', 'pinned')
+
 
 if __name__ == '__main__':
     unittest.main()

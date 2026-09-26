@@ -3,14 +3,22 @@
 ## Responsive wallpaper previews
 
 `previews/` contains WebP derivatives of the `backgrounds/*.png` files.
-All eight PNG downloads are **3440 × 1440**. The website uses 160/320-pixel
-thumbnail candidates and 640/1080/2160-pixel hero candidates.
+All seven PNG downloads are **3440 × 1440**. Carbon Fold, ATLAS Boot, Ember
+Meridian and Ember Strata were copied without image processing from the local
+ATLAS background selector on **2026-09-26**. Carbon Arch, Carbon Intersect and
+Carbon Terrace were generated anew at 3440 × 1440 with `gpt-image-2` at high
+quality, using text descriptions of the previous images' style and composition.
+No reference images were uploaded. See the
+[generation record](../WALLPAPER-GENERATION-2026-09-26.md) for prompts, settings
+and output hashes.
 
-On **2026-09-18**, seven wallpapers were rebuilt with AI image generation for
-finer detail, then resized from the generator's approximately **1938 × 812**
-output to exactly **3440 × 1440** using ImageMagick Lanczos resizing. These are
-upscaled AI rerenders, not native 3440 × 1440 generations. ATLAS Boot retains
-its existing 3440 × 1440 artwork.
+Carbon Fold keeps the repository's default `00-atlas-carbon-fold.png` filename.
+The [collection notes](../WALLPAPER-COLLECTION.md) record the source location and
+filename mapping. The filenames of the four copied originals do not establish
+their generation resolution or prior processing history.
+
+The website uses 160/320-pixel thumbnail candidates and 640/1080/2160-pixel
+hero candidates, derived separately from the full-resolution PNGs.
 
 Regenerate them with `python3 tools/build_previews.py` (Pillow with WebP support).
 The generator uses Lanczos resizing and WebP quality 85; the current assets were

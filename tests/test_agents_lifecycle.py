@@ -240,7 +240,8 @@ sys.exit(int((root / 'exit-request').read_text()))
         args = ['--model', 'fake-model', 'prompt with spaces #{} $(literal)']
         ready = self.launch(args)
         pid = ready['pid']
-        self.assertEqual(ready['args'], args)
+        expected_args, _ = backend.title_launch_args(args, self.home)
+        self.assertEqual(ready['args'], expected_args)
         started = backend.process_start(pid)
         self.assertEqual(backend.process_root(pid, self.home), 'root')
         observed = self.wait(lambda: self.snapshot().get('connected') and self.snapshot())

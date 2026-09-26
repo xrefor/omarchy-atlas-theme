@@ -1,14 +1,43 @@
 # ATLAS wallpaper collection
 
+## Current collection · September 26, 2026
+
+The repository's `backgrounds/` directory contains seven **3440 × 1440** PNGs.
+Carbon Fold, ATLAS Boot, Ember Meridian and Ember Strata were copied byte for
+byte from `~/.config/omarchy/backgrounds/atlas/`, the local ATLAS background
+selector's collection, without resizing or recompression. Archive subdirectories
+are excluded. Carbon Fold retains the repository's `00-` prefix so it remains
+the default for fresh installs.
+
+Carbon Arch, Carbon Intersect and Carbon Terrace were generated anew at
+3440 × 1440 with `gpt-image-2` at high quality. Text prompts described the style
+and composition of the previous 1942 × 809 versions; no reference images were
+uploaded. See the [generation record](WALLPAPER-GENERATION-2026-09-26.md) for
+prompts, settings and output hashes.
+
+| Wallpaper | Repository filename | Dimensions |
+| --- | --- | --- |
+| Carbon Fold · default | `00-atlas-carbon-fold.png` | 3440 × 1440 |
+| ATLAS Boot | `atlas-boot.png` | 3440 × 1440 |
+| Carbon Arch | `atlas-carbon-arch.png` | 3440 × 1440 |
+| Carbon Intersect | `atlas-carbon-intersect.png` | 3440 × 1440 |
+| Carbon Terrace | `atlas-carbon-terrace.png` | 3440 × 1440 |
+| Ember Meridian | `atlas-ember-meridian-native.png` | 3440 × 1440 |
+| Ember Strata | `atlas-ember-strata-native.png` | 3440 × 1440 |
+
+Carbon Fold's source filename is `atlas-carbon-fold-native.png`; the other
+filenames are retained from the local collection. For the four copied originals,
+the filenames alone do not establish generation resolution or prior processing.
+Responsive website previews are derived separately; see the [media notes](media/README.md).
+
 ## Historical source-generation record
 
 The prompts below record the first ATLAS Vault, Thermal Horizon and Cinder Array
 images generated on September 9, 2026, using Ember Seam as a style reference.
 Those three native outputs were 1672 × 941 and received no upscaling or
-postprocessing. They are not the exact prompts or provenance record for the
-current files: all three were rerendered and resized for the 3440 × 1440
-distribution on September 18. See the [showcase media notes](media/README.md) for
-the known current processing record.
+postprocessing. Later versions were rerendered and resized for the 3440 × 1440
+distribution on September 18. These wallpapers were replaced by the current
+collection on September 26; the prompts remain as historical records.
 
 ## atlas-vault
 

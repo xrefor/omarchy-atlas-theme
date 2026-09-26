@@ -106,13 +106,29 @@ accepts non-forked legacy and paginated child sessions that omit
 reading assignments or activity. Forked sessions still require that boundary so copied
 parent lifecycle events are skipped.
 
-It identifies the root by the CLI process's open session file and follows only
-that root's recorded descendants. It never selects a conversation by directory
-or modification time. Automatic observation follows conversation changes within
-the same CLI process, including new and resumed conversations. While the current
+For older CLI versions it identifies the root by the CLI process's open session
+file. Codex 0.157.0 can keep those files in a shared app-server daemon instead.
+For observed interactive launches, ATLAS adds the current thread ID to Codex's
+pane title for that launch, then validates the ID against the local thread
+database. When Codex abbreviates the ID, it must match exactly one recorded
+thread, and that thread must be a root rather than a sub-agent. Ambiguous
+prefixes are rejected. The title signal is bound to the originating pane and the CLI's PID
+and process start time. ATLAS's outer terminal title remains controlled by tmux.
+The launcher does not change persistent Codex configuration.
+
+Only the selected root's recorded descendants are followed. The observer never
+selects a conversation by directory, modification time, or the shared daemon's
+open files. Automatic observation follows conversation changes within the same
+CLI process, including new and resumed conversations. While the current
 conversation cannot be identified, previous observations are marked stale. An
 explicit `--thread` selection stays pinned. Ambiguous roots require an explicit
-thread selection.
+thread selection. App-server helper processes below the CLI do not count as
+additional interactive clients.
+
+The title integration takes effect on new observed launches. Sessions already
+running when ATLAS is updated can be attached with `--thread`, or restarted
+through the managed `codex` shell command. An explicitly empty terminal-title
+configuration disables the title signal.
 
 This is a version-sensitive local adapter, not a stable Codex API guarantee.
 Unsupported schemas, missing records and disconnections produce an unavailable

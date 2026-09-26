@@ -820,3 +820,39 @@ allow disposable tmux sockets. Release checks passed deterministic packaging,
 payload checksums, the extracted showcase build and installation, repeat/sync/
 check stability, and restoration in a temporary home. No live desktop changes
 were needed for this repository sync.
+
+## Agents discovery with Codex 0.157.0 — 2026-09-26
+
+The daemon-based CLI no longer necessarily holds its own rollout file open.
+The observer now uses a launch-scoped pane-title thread signal, validates full
+or uniquely abbreviated IDs against the local read-only database, and keeps
+exact CLI file-descriptor discovery as a fallback. App-server helper processes
+are excluded from interactive-client selection. No directory/recency matching,
+shared-daemon rollout guessing, hooks, or persistent Codex configuration changes
+are used.
+
+A native Codex 0.157.0 TUI was opened as a second view of the current conversation
+in an isolated tmux server with an explicit working directory. No prompt or
+agent turn was submitted. The observer identified the exact root and
+**automatically opened its Agents panel with two recorded sub-agents**. This
+also verified the real lowercase app-name and abbreviated UUID title format.
+The temporary tmux server was removed afterward.
+
+Focused discovery checks cover ID-prefix ambiguity (including child/root
+collisions), unknown/child IDs, custom and disabled title settings, launch
+identity, conversation changes, and SQLite failure. Native lifecycle and
+Codex color-adapter fixtures cover panel opening, dismissal, argument handling,
+origin removal and cleanup. The portable checker passed 486 Python tests
+(24 environment/portable skips), authentication checks, JavaScript models, Lua
+checks and source syntax. Its separate VPN tmux check was blocked by sandbox
+socket access and then passed outside the sandbox using mocked VPN commands;
+the final palette/template check passed separately. Native Agents lifecycle
+and color-adapter checks were also run outside the sandbox. These checks do
+not establish compatibility with future Codex title formats.
+
+Watcher-recovery tests additionally verify that title discovery survives a
+restart only for the same pane and PID/start identity; explicit thread selection
+remains authoritative. The two observer modules were deployed on the desktop
+with backups and matching installer-journal updates. The existing conversation
+was explicitly attached without restarting Codex; the installed panel reported
+the correct root, a connected observer and two sub-agents.

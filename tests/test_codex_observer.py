@@ -45,7 +45,10 @@ class CodexObserverTests(unittest.TestCase):
         fixture = self.fixture
         args = ['--model', 'fixture-model', 'literal spaces #{} $(not a command)']
         ready = self.launch(args)
-        self.assertEqual(ready['args'], args)
+        self.assertEqual(ready['args'][:len(args)], args)
+        self.assertEqual(ready['args'][len(args):], [
+            '-c', 'tui.terminal_title=' + json.dumps([
+                'thread-id', 'app-name', 'activity', 'thread-name', 'project-name'])])
         self.assertTrue(ready['terminal'])
         self.assertNotEqual(ready['tty'], fixture.tm(
             'display-message', '-p', '-t', fixture.origin, '#{pane_tty}'))

@@ -43,12 +43,16 @@ generation tool on September 15, 2026; that historical generation is recorded in
 [wallpaper additions](WALLPAPER-ADDITIONS-2026-09-15.md).
 
 On September 18, 2026, those seven wallpapers were rerendered with AI image
-generation and resized for the current 3440 × 1440 distribution. The repository
+generation and resized for the then-current 3440 × 1440 distribution. The repository
 does not record the exact rerender prompts or generator-output hashes, so the
-historical prompts and hashes are not presented as provenance for the current
-pixels. The known rerender dimensions and processing are recorded in the
-[showcase media notes](media/README.md). No game media, personal photographs or
-unrelated stock wallpapers are included.
+historical prompts and hashes do not describe those rerendered pixels. Those
+seven wallpapers were replaced on September 26. The current collection includes
+four originals copied from the local ATLAS selector and three new Carbon images
+generated at 3440 × 1440 with `gpt-image-2` at high quality. The three generations
+used text descriptions of the previous images' style and composition, with no
+reference images uploaded. The [generation record](WALLPAPER-GENERATION-2026-09-26.md)
+preserves prompts, settings and output hashes; the
+[collection notes](WALLPAPER-COLLECTION.md) record source paths and filenames.
 
 `docs/SOURCE-INVENTORY.json` records selected original source assets and hashes
 from before the rerender; the four affected wallpaper entries it contains are

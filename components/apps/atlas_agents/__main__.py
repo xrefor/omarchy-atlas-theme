@@ -8,13 +8,14 @@ import os
 from pathlib import Path
 import shutil
 import signal
+import sqlite3
 import stat
 import subprocess
 import sys
 import tempfile
 import time
 
-from .backend import Observer, codex_home, process_root, process_start
+from .backend import Observer, codex_home, process_root, process_start, title_launch_args, title_root
 from .tmux_panel import Panels, runtime_directory
 
 
@@ -108,6 +109,14 @@ def codex_process(origin):
     found = []
     for pid, (_, name) in processes.items():
         if name != 'codex': continue
+        try:
+            # The shared app-server may be descended from the first TUI. It is
+            # not another interactive client in that pane.
+            arguments = (Path('/proc') / str(pid) / 'cmdline').read_bytes().split(b'\0')
+            if any(value in (b'app-server', b'exec-server') for value in arguments[1:3]):
+                continue
+        except OSError:
+            continue
         current, seen = pid, set()
         while current not in seen:
             if current == root:
@@ -122,10 +131,21 @@ def codex_process(origin):
     return found[0]
 
 
-def spawn_watcher(pid, origin, thread=None):
+def cached_title_signal(pid, start, origin):
+    try:
+        snapshot = read_cache(cache_path(origin))
+        return (snapshot.get('session_key') == f'{pid}:{start}'
+                and snapshot.get('title_signal') is True)
+    except (OSError, ValueError):
+        return False
+
+
+def spawn_watcher(pid, origin, thread=None, title_signal=False):
     start = process_start(pid)
     if start is None: raise ValueError('The Codex process has ended')
     args = command('watch', '--pid', str(pid), '--start', start, '--pane', origin)
+    title_signal = title_signal or cached_title_signal(pid, start, origin)
+    if title_signal: args.append('--title-signal')
     if thread:
         args += ['--thread', thread]
         # An observer may already hold the watch lock for this process. Publish
@@ -169,7 +189,14 @@ def launch(args):
     watcher = None
     if (os.isatty(0) and os.isatty(1) and os.environ.get('TMUX')
             and os.environ.get('ATLAS_AGENTS_AUTO', '1') != '0' and interactive_launch(args[1:])):
-        try: watcher = spawn_watcher(os.getpid(), origin_pane())
+        try:
+            origin = origin_pane()
+            launch_args, title_signal = title_launch_args(args[1:], codex_home())
+            if title_signal:
+                # Remove a previous launch's title before enabling this signal.
+                tmux('select-pane', '-t', origin, '-T', '')
+            watcher = spawn_watcher(os.getpid(), origin, title_signal=title_signal)
+            args = [args[0], *launch_args]
         except (OSError, ValueError, subprocess.SubprocessError): pass
     try:
         os.execv(binary, [binary, *args[1:]])
@@ -213,7 +240,8 @@ def watch(args):
         signal.signal(signal.SIGTERM, stop)
         signal.signal(signal.SIGINT, stop)
         snapshot = {'root_id': args.thread or '', 'connected': False, 'error': 'Waiting for the Codex conversation',
-                    'agents': [], 'updated_at': 0, 'session_key': key}
+                    'agents': [], 'updated_at': 0, 'session_key': key,
+                    'title_signal': bool(getattr(args, 'title_signal', False))}
         while not stopped and process_start(args.pid) == args.start:
             try:
                 try:
@@ -232,12 +260,21 @@ def watch(args):
                         selected = selection['thread']
                 except (OSError, ValueError):
                     pass
-                root = selected or process_root(args.pid, codex_home())
+                if selected:
+                    root = selected
+                elif getattr(args, 'title_signal', False):
+                    # Bound to this pane and this launch's PID/start identity;
+                    # never inspect another client's daemon-owned rollouts.
+                    title = tmux('display-message', '-p', '-t', origin, '#{pane_title}')
+                    root = title_root(title, codex_home()) or process_root(args.pid, codex_home())
+                else:
+                    root = process_root(args.pid, codex_home())
                 changed = bool(root and observer and observer.root_id != root)
                 if root and (observer is None or changed):
                     observer = Observer(root)
                 if root and observer:
-                    snapshot = dict(observer.poll(), session_key=key, cli_pid=args.pid, cli_start=args.start)
+                    snapshot = dict(observer.poll(), session_key=key, cli_pid=args.pid, cli_start=args.start,
+                                    title_signal=bool(getattr(args, 'title_signal', False)))
                 else:
                     # Keep the last observations across a transient closed file,
                     # but never present the previous conversation as live.
@@ -256,12 +293,13 @@ def watch(args):
                 if (snapshot['connected'] and has_activity and not opened
                         and not is_dismissed(path, key)):
                     manager.open(snapshot['root_id'], str(path)); opened = True
-            except (OSError, ValueError, subprocess.SubprocessError) as error:
+            except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
                 snapshot = dict(snapshot, connected=False, error=str(error)[:240])
                 with contextlib.suppress(OSError, ValueError): write_cache(path, snapshot)
             time.sleep(1)
         if observer:
-            snapshot = dict(observer.poll(), session_key=key)
+            snapshot = dict(observer.poll(), session_key=key,
+                            title_signal=bool(getattr(args, 'title_signal', False)))
         snapshot = dict(snapshot, connected=False, error='Codex session ended; showing last observations')
         for row in snapshot['agents']:
             if row['status'] in ('starting', 'running', 'waiting'):
@@ -281,14 +319,19 @@ def watch(args):
 def attach(args):
     origin = origin_pane(args.pane)
     pid = codex_process(origin)
-    root = args.thread or process_root(pid, codex_home())
+    start = process_start(pid)
+    title_signal = cached_title_signal(pid, start, origin)
+    root = args.thread
+    if not root and title_signal:
+        root = title_root(tmux('display-message', '-p', '-t', origin, '#{pane_title}'), codex_home())
+    root = root or process_root(pid, codex_home())
     if not root:
         spawn_watcher(pid, origin, args.thread)
         panel_message(origin, 'Waiting for Codex to open its conversation; try again shortly')
         return None
     observer = Observer(root)
     snapshot = observer.poll()
-    snapshot.update(session_key=f'{pid}:{process_start(pid)}', cli_pid=pid, cli_start=process_start(pid))
+    snapshot.update(session_key=f'{pid}:{start}', cli_pid=pid, cli_start=start, title_signal=title_signal)
     write_cache(cache_path(origin), snapshot)
     spawn_watcher(pid, origin, args.thread)
     return root
@@ -351,6 +394,7 @@ def main(argv=None):
     child = sub.add_parser('watch')
     child.add_argument('--pane', required=True); child.add_argument('--pid', required=True, type=int)
     child.add_argument('--start', required=True); child.add_argument('--thread')
+    child.add_argument('--title-signal', action='store_true')
     child = sub.add_parser('view'); child.add_argument('--snapshot', required=True, type=Path)
     child = sub.add_parser('snapshot'); child.add_argument('--thread', default=os.environ.get('CODEX_THREAD_ID'))
     args = parser.parse_args(argv)
@@ -369,7 +413,7 @@ def main(argv=None):
                 data = observer.poll()
                 if not any(x['activity'] == 'Loading session activity' for x in data['agents']): break
             print(json.dumps(data, indent=2)); return 0 if data['connected'] else 1
-    except (OSError, ValueError, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, sqlite3.Error, subprocess.SubprocessError) as error:
         print('ATLAS agents: ' + str(error), file=sys.stderr)
         return 1
 

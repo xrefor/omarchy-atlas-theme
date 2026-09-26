@@ -4,10 +4,10 @@
 
 The prompt below records the first Ember Seam generated for ATLAS on September
 9, 2026, with no reference images. That source was a native 1672 × 941 image and
-was not upscaled. It is not the exact prompt or provenance record for the current
-`backgrounds/atlas-ember-seam.png`: Ember Seam was rerendered and resized for the
-3440 × 1440 distribution on September 18. See the [showcase media
-notes](media/README.md) for the known current processing record.
+was not upscaled. A later version was rerendered and resized for the
+3440 × 1440 distribution on September 18. Ember Seam was removed from the
+repository's current collection on September 26; this prompt remains as a
+historical record. See the [current collection](WALLPAPER-COLLECTION.md).
 
 ## Final generation prompt
 

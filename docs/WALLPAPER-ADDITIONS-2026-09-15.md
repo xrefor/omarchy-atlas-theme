@@ -6,13 +6,12 @@ The prompts below record the first Umbra Core, Ember Causeway and Obsidian Fold
 images generated on September 15, 2026. Existing ATLAS wallpapers were inspected
 for palette, material, lighting and composition inspiration; no images were
 supplied directly to those generation calls. The three native outputs were 1672
-× 941 and received no upscaling or image postprocessing. They are not the exact
-prompts or provenance record for the current files: all three were rerendered and
-resized for the 3440 × 1440 distribution on September 18. See the [showcase
-media notes](media/README.md) for the known current processing record.
-
-User-added collection: `~/.config/omarchy/backgrounds/atlas/` (Style > Background).
-The package installer includes these images under `~/.config/omarchy/themes/atlas/backgrounds/`.
+× 941 and received no upscaling or image postprocessing. Later versions were
+rerendered and resized for the 3440 × 1440 distribution on September 18.
+These wallpapers were replaced in the repository on September 26; the prompts
+and filenames below remain as historical records. See the
+[current collection](WALLPAPER-COLLECTION.md) for the included images and source
+location.
 
 ## Umbra Core
 
